@@ -8,7 +8,7 @@ Further developments will include:
 
 A few requirements are needed to run this pipeline, and only the config file need to be modify in order to run it.
 
-# Required modules
+## Required modules
 1. Modules from Dardel:
 - Fastp -v. 0.24+
 - Prinseq lite - v.0.20.4+
@@ -22,24 +22,24 @@ A few requirements are needed to run this pipeline, and only the config file nee
 - FilterBAM
 - ngsLCA
 
-# Input files
+## Input files
 1. If running the pipeline from scratch
 Path of the raw sequencing samples to be processed
 
 2. If running a specific tool or the pipeline from any step after preprocessing
 File containing a list of samples with absolute path to be processed
 
-# Path to scripts and databases
+## Path to scripts and databases
 So far metaCPG is configured to be run through 4 different databases:
 1. PhyloNorway
 2. RefSeq Plastid
 3. RefSeq Mito
 4. Custom Database - containing any specific taxa of interest, build by the user
 
-# Tools activation
+## Tools activation
 Precise 1 or 0 for each step, 1=enable, 0=disable
 
-# Parameters to precise for specific tools
+## Parameters to precise for specific tools
 1. *fastp*\
 -overlap_len_require (default=20)\
 -l (default=30)
@@ -55,9 +55,9 @@ Precise 1 or 0 for each step, 1=enable, 0=disable
 --minreads (default=5)\
 --maxdamage (default=0.5)
 
-# SBATCH parameters
+## SBATCH parameters
 To be refine based on samples size and database using
 
-# Overview of the pipeline
+## Overview of the pipeline
 ![alt text](https://github.com/NathanACO/metaJAM/blob/main/metaJAM_diagram.png)
 
