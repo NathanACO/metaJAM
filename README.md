@@ -40,17 +40,17 @@ So far metaCPG is configured to be run through 4 different databases:
 Precise 1 or 0 for each step, 1=enable, 0=disable
 
 # Parameters to precise for specific tools
-*fastp*\
+1. *fastp*\
 -overlap_len_require (default=20)\
 -l (default=30)\
-*SGA*\
+2. *SGA*\
 --dust-threshold (default=4)\
-*PRINSEQ*\
+3. *PRINSEQ*\
 -lc_method (default=dust)\
 -lc_threshold (default=4)\
 -min_len (default=35)\
 -derep (default=1)\
-*bamdam*\
+4. *bamdam*\
 --stranded (default=ds)\
 --minreads (default=5)\
 --maxdamage (default=0.5)\
