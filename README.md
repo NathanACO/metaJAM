@@ -9,14 +9,14 @@ Further developments will include:
 ## How to launch it:
 sbatch -x Run_pipeline_metage.sh config_pipeline_metage.sh\
 It will creates different folders for the different steps of the pipeline, where the files will be stored:\
-- 00_logs
+- 00_logs -> Containing files with list of processed samples at each step
 - 01_fastp
 - 02_sga
 - 03_kraken_gtdb
 - 04_mapping
 - 05_filtering
 - 99_metrics
-- log
+- log -> Containing one error and one out folder where the sbatch information are stored
 
 A few requirements are needed to run this pipeline, and only the config file need to be modify in order to run it.
 
