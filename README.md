@@ -1,4 +1,4 @@
-<img src="https://github.com/NathanACO/metaJAM/blob/main/metaJam_logo.png" width="200" /> 
+<img src="https://github.com/NathanACO/metaJAM/blob/main/logo_metaJAM.png" width="200" /> 
 
 # metaJAM v1.0.1
 
