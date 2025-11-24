@@ -1,7 +1,7 @@
 # metaJAM v1.0.0
 Metagenomic Pipeline for ancient DNA analysis performed at the Centre for Palaeogenetics - Stockholm
 
-* Notes: *
+_Notes:_
 Further developments will include:
 - Addition of leeHom as an alternative choice to fastp
 - Addition of parameters to define in fastp, sga, prinseq and bamdam
@@ -17,7 +17,7 @@ A few requirements are needed to run this pipeline, and only the config file nee
 - Samtools - v1.20+
 - Kronatools - v2.8.1+
 
-2. Conda environments:\
+2. Conda environments:
 - SGA
 - FilterBAM
 - ngsLCA
@@ -30,7 +30,7 @@ Path of the raw sequencing samples to be processed
 File containing a list of samples with absolute path to be processed
 
 # Path to scripts and databases
-So far metaCPG is configured to be run through 4 different databases:\
+So far metaCPG is configured to be run through 4 different databases:
 1. PhyloNorway
 2. RefSeq Plastid
 3. RefSeq Mito
@@ -40,17 +40,17 @@ So far metaCPG is configured to be run through 4 different databases:\
 Precise 1 or 0 for each step, 1=enable, 0=disable
 
 # Parameters to precise for specific tools
-* fastp *
+*fastp*
 -overlap_len_require (default=20)\
 -l (default=30)
-* SGA *
+*SGA*
 --dust-threshold (default=4)
-* PRINSEQ params *
+*PRINSEQ*
 -lc_method (default=dust)\
 -lc_threshold (default=4)\
 -min_len (default=35)\
 -derep (default=1)
-* bamdam parameters *
+*bamdam*
 --stranded (default=ds)\
 --minreads (default=5)\
 --maxdamage (default=0.5)\
