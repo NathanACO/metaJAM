@@ -42,14 +42,14 @@ Precise 1 or 0 for each step, 1=enable, 0=disable
 # Parameters to precise for specific tools
 1. *fastp*\
 -overlap_len_require (default=20)\
--l (default=30)\
+-l (default=30)
 2. *SGA*\
---dust-threshold (default=4)\
+--dust-threshold (default=4)
 3. *PRINSEQ*\
 -lc_method (default=dust)\
 -lc_threshold (default=4)\
 -min_len (default=35)\
--derep (default=1)\
+-derep (default=1)
 4. *bamdam*\
 --stranded (default=ds)\
 --minreads (default=5)\
@@ -57,3 +57,5 @@ Precise 1 or 0 for each step, 1=enable, 0=disable
 
 # SBATCH parameters
 To be refine based on samples size and database using
+
+<img src=“https://github.com/NathanACO/metaJAM/edit/main/metaJAM_diagram.png”>
