@@ -1,4 +1,4 @@
-# metaJAM v1.0.0
+# metaJAM v1.0.1
 Metagenomic Pipeline for ancient DNA analysis performed at the Centre for Palaeogenetics - Stockholm
 
 _Notes:_
