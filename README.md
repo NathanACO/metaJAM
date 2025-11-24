@@ -6,6 +6,9 @@ Further developments will include:
 - Addition of leeHom as an alternative choice to fastp
 - Addition of parameters to define in fastp, sga, prinseq and bamdam
 
+## How to launch it:
+sbatch -x Run_pipeline_metage.sh config_pipeline_metage.sh
+
 A few requirements are needed to run this pipeline, and only the config file need to be modify in order to run it.
 
 ## Required modules
