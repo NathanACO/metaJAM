@@ -53,9 +53,9 @@ Precise 1 or 0 for each step, 1=enable, 0=disable
 4. *bamdam*\
 --stranded (default=ds)\
 --minreads (default=5)\
---maxdamage (default=0.5)\
+--maxdamage (default=0.5)
 
 # SBATCH parameters
 To be refine based on samples size and database using
 
-<img src=“https://github.com/NathanACO/metaJAM/edit/main/metaJAM_diagram.png”>
+<img src=“[https://github.com/NathanACO/metaJAM/edit/main/metaJAM_diagram.png]”>
