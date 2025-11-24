@@ -58,4 +58,4 @@ Precise 1 or 0 for each step, 1=enable, 0=disable
 # SBATCH parameters
 To be refine based on samples size and database using
 
-<img src=“[https://github.com/NathanACO/metaJAM/edit/main/metaJAM_diagram.png]”>
+metaJAM/blob/main/metaJAM_diagram.png
