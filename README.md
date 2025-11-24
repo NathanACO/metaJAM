@@ -7,7 +7,9 @@ Further developments will include:
 - Addition of parameters to define in fastp, sga, prinseq and bamdam
 
 ## How to launch it:
-sbatch -x Run_pipeline_metage.sh config_pipeline_metage.sh
+sbatch -x Run_pipeline_metage.sh config_pipeline_metage.sh\
+It will creates different folders for the different steps of the pipeline, where the files will be stored:\
+00_logs,01_fastp,02_sga,03_kraken_gtdb,04_mapping,05_filtering,99_metrics,log\
 
 A few requirements are needed to run this pipeline, and only the config file need to be modify in order to run it.
 
