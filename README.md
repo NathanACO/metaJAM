@@ -8,7 +8,7 @@ Further developments will include:
 
 ## How to launch it:
 sbatch -x Run_pipeline_metage.sh config_pipeline_metage.sh\
-It will creates different folders for the different steps of the pipeline, where the files will be stored:\
+It will creates different folders for the different steps of the pipeline, where the files will be stored:
 - 00_logs -> Containing files with list of processed samples at each step
 - 01_fastp
 - 02_sga
