@@ -82,4 +82,4 @@ We like to see ancient sediment metagenomic data as a jar of jam:
 - It's most of the time quite old and degraded
 - We are always seeking for some help to open the jar and define which fruits were used to make it!
 
-&copy; Ernst __J__ ohnson; Jamie Alumbaugh; Nathan Martin | Centre for Palaeogenetics - Stockholm University
+&copy; Ernst Johnson; Jamie Alumbaugh; Nathan Martin | Centre for Palaeogenetics - Stockholm University
