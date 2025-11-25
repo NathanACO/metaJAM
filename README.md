@@ -77,7 +77,7 @@ To be refine based on samples size and database using
 ![alt text](https://github.com/NathanACO/metaJAM/blob/main/metaJAM_diagram.png)
 
 _Why metaJAM?_\
-We like to see metagenomic data as a jar of jam:
+We like to see ancient sediment metagenomic data as a jar of jam:
 - You never really know what's inside
 - It's most of the time quite old and degraded
 - We are always seeking for some help to open the jar and define which fruits were used to make it!
