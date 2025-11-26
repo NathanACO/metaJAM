@@ -8,6 +8,7 @@ _Notes:_
 Further developments will include:
 - Addition of leeHom as an alternative choice to fastp
 - Addition of parameters to define in fastp, sga, prinseq and bamdam
+- Different features to chose to concatenate diverse plant database or run specific databases iteratively
 
 ## How to launch it:
 sbatch -x Run_pipeline_metage.sh config_pipeline_metage.sh\
