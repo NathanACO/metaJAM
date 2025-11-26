@@ -1,7 +1,4 @@
 #!/bin/bash -l
-#SBATCH -J bowtie2_arr
-#SBATCH -e /dev/null
-#SBATCH -o /dev/null
 
 set -euo pipefail
 set -x
@@ -99,7 +96,7 @@ echo "[`TZ=Europe/Stockholm date '+%a %d %b %Y %T %Z'`] Header fix completed for
 # BAM (mapped reads only)
 samtools view -@ "${THREADS}" -bS -F 4 \
   "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}_PhyloNorway_aln.sam" \
-  > "${OUTPUT_DIR}/${SAMPLE}.b2.k1000.${DB1}.bam"
+  > "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.${DB1}.bam"
 if [[ $? -eq 0 ]]; then
   rm -f "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}_PhyloNorway_aln.sam"
 else
@@ -129,7 +126,7 @@ echo "[`TZ=Europe/Stockholm date '+%a %d %b %Y %T %Z'`] gzipped unclassified ${D
 
 samtools view -@ "${THREADS}" -bS -F 4 \
   "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.${DB2}.sam" \
-  > "${OUTPUT_DIR}/${SAMPLE}.b2.k1000.${DB2}.bam"
+  > "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.${DB2}.bam"
 if [[ $? -eq 0 ]]; then
   rm -f "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.${DB2}.sam"
 else
@@ -159,7 +156,7 @@ echo "[`TZ=Europe/Stockholm date '+%a %d %b %Y %T %Z'`] gzipped unclassified ${D
 
 samtools view -@ "${THREADS}" -bS -F 4 \
   "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.${DB3}.sam" \
-  > "${OUTPUT_DIR}/${SAMPLE}.b2.k1000.${DB3}.bam"
+  > "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.${DB3}.bam"
 if [[ $? -eq 0 ]]; then
   rm -f "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.${DB3}.sam"
 else
@@ -189,7 +186,7 @@ echo "[`TZ=Europe/Stockholm date '+%a %d %b %Y %T %Z'`] gzipped unclassified ${D
 
 samtools view -@ "${THREADS}" -bS -F 4 \
   "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.${DB4}.sam" \
-  > "${OUTPUT_DIR}/${SAMPLE}.b2.k1000.${DB4}.bam"
+  > "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.${DB4}.bam"
 if [[ $? -eq 0 ]]; then
   rm -f "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.${DB4}.sam"
 else
@@ -202,11 +199,11 @@ echo "[`TZ=Europe/Stockholm date '+%a %d %b %Y %T %Z'`] BAM merge and sorting st
 
 # Uncompressed merge for speed
 samtools merge -@ "${THREADS}" -u \
-  "${OUTPUT_DIR}/${SAMPLE}.b2.k1000.all.merged.bam" \
-  "${OUTPUT_DIR}/${SAMPLE}.b2.k1000.${DB1}.bam" \
-  "${OUTPUT_DIR}/${SAMPLE}.b2.k1000.${DB2}.bam" \
-  "${OUTPUT_DIR}/${SAMPLE}.b2.k1000.${DB3}.bam" \
-  "${OUTPUT_DIR}/${SAMPLE}.b2.k1000.${DB4}.bam"
+  "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.all.merged.bam" \
+  "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.${DB1}.bam" \
+  "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.${DB2}.bam" \
+  "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.${DB3}.bam" \
+  "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.${DB4}.bam"
 
 if [[ $? -ne 0 ]]; then
   echo "[`TZ=Europe/Stockholm date '+%a %d %b %Y %T %Z'`] ERROR: BAM merge failed for ${SAMPLE}" >&2
@@ -216,11 +213,11 @@ fi
 # Name-sort the merged BAM
 samtools sort -@ "${THREADS}" -n \
   -T "${TMPDIR}/tmp_${SAMPLE}" \
-  -o "${OUTPUT_DIR}/${SAMPLE}.b2.k1000.all.sorted.bam" \
-  "${OUTPUT_DIR}/${SAMPLE}.b2.k1000.all.merged.bam"
+  -o "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.all.sorted.bam" \
+  "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.all.merged.bam"
 
 if [[ $? -eq 0 ]]; then
-  rm -f "${OUTPUT_DIR}/${SAMPLE}.b2.k1000.all.merged.bam"
+  rm -f "${OUTPUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.all.merged.bam"
   echo "[`TZ=Europe/Stockholm date '+%a %d %b %Y %T %Z'`] BAM merge and sorting completed for ${SAMPLE}"
 else
   echo "[`TZ=Europe/Stockholm date '+%a %d %b %Y %T %Z'`] ERROR: BAM sort failed for ${SAMPLE}" >&2
