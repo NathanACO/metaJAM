@@ -22,7 +22,7 @@ NODES="${NODES}"
 ACC2TAX="${ACC2TAX}"
 
 # bamdam tooling + defaults (only used if ENABLE_BAMDAM=1)
-BAMDAM_MODULE="${BAMDAM_MODULE:-kronatools/2.8.1}"
+THREADS="${THREADS:-16}"
 BAMDAM_STRANDED="${BAMDAM_STRANDED:-ds}"     # ds/ss
 BAMDAM_MINREADS="${BAMDAM_MINREADS:-5}"
 BAMDAM_MAXDAMAGE="${BAMDAM_MAXDAMAGE:-0.5}"
@@ -38,7 +38,7 @@ if [[ "${LINE}" == /* && "${LINE}" == *.bam ]]; then
   SAMPLE="${SAMPLE%.b2.k1000.all.sorted.bam}"
 else
   SAMPLE="${LINE}"
-  IN_BAM="${MAP_DIR}/${SAMPLE}.b2.k1000.all.sorted.bam"
+  IN_BAM="${MAP_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.all.sorted.bam"
 fi
 
 # Output layout (flat)
@@ -50,7 +50,7 @@ echo "[INFO] SAMPLE=${SAMPLE}"
 echo "[INFO] BAM=${IN_BAM}"
 
 BAM_FOR_LCA="${IN_BAM}"
-LCA_PREFIX="${OUT_DIR}/${SAMPLE}.b2.k1000.all.sorted"
+LCA_PREFIX="${OUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.all.sorted"
 
 # -------- filterBAM (optional) --------
 if [[ "${ENABLE_FILTERBAM}" -eq 1 ]]; then
@@ -62,7 +62,7 @@ if [[ "${ENABLE_FILTERBAM}" -eq 1 ]]; then
     --bam-filtered "${OUT_DIR}/filterBAM/${SAMPLE}.b2.k1000.all.filtered.bam" \
     --stats "${OUT_DIR}/filterBAM/${SAMPLE}.b2.k1000.all.stats.tsv.gz" \
     --stats-filtered "${OUT_DIR}/filterBAM/${SAMPLE}.b2.k1000.all.stats-filtered.tsv.gz" \
-    --threads "${SLURM_CPUS_PER_TASK}" \
+    --threads "${THREADS}" \
     --min-read-count 3 \
     --min-read-ani 94 \
     --min-expected-breadth-ratio 0.5 \
@@ -121,33 +121,33 @@ if [[ "${ENABLE_BAMDAM}" -eq 1 ]]; then
 
     ml "${KRONATOOLS_MODULE:-kronatools/2.8.1}"
 
-    D="${OUT_DIR}/bamdam"
+    Output_bamdam="${OUT_DIR}/bamdam"
     # shrink
     bamdam shrink \
       --in_bam "${BAM_FOR_LCA}" \
       --in_lca "${IN_LCA}" \
-      --out_bam "${D}/${SAMPLE}.small.bam" \
-      --out_lca "${D}/${SAMPLE}.small.lca" \
+      --out_bam "${Output_bamdam}/${SAMPLE}.small.bam" \
+      --out_lca "${Output_bamdam}/${SAMPLE}.small.lca" \
       --stranded "${BAMDAM_STRANDED}" \
       --show_progress
 
     # compute
     bamdam compute \
-      --in_bam "${D}/${SAMPLE}.small.bam" \
-      --in_lca "${D}/${SAMPLE}.small.lca" \
-      --out_tsv "${D}/${SAMPLE}.tsv" \
-      --out_subs "${D}/${SAMPLE}.subs.txt" \
+      --in_bam "${Output_bamdam}/${SAMPLE}.small.bam" \
+      --in_lca "${Output_bamdam}/${SAMPLE}.small.lca" \
+      --out_tsv "${Output_bamdam}/${SAMPLE}.tsv" \
+      --out_subs "${Output_bamdam}/${SAMPLE}.subs.txt" \
       --stranded "${BAMDAM_STRANDED}" \
       --show_progress
 
     # krona + HTML (per-sample)
     bamdam krona \
-      --in_tsv "${D}/${SAMPLE}.tsv" \
-      --out_xml "${D}/${SAMPLE}.xml" \
+      --in_tsv "${Output_bamdam}/${SAMPLE}.tsv" \
+      --out_xml "${Output_bamdam}/${SAMPLE}.xml" \
       --minreads "${BAMDAM_MINREADS}" \
       --maxdamage "${BAMDAM_MAXDAMAGE}"
 
-    ktImportXML -o "${D}/${SAMPLE}.html" "${D}/${SAMPLE}.xml"
+    ktImportXML -o "${Output_bamdam}/${SAMPLE}.html" "${Output_bamdam}/${SAMPLE}.xml"
   fi
 fi
 
