@@ -36,8 +36,10 @@ BAMDAM_VENV="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/bamdam-
 ###################################################################################
 
 # 1) If you want to run the whole pipeline from raw sequencing data
-# Point the path of your raw sequencing files (Example: READS_GLOB="/data/project/*_1.fastq.gz")
-READS_GLOB="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/samples/*.fastq.gz"
+# Point the path of your raw sequencing files or to a list containing the path of each samples to be processed
+#If a list is provided, it will perform the samples contained in it preferentially and READS_GLOB won't be perform
+READS_GLOB="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/samples/*.fastq.gz" #e.g. READS_GLOB="/data/project/*_1.fastq.gz"
+READS_LIST="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/list_fastq.txt"   # e.g. "/data/project/my_fastqs.list"
 
 KRAKEN_REQUIRE_PRIMARY=1  #If you want to run Kraken GTDB on every sga or prinseq files present in the respective folder, set it to 0
 MAP_REQUIRE_PRIMARY=1 #If you want to run mapping on every kraken files present in the kraken folder, set it to 0
@@ -81,7 +83,7 @@ GTDB_SRC="/cfs/klemming/pdc/software/dardel/sw-uppmax/data/Kraken2_data/prebuilt
 # NCBI taxonomy files
 NAMES="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/names_NM.dmp"
 NODES="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/nodes_NM.dmp"
-ACC2TAX="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/PhyNo.Plast.Mito.MBF_uniq_no-NA_3col.acc2taxid" #"/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/acc2taxid_NM_PhyloNorway.txt.gz"
+ACC2TAX="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/acc2taxid_NM_PhyloNorway_MBF_3col_noNA.txt.gz"
 
 #### Path to roots
 OUT_ROOT="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out"
@@ -103,12 +105,12 @@ LOG_ROOT="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/log"
 #### 1=enable, 0=disable
 ENABLE_PREPROCESS=1     # If set to 0, neither fastp or SGA will run
 ENABLE_FASTP=1
-ENABLE_SGA=0
-ENABLE_PRINSEQ=1        # set 1 to use PRINSEQ instead of SGA         
+ENABLE_SGA=1
+ENABLE_PRINSEQ=0       # set 1 to use PRINSEQ instead of SGA         
 ENABLE_KRAKEN_GTDB=1
 ENABLE_MAPPING=1
 ENABLE_FILTERING=1      # If set to 0, neither filterBAM or ngsLCA or bamdam will run
-ENABLE_FILTERBAM=1
+ENABLE_FILTERBAM=0
 ENABLE_NGSLCA=1
 ENABLE_BAMDAM=1
 ENABLE_MMSEQS2=0
@@ -121,7 +123,7 @@ FORCE_MAPPING=1
 FORCE_FILTER=1
  
 ###################################################################################
-#                       Tools parameters to precise
+#                       Tools' parameters to precise
 ###################################################################################
 
 # fastp
@@ -187,10 +189,10 @@ PRINSEQ_SBATCH_JOB_NAME="prinseq"
 
 # Kraken2
 KRAKEN_SBATCH_ACCOUNT="naiss2025-5-78"
-KRAKEN_SBATCH_PARTITION="shared" #"memory" 
-KRAKEN_SBATCH_CPUS="4" #"16" 
-KRAKEN_SBATCH_MEM="20G" #650G"         
-KRAKEN_SBATCH_TIME="4:00:00" #"1-20:00:00"
+KRAKEN_SBATCH_PARTITION="memory" #"memory" 
+KRAKEN_SBATCH_CPUS="16" #"16" 
+KRAKEN_SBATCH_MEM="650G" #650G"         
+KRAKEN_SBATCH_TIME="2-00:00:00" #"1-20:00:00"
 KRAKEN_SBATCH_QOS=""
 KRAKEN_SBATCH_EXTRA=""
 KRAKEN_SBATCH_JOB_NAME="GTDB"
@@ -198,18 +200,18 @@ KRAKEN_SBATCH_JOB_NAME="GTDB"
 # Mapping
 MAP_SBATCH_ACCOUNT="naiss2025-5-78"
 MAP_SBATCH_PARTITION="memory"   #memory
-MAP_SBATCH_CPUS="16"
-MAP_SBATCH_MEM="370G"   #550G
-MAP_SBATCH_TIME="4:00:00" #"1-20:00:00"
+MAP_SBATCH_CPUS="16" #16
+MAP_SBATCH_MEM="550G"   #550G
+MAP_SBATCH_TIME="12:00:00" #"4-00:00:00"
 MAP_SBATCH_QOS=""
 MAP_SBATCH_EXTRA=""
 MAP_SBATCH_JOB_NAME="bowtie2"
 
 # Filtering / ngsLCA
 FILTER_SBATCH_ACCOUNT="naiss2025-5-78"
-FILTER_SBATCH_PARTITION="memory"   #memory
-FILTER_SBATCH_CPUS="16"
-FILTER_SBATCH_MEM="880G"    #"880G"
+FILTER_SBATCH_PARTITION="shared"   #memory
+FILTER_SBATCH_CPUS="2"
+FILTER_SBATCH_MEM="80G"    #"880G"
 FILTER_SBATCH_TIME="1-20:00:00"
 FILTER_SBATCH_QOS=""
 FILTER_SBATCH_EXTRA=""
