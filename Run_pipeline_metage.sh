@@ -732,24 +732,33 @@ if [[ ${ENABLE_MMSEQS2:-0} -eq 1 ]]; then
   echo "[INFO] MMSeqs2 is enabled; add commands in "${SCRIPTS_DIR}/07_mmseqs2.sh"."
 fi
 
-# -----------------------------------------------------------------------------
-# Metrics
-# -----------------------------------------------------------------------------
-last_dep=""
-for jid in "${job_filter:-}" "${job_map:-}" "${job_kraken:-}"; do
-  if [[ -n "${jid}" ]]; then last_dep="${jid}"; break; fi
-done
 
-mkdir -p "${OUT_ROOT}/99_metrics"
-sbatch_opts METRICS
-if [[ -n "${last_dep}" ]]; then
-  sbatch --dependency=afterok:${last_dep} "${SBATCH_BUILT_OPTS[@]}" \
-    --export=ALL,ROOT="${OUT_ROOT}",MAP_RUN="${MAP_RUN}" \
-    "${SCRIPTS_DIR}/99_metrics_to_tsv.sh" >/dev/null
-else
-  sbatch "${SBATCH_BUILT_OPTS[@]}" \
-    --export=ALL,ROOT="${OUT_ROOT}",MAP_RUN="${MAP_RUN}" \
-    "${SCRIPTS_DIR}/99_metrics_to_tsv.sh" >/dev/null
+#=============================================================================#
+#                                  METRICS                                    #
+#=============================================================================#
+
+if [[ ${ENABLE_METRICS:-1} -eq 1 ]]; then
+  sbatch_opts METRICS
+  require_file "${SCRIPTS_DIR}/07_metrics.sh"
+  mkdir -p "${OUT_ROOT}/99_metrics"
+
+  # Make metrics wait on the latest relevant stage (filtering if enabled, else mapping, else Kraken, else SGA/PRINSEQ, else run immediately).
+  deps=()
+  if [[ -n "${JOB_FILTER:-}" ]]; then
+    deps=( --dependency="afterok:${JOB_FILTER}" )
+  elif [[ -n "${JOB_MAP:-}" ]]; then
+    deps=( --dependency="afterok:${JOB_MAP}" )
+  elif [[ -n "${JID_KRAKEN:-}" ]]; then
+    deps=( --dependency="afterok:${JID_KRAKEN}" )
+  elif [[ -n "${JOB_PRINSEQ:-}" ]]; then
+    deps=( --dependency="afterok:${JOB_PRINSEQ}" )
+  fi
+
+  sbatch "${deps[@]}" "${SBATCH_BUILT_OPTS[@]}" \
+    --job-name="${METRICS_SBATCH_JOB_NAME:-metrics}" \
+    --output="${LOG_ROOT}/out/metrics.%x.%j.out" \
+    --error="${LOG_ROOT}/error/metrics.%x.%j.err" \
+    --export=ALL,OUT_ROOT="${OUT_ROOT}",LOG_ROOT="${LOG_ROOT}",PRIMARY_LIST_PATH="${OUT_ROOT}/00_logs/samples.primary.txt" \
+    "${SCRIPTS_DIR}/07_metrics.sh"
 fi
-
 echo "[DONE] Submission complete. Check ${LOG_ROOT}/out and ${LOG_ROOT}/error."
