@@ -129,7 +129,18 @@ sbatch_opts() {
 
 build_primary_list() {
   : > "${PRIMARY_LIST_PATH}"
-  if [[ -n "${READS_GLOB:-}" ]]; then
+  # 0) If user provided a list file of FASTQs, prefer it.
+  #    - Accept absolute paths
+  #    - Keep only R1/_1 files
+  #    - Allow comments and blank lines
+  if [[ -n "${READS_LIST:-}" && -f "${READS_LIST}" ]]; then
+    awk 'NF>0 && $0 !~ /^#/' "${READS_LIST}" \
+    | sed 's/[[:space:]]*$//' \
+    | grep -E '(^/).*(_R1(_001)?|_1)\.(fastq|fq)\.gz$' \
+    | while IFS= read -r p; do
+        [[ -f "$p" ]] && printf '%s\n' "$p"
+      done >> "${PRIMARY_LIST_PATH}" || true
+  elif [[ -n "${READS_GLOB:-}" ]]; then
     # Write FULL PATHS for R1 files only (handles _R1, _R1_001, _1)
     compgen -G "${READS_GLOB}" 2>/dev/null | grep -E '(_R1(_001)?|_1)\.(fastq|fq)\.gz$' \
       >> "${PRIMARY_LIST_PATH}" || true
@@ -551,6 +562,8 @@ fi
 
 # -----------------------------------------------------------------------------
 # Kraken2 GTDB (single job)
+# At that step we collect array job ID of all SGA or prinseq and run one Kraken2 GTDB job
+# So the logic is to wait that all SGA/prinseq are finished before to run Kraken2
 # -----------------------------------------------------------------------------
 # Ensure JID_SGA exists even if SGA step didn’t run in this invocation
 if ! declare -p JID_SGA &>/dev/null; then
@@ -575,8 +588,11 @@ if [[ ${ENABLE_KRAKEN_GTDB:-1} -eq 1 ]]; then
   else
     KRAKEN_INPUT_DIR="${OUT_ROOT}/02_sga"
     KRAKEN_INPUT_MODE="sga"
-    if ((${#JID_SGA[@]:-0} > 0)); then
-      dep_ids=$(printf "%s," "${JID_SGA[@]}" | sed 's/,$//')
+    # Accept either a scalar JOB_SGA or your existing associative array JID_SGA[*]
+    if [[ -n "${JOB_SGA:-}" ]]; then
+      deps=( --dependency="afterok:${JOB_SGA}" )
+    elif ((${#JID_SGA[@]} > 0)); then
+      dep_ids=$(printf "%s:" "${JID_SGA[@]}" | sed 's/:$//')
       [[ -n "${dep_ids}" ]] && deps=( --dependency="afterok:${dep_ids}" )
     fi
   fi
