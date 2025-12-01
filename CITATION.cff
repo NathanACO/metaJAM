@@ -9,8 +9,8 @@ authors:
   orcid: "https://orcid.org/0000-0003-3010-2422"
 - family-names: "Martin"
   given-names: "Nathan"
-  orcid: "https://orcid.org/0000-0001-6501-9747
-title: "My Research Software"
+  orcid: "https://orcid.org/0000-0001-6501-9747"
+title: "metaJAM"
 version: 1.0.1
 doi: 10.5281/zenodo.1234
 date-released: 2025-11-17
