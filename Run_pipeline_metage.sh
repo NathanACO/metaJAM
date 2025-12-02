@@ -175,19 +175,19 @@ build_sga_inputs() {
         s="$a"; f="$b"
       else
         f="$a"
-        s="${f##*/}"; s="${s%_merged.fastq.gz}"; s="${s%_merged.fq.gz}"
+        s="${f##*/}"
+        s="${s%_merged.fastq.gz}"; s="${s%_merged.fq.gz}"
       fi
       [[ -f "$f" ]] || { echo "[WARN] Missing merged file: $f"; continue; }
       printf "%s\t%s\n" "$s" "$f" >> "${SGA_INPUTS}"
     done < "${OVERRIDE_LIST_SGA}"
 
   else
-    # --- normalize BOTH R1 and R2 from PRIMARY_LIST_PATH to <sample> ---
+    # --- allow-set from PRIMARY_LIST_PATH (normalize R1/R2/_1/_2) ---
     declare -A allow=()
     while read -r r; do
       [[ -z "$r" ]] && continue
       s="${r##*/}"
-      # strip any of: _R1/_R2 with/without _001, and _1/_2; both fastq/fq
       s="${s%_R1_001.fastq.gz}"; s="${s%_R2_001.fastq.gz}"
       s="${s%_R1.fastq.gz}";     s="${s%_R2.fastq.gz}"
       s="${s%_1.fastq.gz}";      s="${s%_2.fastq.gz}"
@@ -197,17 +197,33 @@ build_sga_inputs() {
       allow["$s"]=1
     done < "${PRIMARY_LIST_PATH}"
 
-    # discover merged outputs from fastp and keep only allowed samples
-    find "${OUT_ROOT}/01_fastp" -type f \
-      \( -name '*_merged.fastq.gz' -o -name '*_merged.fq.gz' \) 2>/dev/null \
-      | sort \
-      | while read -r f; do
-          s="${f##*/}"; s="${s%_merged.fastq.gz}"; s="${s%_merged.fq.gz}"
-          [[ -n "${allow[$s]:-}" ]] || continue
-          printf "%s\t%s\n" "$s" "$f" >> "${SGA_INPUTS}"
-        done
+    # 1) Prefer discovered merged outputs (when re-running or fastp is done)
+    while IFS= read -r f; do
+      s="${f##*/}"; s="${s%_merged.fastq.gz}"; s="${s%_merged.fq.gz}"
+      [[ -n "${allow[$s]:-}" ]] || continue
+      printf "%s\t%s\n" "$s" "$f" >> "${SGA_INPUTS}"
+    done < <(find "${OUT_ROOT}/01_fastp" -type f \
+             \( -name '*_merged.fastq.gz' -o -name '*_merged.fq.gz' \) 2>/dev/null | sort)
+
+    # 2) Fresh run fallback: if still empty, synthesize expected fastp outputs
+    if [[ ! -s "${SGA_INPUTS}" ]]; then
+      echo "[INFO] SGA: no merged files found yet; seeding expected paths so SGA can wait on FASTP."
+      while read -r r; do
+        [[ -z "$r" ]] && continue
+        s="${r##*/}"
+        s="${s%_R1_001.fastq.gz}"; s="${s%_R2_001.fastq.gz}"
+        s="${s%_R1.fastq.gz}";     s="${s%_R2.fastq.gz}"
+        s="${s%_1.fastq.gz}";      s="${s%_2.fastq.gz}"
+        s="${s%_R1_001.fq.gz}";    s="${s%_R2_001.fq.gz}"
+        s="${s%_R1.fq.gz}";        s="${s%_R2.fq.gz}"
+        s="${s%_1.fq.gz}";         s="${s%_2.fq.gz}"
+        [[ -n "${allow[$s]:-}" ]] || continue
+        printf "%s\t%s\n" "$s" "${OUT_ROOT}/01_fastp/${s}/${s}_merged.fastq.gz" >> "${SGA_INPUTS}"
+      done < "${PRIMARY_LIST_PATH}"
+    fi
   fi
 
+  # Write sample list
   cut -f1 "${SGA_INPUTS}" | sort -u > "${SGA_LIST}" || :
   echo "[INFO] SGA inputs: $(wc -l < "${SGA_LIST}" | tr -d ' ') samples -> ${SGA_LIST}"
 }
@@ -444,13 +460,20 @@ pair_fastq_from_primary() {
 if [[ ${ENABLE_PREPROCESS:-1} -eq 1 && ${ENABLE_FASTP:-1} -eq 1 ]]; then
   echo "[INFO] FASTP: pairing from ${PRIMARY_LIST_PATH}"
   pair_fastq_from_primary
-  n_fastp=$(wc -l < "${FASTP_TODO}" | tr -d ' ' || echo 0)
+  # ---- SNAPSHOT both inputs so submissions are immutable for this run ----
+  FASTP_PAIRS_SNAP="${FASTP_PAIRS%.*}.run.$(date +%s).tsv"
+  FASTP_TODO_SNAP="${FASTP_TODO%.*}.run.$(date +%s).txt"
+  cp -f "${FASTP_PAIRS}" "${FASTP_PAIRS_SNAP}"
+  cp -f "${FASTP_TODO}"  "${FASTP_TODO_SNAP}"
+
+  n_fastp=$(wc -l < "${FASTP_TODO_SNAP}" | tr -d ' ' || echo 0)
   echo "[INFO] FASTP todo: ${n_fastp}"
+
   # index pairs once for quick lookup
   declare -A R1_BY_S R2_BY_S
   while IFS=$'\t' read -r s r1 r2; do
     [[ -n "$s" ]] && { R1_BY_S["$s"]="$r1"; R2_BY_S["$s"]="$r2"; }
-  done < "${FASTP_PAIRS}"
+  done < "${FASTP_PAIRS_SNAP}"
   while read -r sname; do
     [[ -z "$sname" ]] && continue
     r1="${R1_BY_S[$sname]}"; r2="${R2_BY_S[$sname]}"
@@ -472,7 +495,7 @@ FASTP_MIN_LENGTH="${FASTP_MIN_LENGTH}" \
       "${SCRIPTS_DIR}/01_fastp.sh" | awk '{print $4}')
     JID_FASTP["$sname"]="$jid"
     echo "[FASTP] ${sname} -> ${jid}"
-  done < "${FASTP_TODO}"
+  done < "${FASTP_TODO_SNAP}"
 else
   echo "[INFO] FASTP disabled."
 fi
@@ -482,11 +505,12 @@ fi
 # -----------------------------------------------------------------------------
 
 build_sga_inputs
-
 # --- SGA submission ---
 declare -A JID_SGA
 if [[ ${ENABLE_PREPROCESS:-1} -eq 1 && ${ENABLE_SGA:-1} -eq 1 ]]; then
   echo "[INFO] Submitting SGA…"
+  SGA_INPUTS_SNAP="${SGA_INPUTS%.*}.run.$(date +%s).tsv"
+  cp -f "${SGA_INPUTS}" "${SGA_INPUTS_SNAP}"
   sbatch_opts SGA
   while IFS=$'\t' read -r s merged; do
     [[ -z "$s" || -z "$merged" ]] && continue
@@ -511,7 +535,7 @@ SGA_DUST_THRESHOLD="${SGA_DUST_THRESHOLD}" \
       "${SCRIPTS_DIR}/02_sga.sh" | awk '{print $4}')
     JID_SGA["$s"]="$jid"
     echo "[SGA] ${s} -> ${jid}"
-  done < "${SGA_INPUTS}"
+  done < "${SGA_INPUTS_SNAP}"
 else
   echo "[INFO] SGA disabled."
 fi
@@ -524,7 +548,9 @@ fi
 typeset -p JOB_PRINSEQ &>/dev/null || JOB_PRINSEQ=""
 if [[ ${ENABLE_PREPROCESS:-1} -eq 1 && ${ENABLE_PRINSEQ:-0} -eq 1 ]]; then
   build_prinseq_inputs
-  n_prinseq=$(wc -l < "${PRINSEQ_LIST}" | tr -d ' ' || echo 0)
+  PRINSEQ_LIST_SNAP="${PRINSEQ_LIST%.*}.run.$(date +%s).tsv"
+  cp -f "${PRINSEQ_LIST}" "${PRINSEQ_LIST_SNAP}"
+  n_prinseq=$(wc -l < "${PRINSEQ_LIST_SNAP}" | tr -d ' ' || echo 0)
   if [[ "${n_prinseq}" -eq 0 ]]; then
     echo "[INFO] PRINSEQ: nothing to do."
   else
@@ -546,8 +572,8 @@ if [[ ${ENABLE_PREPROCESS:-1} -eq 1 && ${ENABLE_PRINSEQ:-0} -eq 1 ]]; then
       --output="${LOG_ROOT}/out/fastp.%x.%j.out" \
       --error="${LOG_ROOT}/error/fastp.%x.%j.err" \
       --export=ALL,\
-SAMPLE_LIST="${PRINSEQ_LIST}",\
-PRINSEQ_INPUTS_TSV="${PRINSEQ_INPUTS}",\
+SAMPLE_LIST="${PRINSEQ_LIST_SNAP}",\
+PRINSEQ_INPUTS_TSV="${PRINSEQ_LIST_SNAP}",\
 FASTP_DIR="${OUT_ROOT}/01_fastp",\
 OUT_DIR="${OUT_ROOT}/02_prinseq",\
 PRINSEQ_LITE="${PRINSEQ_LITE}",\
@@ -578,7 +604,9 @@ if [[ ${ENABLE_KRAKEN_GTDB:-1} -eq 1 ]]; then
   else
     build_kraken_sample_list
   fi
-
+  # Snapshot the list to allow the user to run several times the pipeline in a row:
+  KRAKEN_LIST_SNAP="${KRAKEN_SAMPLE_LIST%.*}.run.$(date +%s).txt"
+  cp -f "${KRAKEN_SAMPLE_LIST}" "${KRAKEN_LIST_SNAP}"
   # Choose input source + dependency
   deps=()
   if [[ ${ENABLE_PRINSEQ:-0} -eq 1 ]]; then
@@ -589,12 +617,22 @@ if [[ ${ENABLE_KRAKEN_GTDB:-1} -eq 1 ]]; then
     KRAKEN_INPUT_DIR="${OUT_ROOT}/02_sga"
     KRAKEN_INPUT_MODE="sga"
     # Accept either a scalar JOB_SGA or your existing associative array JID_SGA[*]
+    dep_ids=""
+    # if an aggregate JOB_SGA exists, prefer that
     if [[ -n "${JOB_SGA:-}" ]]; then
-      deps=( --dependency="afterok:${JOB_SGA}" )
-    elif ((${#JID_SGA[@]} > 0)); then
-      dep_ids=$(printf "%s:" "${JID_SGA[@]}" | sed 's/:$//')
-      [[ -n "${dep_ids}" ]] && deps=( --dependency="afterok:${dep_ids}" )
+      dep_ids="${JOB_SGA}"
+    else
+      while read -r s; do
+        [[ -z "$s" ]] && continue
+        jid="${JID_SGA[$s]:-}"
+        [[ -n "$jid" ]] && dep_ids+="${jid}:"
+      done < "${KRAKEN_LIST_SNAP}"
+      dep_ids="${dep_ids%:}"
+      if [[ -z "${dep_ids}" && ${#JID_SGA[@]} -gt 0 ]]; then
+        dep_ids=$(printf "%s:" "${JID_SGA[@]}" | sed 's/:$//')
+      fi
     fi
+    [[ -n "${dep_ids}" ]] && deps=( --dependency="afterok:${dep_ids}" )
   fi
 
   sbatch_opts KRAKEN
@@ -607,7 +645,7 @@ if [[ ${ENABLE_KRAKEN_GTDB:-1} -eq 1 ]]; then
       --output="${LOG_ROOT}/out/kraken.%x.%j.out" \
       --error="${LOG_ROOT}/error/kraken.%x.%j.err" \
       --export=ALL,\
-SAMPLE_LIST="${KRAKEN_SAMPLE_LIST}",\
+SAMPLE_LIST="${KRAKEN_LIST_SNAP}",\
 INPUT_DIR="${KRAKEN_INPUT_DIR}",\
 INPUT_MODE="${KRAKEN_INPUT_MODE}",\
 OUTPUT_DIR="${OUT_ROOT}/03_kraken_gtdb",\
@@ -629,8 +667,10 @@ fi
 
 if [[ ${ENABLE_MAPPING:-1} -eq 1 ]]; then
   build_mapping_sample_list
+  MAP_LIST_SNAP="${MAP_SAMPLE_LIST%.*}.run.$(date +%s).txt"
+  cp -f "${MAP_SAMPLE_LIST}" "${MAP_LIST_SNAP}"
 
-  n_map=$(wc -l < "${MAP_SAMPLE_LIST}" | tr -d ' ' || echo 0)
+  n_map=$(wc -l < "${MAP_LIST_SNAP}" | tr -d ' ' || echo 0)
   if [[ "${n_map}" -eq 0 ]]; then
     echo "[INFO] Mapping: nothing to do."
   else
@@ -649,7 +689,7 @@ if [[ ${ENABLE_MAPPING:-1} -eq 1 ]]; then
       --output="${LOG_ROOT}/out/fastp.%x.%j.out" \
       --error="${LOG_ROOT}/error/fastp.%x.%j.err" \
       --export=ALL,\
-SAMPLE_LIST="${MAP_SAMPLE_LIST}",\
+SAMPLE_LIST="${MAP_LIST_SNAP}",\
 INPUT_DIR="${OUT_ROOT}/03_kraken_gtdb",\
 OUTPUT_DIR="${OUT_ROOT}/04_mapping",\
 TMPDIR="${TMP_ROOT}",\
@@ -681,7 +721,9 @@ fi
 FILTER_LIST="${OUT_ROOT}/00_logs/samples.for_filter.txt"
 if [[ ${ENABLE_FILTERING:-1} -eq 1 ]]; then
   build_filter_sample_list
-  n_filter=$(wc -l < "${FILTER_LIST}" | tr -d ' ' || echo 0)
+  FILTER_LIST_SNAP="${FILTER_LIST%.*}.run.$(date +%s).txt"
+  cp -f "${FILTER_LIST}" "${FILTER_LIST_SNAP}"
+  n_filter=$(wc -l < "${FILTER_LIST_SNAP}" | tr -d ' ' || echo 0)
   if [[ "${n_filter}" -eq 0 ]]; then
     echo "[INFO] Filtering: nothing to do."
   else
@@ -696,10 +738,10 @@ if [[ ${ENABLE_FILTERING:-1} -eq 1 ]]; then
     JOB_FILTER=$(sbatch "${deps[@]}" "${SBATCH_BUILT_OPTS[@]}" \
       --job-name="${FILTER_SBATCH_JOB_NAME:-filtering_ngslca}_arr" \
       --array="0-$((n_filter-1))" \
-      --output="${LOG_ROOT}/out/fastp.%x.%j.out" \
-      --error="${LOG_ROOT}/error/fastp.%x.%j.err" \
+      --output="${LOG_ROOT}/out/ngslca_bamdam.%x.%j.out" \
+      --error="${LOG_ROOT}/error/ngslca_bamdam.%x.%j.err" \
       --export=ALL,\
-SAMPLE_LIST="${FILTER_LIST}",\
+SAMPLE_LIST="${FILTER_LIST_SNAP}",\
 MAP_DIR="${OUT_ROOT}/04_mapping",\
 OUT_DIR="${OUT_ROOT}/05_filtering",\
 ENABLE_FILTERBAM="${ENABLE_FILTERBAM}",\
@@ -732,14 +774,13 @@ if [[ ${ENABLE_MMSEQS2:-0} -eq 1 ]]; then
   echo "[INFO] MMSeqs2 is enabled; add commands in "${SCRIPTS_DIR}/07_mmseqs2.sh"."
 fi
 
-
-#=============================================================================#
+# -----------------------------------------------------------------------------
 #                                  METRICS                                    #
-#=============================================================================#
+# -----------------------------------------------------------------------------
 
 if [[ ${ENABLE_METRICS:-1} -eq 1 ]]; then
   sbatch_opts METRICS
-  require_file "${SCRIPTS_DIR}/07_metrics.sh"
+  require_file "${SCRIPTS_DIR}/99_metrics.sh"
   mkdir -p "${OUT_ROOT}/99_metrics"
 
   # Make metrics wait on the latest relevant stage (filtering if enabled, else mapping, else Kraken, else SGA/PRINSEQ, else run immediately).
@@ -759,6 +800,5 @@ if [[ ${ENABLE_METRICS:-1} -eq 1 ]]; then
     --output="${LOG_ROOT}/out/metrics.%x.%j.out" \
     --error="${LOG_ROOT}/error/metrics.%x.%j.err" \
     --export=ALL,OUT_ROOT="${OUT_ROOT}",LOG_ROOT="${LOG_ROOT}",PRIMARY_LIST_PATH="${OUT_ROOT}/00_logs/samples.primary.txt" \
-    "${SCRIPTS_DIR}/07_metrics.sh"
+    "${SCRIPTS_DIR}/99_metrics.sh"
 fi
-echo "[DONE] Submission complete. Check ${LOG_ROOT}/out and ${LOG_ROOT}/error."
