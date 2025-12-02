@@ -72,7 +72,7 @@ while read -r LINE; do
           --memory-mapping "${IN_FASTQ}"
 
   pigz -p "${THREADS}" -f "${OUTDIR}/${SAMPLE}"*.fastq || true
-  pigz -p "${THREADS}" -f "${OUTDIR}/${SAMPLE}"*.output.txt || true
+  pigz -p "${THREADS}" -f "${OUTDIR}/${SAMPLE}"_GTDB.output.txt || true
 
   time_end=$(date +%s)
   echo "Time spent for Kraken2 on ${SAMPLE}: $((time_end - time_start)) seconds"
