@@ -38,7 +38,7 @@ BAMDAM_VENV="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/bamdam-
 # 1) If you want to run the whole pipeline from raw sequencing data
 # Point the path of your raw sequencing files or to a list containing the path of each samples to be processed
 #If a list is provided, it will perform the samples contained in it preferentially and READS_GLOB won't be perform
-READS_GLOB="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/samples/*.fastq.gz" #e.g. READS_GLOB="/data/project/*_1.fastq.gz"
+READS_GLOB="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/samples/*.fastq.gz" #e.g. READS_GLOB="/data/project/*_1.fastq.gz" or READS_GLOB="/data/project/*_R1.fastq.gz"
 READS_LIST="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/list_fastq.txt"   # e.g. "/data/project/my_fastqs.list"
 
 KRAKEN_REQUIRE_PRIMARY=1  #If you want to run Kraken GTDB on every sga or prinseq files present in the respective folder, set it to 0
@@ -114,6 +114,7 @@ ENABLE_FILTERBAM=0
 ENABLE_NGSLCA=1
 ENABLE_BAMDAM=1
 ENABLE_MMSEQS2=0
+ENABLE_METRICS=1
 
 #### Force re-run switches (0/1). When 1, submit the step even if its outputs exist.
 FORCE_FASTP=1
@@ -160,8 +161,8 @@ SBATCH_DEFAULT_EXTRA=""
 # FASTP
 FASTP_SBATCH_ACCOUNT="naiss2025-5-78"
 FASTP_SBATCH_PARTITION="shared"
-FASTP_SBATCH_CPUS="20"
-FASTP_SBATCH_MEM="50G"
+FASTP_SBATCH_CPUS="2"
+FASTP_SBATCH_MEM="30G"
 FASTP_SBATCH_TIME="10:00:00"
 FASTP_SBATCH_QOS=""
 FASTP_SBATCH_EXTRA=""
@@ -202,7 +203,7 @@ MAP_SBATCH_ACCOUNT="naiss2025-5-78"
 MAP_SBATCH_PARTITION="memory"   #memory
 MAP_SBATCH_CPUS="16" #16
 MAP_SBATCH_MEM="550G"   #550G
-MAP_SBATCH_TIME="12:00:00" #"4-00:00:00"
+MAP_SBATCH_TIME="2-00:00:00" #"4-00:00:00"
 MAP_SBATCH_QOS=""
 MAP_SBATCH_EXTRA=""
 MAP_SBATCH_JOB_NAME="bowtie2"
