@@ -6,6 +6,7 @@ Metagenomic Pipeline for ancient DNA analysis performed at the Centre for Palaeo
 
 _Notes:_\
 Ongoing fixes for the MMSeqs2 part - It won't work if you run it \
+Examples of fastq.gz to train metaJAM will be added soon \
 Further developments will include:
 - Addition of leeHom as an alternative choice to fastp
 - Addition of parameters to define in fastp, sga, prinseq and bamdam
