@@ -42,26 +42,26 @@ else
 fi
 
 # Output layout (flat)
-mkdir -p "${OUT_DIR}" "${OUT_DIR}/filterBAM"
-mkdir -p "${OUT_DIR}" "${OUT_DIR}/bamdam"
+mkdir -p "${OUT_DIR}/ngsLCA/${SAMPLE}"
+BAM_FOR_LCA="${IN_BAM}"
+LCA_PREFIX="${OUT_DIR}/ngsLCA/${SAMPLE}/${SAMPLE}.b2.k1000.all.sorted"
 
 [[ -f "${IN_BAM}" ]] || { echo "[ERR] Missing BAM: ${IN_BAM}"; exit 2; }
 echo "[INFO] SAMPLE=${SAMPLE}"
 echo "[INFO] BAM=${IN_BAM}"
 
-BAM_FOR_LCA="${IN_BAM}"
-LCA_PREFIX="${OUT_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.all.sorted"
 
 # -------- filterBAM (optional) --------
 if [[ "${ENABLE_FILTERBAM}" -eq 1 ]]; then
+  mkdir -p "${OUT_DIR}/filterBAM/${SAMPLE}"
   set +u
   conda activate "${CONDA_ENV_FILTERBAM}"
   set -u
   filterBAM filter \
     --bam "${IN_BAM}" \
-    --bam-filtered "${OUT_DIR}/filterBAM/${SAMPLE}.b2.k1000.all.filtered.bam" \
-    --stats "${OUT_DIR}/filterBAM/${SAMPLE}.b2.k1000.all.stats.tsv.gz" \
-    --stats-filtered "${OUT_DIR}/filterBAM/${SAMPLE}.b2.k1000.all.stats-filtered.tsv.gz" \
+    --bam-filtered "${OUT_DIR}/filterBAM/${SAMPLE}/${SAMPLE}.b2.k1000.all.filtered.bam" \
+    --stats "${OUT_DIR}/filterBAM/${SAMPLE}/${SAMPLE}.b2.k1000.all.stats.tsv.gz" \
+    --stats-filtered "${OUT_DIR}/filterBAM/${SAMPLE}/${SAMPLE}.b2.k1000.all.stats-filtered.tsv.gz" \
     --threads "${THREADS}" \
     --min-read-count 3 \
     --min-read-ani 94 \
@@ -74,8 +74,9 @@ if [[ "${ENABLE_FILTERBAM}" -eq 1 ]]; then
     --min-coverage-mean 0 \
     --include-low-detection \
     --sort-by-name
-  BAM_FOR_LCA="${OUT_DIR}/filterBAM/${SAMPLE}.b2.k1000.all.filtered.bam"
-  LCA_PREFIX="${OUT_DIR}/filterBAM/${SAMPLE}.b2.k1000.all.filtered"
+  BAM_FOR_LCA="${OUT_DIR}/filterBAM/${SAMPLE}/${SAMPLE}.b2.k1000.all.filtered.bam"
+  mkdir -p "${OUT_DIR}/ngsLCA/${SAMPLE}"
+  LCA_PREFIX="${OUT_DIR}/ngsLCA/${SAMPLE}/${SAMPLE}.b2.k1000.all.filtered"
   set +u
   conda deactivate
   set -u
@@ -83,6 +84,7 @@ fi
 
 # -------- ngsLCA (optional) --------
 if [[ "${ENABLE_NGSLCA}" -eq 1 ]]; then
+  mkdir -p "${OUT_DIR}/ngsLCA/${SAMPLE}"
   set +u
   conda activate "${CONDA_ENV_ngsLCA}"
   set -u
@@ -102,6 +104,7 @@ fi
 
 # -------- bamdam full per-sample pipeline (shrink + compute + krona) --------
 if [[ "${ENABLE_BAMDAM}" -eq 1 ]]; then
+  mkdir -p "${OUT_DIR}/bamdam/${SAMPLE}"
   # Needs a matching LCA file
   IN_LCA="${LCA_PREFIX}.lca"
   if [[ ! -f "${IN_LCA}" ]]; then
@@ -121,33 +124,32 @@ if [[ "${ENABLE_BAMDAM}" -eq 1 ]]; then
 
     ml "${KRONATOOLS_MODULE:-kronatools/2.8.1}"
 
-    Output_bamdam="${OUT_DIR}/bamdam"
     # shrink
     bamdam shrink \
       --in_bam "${BAM_FOR_LCA}" \
       --in_lca "${IN_LCA}" \
-      --out_bam "${Output_bamdam}/${SAMPLE}.small.bam" \
-      --out_lca "${Output_bamdam}/${SAMPLE}.small.lca" \
+      --out_bam "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.small.bam" \
+      --out_lca "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.small.lca" \
       --stranded "${BAMDAM_STRANDED}" \
       --show_progress
 
     # compute
     bamdam compute \
-      --in_bam "${Output_bamdam}/${SAMPLE}.small.bam" \
-      --in_lca "${Output_bamdam}/${SAMPLE}.small.lca" \
-      --out_tsv "${Output_bamdam}/${SAMPLE}.tsv" \
-      --out_subs "${Output_bamdam}/${SAMPLE}.subs.txt" \
+      --in_bam "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.small.bam" \
+      --in_lca "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.small.lca" \
+      --out_tsv "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.tsv" \
+      --out_subs "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.subs.txt" \
       --stranded "${BAMDAM_STRANDED}" \
       --show_progress
 
     # krona + HTML (per-sample)
     bamdam krona \
-      --in_tsv "${Output_bamdam}/${SAMPLE}.tsv" \
-      --out_xml "${Output_bamdam}/${SAMPLE}.xml" \
+      --in_tsv "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.tsv" \
+      --out_xml "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.xml" \
       --minreads "${BAMDAM_MINREADS}" \
       --maxdamage "${BAMDAM_MAXDAMAGE}"
 
-    ktImportXML -o "${Output_bamdam}/${SAMPLE}.html" "${Output_bamdam}/${SAMPLE}.xml"
+    ktImportXML -o "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.html" "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.xml"
   fi
 fi
 
