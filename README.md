@@ -5,13 +5,16 @@
 Metagenomic Pipeline for ancient DNA analysis performed at the Centre for Palaeogenetics - Stockholm
 
 _Notes:_\
-Ongoing fixes for the MMSeqs2 part - It won't work if you run it \
-Examples of fastq.gz to train metaJAM will be added soon \
-Further developments will include:
-- Addition of leeHom as an alternative choice to fastp
-- Addition of parameters to define in fastp, sga, prinseq and bamdam
-- Different features to chose to concatenate diverse plant database or run specific databases iteratively
-- Extra pipeline to mask databases will be added in the future
+> [!CAUTION]
+> Ongoing fixes for the MMSeqs2 part - It won't work if you run it
+
+> [!NOTE]
+> Examples of fastq.gz to train metaJAM will be added soon
+> Further developments will include:
+> - Addition of leeHom as an alternative choice to fastp
+> - Addition of parameters to define in fastp, sga, prinseq and bamdam
+> - Different features to chose to concatenate diverse plant database or run specific databases iteratively
+> - Extra pipeline to mask databases will be added in the future
 
 ## How to launch it:
 sbatch -x Run_pipeline_metage.sh config_pipeline_metage.sh\
