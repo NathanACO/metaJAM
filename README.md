@@ -4,13 +4,12 @@
 
 Metagenomic Pipeline for ancient DNA analysis performed at the Centre for Palaeogenetics - Stockholm
 
-_Notes:_\
 > [!CAUTION]
 > Ongoing fixes for the MMSeqs2 part - It won't work if you run it
 
 > [!NOTE]
 > Examples of fastq.gz to train metaJAM will be added soon
-> Further developments will include:
+> Further developments will be included in metaJAM v1.0.2 soon:
 > - Addition of leeHom as an alternative choice to fastp
 > - Addition of parameters to define in fastp, sga, prinseq and bamdam
 > - Different features to chose to concatenate diverse plant database or run specific databases iteratively
@@ -57,6 +56,10 @@ So far metaCPG is configured to be run through 4 different databases:
 2. RefSeq Plastid
 3. RefSeq Mito
 4. Custom Database - containing any specific taxa of interest, build by the user
+
+> [!CAUTION]
+> So far metaJAM is designed to run with 4 databases present together, you can play around the Custom Database.
+> New version of metaJAM 1.0.3 will include the choice of using 1 to x databases.
 
 ## Tools activation
 Precise 1 or 0 for each step, 1=enable, 0=disable
