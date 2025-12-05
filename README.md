@@ -8,7 +8,6 @@ Metagenomic Pipeline for ancient DNA analysis performed at the Centre for Palaeo
 > Ongoing fixes for the MMSeqs2 part - It won't work if you run it
 
 > [!NOTE]
-> Examples of fastq.gz to train metaJAM will be added soon \
 > Further developments will be included in metaJAM v1.0.2 soon:
 > - Addition of leeHom as an alternative choice to fastp
 > - Addition of parameters to define in fastp, sga, prinseq and bamdam
@@ -26,6 +25,9 @@ It will creates different folders for the different steps of the pipeline, where
 - 05_filtering
 - 99_metrics
 - log -> Containing one error and one out folder where the sbatch information are stored
+
+> [!TIP]
+> You can run it with the Test samples present in the test folder of this github.
 
 A few requirements are needed to run this pipeline, and only the config file need to be modify in order to run it.
 
