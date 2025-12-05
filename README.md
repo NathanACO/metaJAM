@@ -60,7 +60,7 @@ So far metaCPG is configured to be run through 4 different databases:
 4. Custom Database - containing any specific taxa of interest, build by the user
 
 > [!CAUTION]
-> So far metaJAM is designed to run with 4 databases present together, you can play around the Custom Database. \
+> So far metaJAM is designed to run with 4 databases present together, you can play around only with the Custom Database. \
 > New version of metaJAM 1.0.3 will include the choice of using 1 to x databases.
 
 ## Tools activation
