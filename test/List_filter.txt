@@ -1,0 +1,3 @@
+/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/04_mapping/NS_096/NS_096.b2.k1000.all.sorted.bam
+/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/04_mapping/NS_065/NS_065.b2.k1000.all.sorted.bam
+/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/04_mapping/NS_027/NS_027.b2.k1000.all.sorted.bam

@@ -1,0 +1,6 @@
+/cfs/klemming/projects/supr/naiss2025-6-437/rawdata/Dumpokjauratj/fastq_raw/NS_058_1.fastq.gz
+/cfs/klemming/projects/supr/naiss2025-6-437/rawdata/Dumpokjauratj/fastq_raw/NS_058_2.fastq.gz
+/cfs/klemming/projects/supr/naiss2025-6-437/rawdata/Dumpokjauratj/fastq_raw/NS_059_1.fastq.gz
+/cfs/klemming/projects/supr/naiss2025-6-437/rawdata/Dumpokjauratj/fastq_raw/NS_059_2.fastq.gz
+/cfs/klemming/projects/supr/naiss2025-6-437/rawdata/Dumpokjauratj/fastq_raw/NS_060_1.fastq.gz
+/cfs/klemming/projects/supr/naiss2025-6-437/rawdata/Dumpokjauratj/fastq_raw/NS_060_2.fastq.gz
