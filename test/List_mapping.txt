@@ -1,2 +1,2 @@
-/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/03_kraken_gtdb/NS_018_GTDB_unclas.fastq.gz
-/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/03_kraken_gtdb/NS_019_GTDB_unclas.fastq.gz
+/pipeline_metage_out/03_kraken_gtdb/Test_Sample_GTDB_unclas.fastq.gz
+/pipeline_metage_out/03_kraken_gtdb/Test_Sample_GTDB_unclas.fastq.gz
