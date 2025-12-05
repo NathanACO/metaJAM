@@ -1,1 +1,1 @@
-/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/02_sga/Test_merged.dust.rmdup.fastq.gz
+/pipeline_metage_out/02_sga/Test_Sample_R1_merged.dust.rmdup.fastq.gz
