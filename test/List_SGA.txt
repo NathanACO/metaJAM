@@ -1,1 +1,1 @@
-/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/01_fastp/metaJAM/test/Test_Sample_merged.fq.gz
+/pipeline_metage_out/01_fastp/Test_Sample_merged.fq.gz
