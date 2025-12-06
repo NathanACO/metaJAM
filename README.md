@@ -12,6 +12,7 @@ Metagenomic Pipeline for ancient DNA analysis performed at the Centre for Palaeo
 > - Addition of leeHom as an alternative choice to fastp
 > - Addition of parameters to define in fastp, sga, prinseq and bamdam
 > - Different features to chose to concatenate diverse plant database or run specific databases iteratively
+> - Choice of the mapping strategy by iteration or not
 > - Extra pipeline to mask databases will be added in the future
 
 ## How to launch it:
