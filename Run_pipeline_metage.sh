@@ -76,10 +76,10 @@ fi
 # -----------------------------------------------------------------------------
 # Directories & logs
 # -----------------------------------------------------------------------------
-mkdir -p "${OUT_ROOT}"/{00_logs,01_fastp,02_sga,03_kraken_gtdb,04_mapping,05_filtering,99_metrics} \
+mkdir -p "${OUT_ROOT}"/{00_Samples_prefix,01_fastp,02_prinseq,02_sga,03_kraken_gtdb,04_mapping,05_filtering,99_metrics} \
          "${TMP_ROOT}" \
          "${LOG_ROOT}"/{out,error}
-PRIMARY_LIST_PATH="${OUT_ROOT}/00_logs/samples.primary.txt"
+PRIMARY_LIST_PATH="${OUT_ROOT}/00_Samples_prefix/samples.primary.txt"
 
 # -----------------------------------------------------------------------------
 # Helpers
@@ -162,8 +162,8 @@ build_primary_list() {
 }
 
 # --- SGA: build inputs (SAMPLE \t merged.fastq.gz) ---
-SGA_INPUTS="${OUT_ROOT}/00_logs/sga.inputs.tsv"
-SGA_LIST="${OUT_ROOT}/00_logs/samples.for_sga.txt"
+SGA_INPUTS="${OUT_ROOT}/00_Samples_prefix/sga.inputs.tsv"
+SGA_LIST="${OUT_ROOT}/00_Samples_prefix/samples.for_sga.txt"
 
 build_sga_inputs() {
   : > "${SGA_INPUTS}"
@@ -229,8 +229,8 @@ build_sga_inputs() {
 }
 
 # ------------------------------- PRINSEQ inputs -------------------------------
-PRINSEQ_INPUTS="${OUT_ROOT}/00_logs/prinseq.inputs.tsv"   # SAMPLE \t ABS_MERGED_FASTQ
-PRINSEQ_LIST="${OUT_ROOT}/00_logs/samples.for_prinseq.txt"
+PRINSEQ_INPUTS="${OUT_ROOT}/00_Samples_prefix/prinseq.inputs.tsv"   # SAMPLE \t ABS_MERGED_FASTQ
+PRINSEQ_LIST="${OUT_ROOT}/00_Samples_prefix/samples.for_prinseq.txt"
 
 build_prinseq_inputs() {
   : > "${PRINSEQ_INPUTS}"
@@ -292,8 +292,8 @@ build_prinseq_inputs() {
 }
 
 # ------------------------------- KRAKEN2 -------------------------------
-# OUT_ROOT/00_logs/samples.for_kraken.txt
-KRAKEN_SAMPLE_LIST="${OUT_ROOT}/00_logs/samples.for_kraken.txt"
+# OUT_ROOT/00_Samples_prefix/samples.for_kraken.txt
+KRAKEN_SAMPLE_LIST="${OUT_ROOT}/00_Samples_prefix/samples.for_kraken.txt"
 
 build_kraken_sample_list() {
   : > "${KRAKEN_SAMPLE_LIST}"
@@ -327,7 +327,7 @@ build_kraken_sample_list() {
 # We will build a list of SAMPLE IDs for mapping. The mapping script itself
 # reads SAMPLE_LIST and uses SLURM_ARRAY_TASK_ID to pick the sample.
 
-MAP_SAMPLE_LIST="${OUT_ROOT}/00_logs/samples.for_mapping.txt"
+MAP_SAMPLE_LIST="${OUT_ROOT}/00_Samples_prefix/samples.for_mapping.txt"
 
 build_mapping_sample_list() {
   : > "${MAP_SAMPLE_LIST}"
@@ -369,7 +369,7 @@ build_mapping_sample_list() {
 
 # ------------------------------- FILTERING / ngsLCA (+ bamdam) -------------------------------
 
-FILTER_LIST="${OUT_ROOT}/00_logs/samples.for_filter.txt"
+FILTER_LIST="${OUT_ROOT}/00_Samples_prefix/samples.for_filter.txt"
 
 build_filter_sample_list() {
   : > "${FILTER_LIST}"
@@ -422,8 +422,8 @@ build_primary_list
 
 # --- FASTP: discover pairs, build lists, submit with params ---
 declare -A JID_FASTP
-FASTP_PAIRS="${OUT_ROOT}/00_logs/fastp.pairs.tsv"      # SAMPLE \t R1 \t R2
-FASTP_TODO="${OUT_ROOT}/00_logs/samples_for_fastp.txt" # SAMPLE (for dependency visibility)
+FASTP_PAIRS="${OUT_ROOT}/00_Samples_prefix/fastp.pairs.tsv"      # SAMPLE \t R1 \t R2
+FASTP_TODO="${OUT_ROOT}/00_Samples_prefix/samples_for_fastp.txt" # SAMPLE (for dependency visibility)
 
 pair_fastq_from_primary() {
   : > "${FASTP_PAIRS}"
@@ -718,7 +718,7 @@ fi
 # -----------------------------------------------------------------------------
 : "${JOB_MAP:=}"   # mapping array job id if mapping ran in this invocation
 
-FILTER_LIST="${OUT_ROOT}/00_logs/samples.for_filter.txt"
+FILTER_LIST="${OUT_ROOT}/00_Samples_prefix/samples.for_filter.txt"
 if [[ ${ENABLE_FILTERING:-1} -eq 1 ]]; then
   build_filter_sample_list
   FILTER_LIST_SNAP="${FILTER_LIST%.*}.run.$(date +%s).txt"
@@ -756,6 +756,7 @@ BAMDAM_PYTHON_MODULE="${BAMDAM_PYTHON_MODULE}",\
 BAMDAM_VENV="${BAMDAM_VENV}",\
 KRONATOOLS_MODULE="${KRONATOOLS_MODULE}",\
 THREADS="${FILTER_SBATCH_CPUS}",\
+TOP_GENUS="${FILTER_SBATCH_CPUS}",\
 BAMDAM_STRANDED="${BAMDAM_STRANDED}",\
 BAMDAM_MINREADS="${BAMDAM_MINREADS}",\
 BAMDAM_MAXDAMAGE="${BAMDAM_MAXDAMAGE}" \
@@ -766,6 +767,17 @@ else
   echo "[INFO] Filtering/ngsLCA disabled."
 fi
 # -------------------------------------------------------------------------------
+
+#===============================================================================#
+#     Exta bamdam plot to assess top x damageplot                               #
+#===============================================================================#
+
+#awk '{for(i=2;i<=NF;i++){n=split($i,a,":");if(n>=3 && a[3]=="genus"){id=a[1];counts[id]++;name[id]=a[2];break}}}END{for(id in counts)printf "%d\t%s\t%s\n",counts[id],id,name[id]}' \
+#pipeline_metage_out/05_filtering/bamdam/NS_096/NS_096.small.lca \
+#| sort -nrk1,1 | head -10 > pipeline_metage_out/05_filtering/bamdam/NS_096/NS_096.top10.txt
+
+#bamdam plotdamage --in_subs pipeline_metage_out/05_filtering/bamdam/NS_096/NS_096.subs.txt --tax 30409 --outplot damageplot_lagopus_96.png
+
 
 # -----------------------------------------------------------------------------
 # MMSeqs2 (optional stub)
@@ -799,6 +811,6 @@ if [[ ${ENABLE_METRICS:-1} -eq 1 ]]; then
     --job-name="${METRICS_SBATCH_JOB_NAME:-metrics}" \
     --output="${LOG_ROOT}/out/metrics.%x.%j.out" \
     --error="${LOG_ROOT}/error/metrics.%x.%j.err" \
-    --export=ALL,OUT_ROOT="${OUT_ROOT}",LOG_ROOT="${LOG_ROOT}",PRIMARY_LIST_PATH="${OUT_ROOT}/00_logs/samples.primary.txt" \
+    --export=ALL,OUT_ROOT="${OUT_ROOT}",LOG_ROOT="${LOG_ROOT}",PRIMARY_LIST_PATH="${OUT_ROOT}/00_Samples_prefix/samples.primary.txt" \
     "${SCRIPTS_DIR}/99_metrics.sh"
 fi
