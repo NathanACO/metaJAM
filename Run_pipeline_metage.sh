@@ -431,11 +431,23 @@ pair_fastq_from_primary() {
     [[ -z "$f" ]] && continue
     # only seed off R1/_1; skip R2 lines
     case "$f" in
-      *R1*.fastq.gz|*R1*.fq.gz)
-        r1="$f"; r2="${f/R1/R2}"
+      *R1_001.fastq.gz|*R1.fastq.gz|*R1_001.fq.gz|*R1.fq.gz)
+        r1="$f"
+        dir=$(dirname "$f")
+        base=$(basename "$f")
+        base="${base/R1_001.fastq.gz/R2_001.fastq.gz}"
+        base="${base/R1.fastq.gz/R2.fastq.gz}"
+        base="${base/R1_001.fq.gz/R2_001.fq.gz}"
+        base="${base/R1.fq.gz/R2.fq.gz}"
+        r2="${dir}/${base}"
         ;;
       *_1*.fastq.gz|*_1*.fq.gz)
-        r1="$f"; r2="${f/_1/_2}"
+        r1="$f"
+        dir=$(dirname "$f")
+        base=$(basename "$f")
+        base="${base/_1.fastq.gz/_2.fastq.gz}"
+        base="${base/_1.fq.gz/_2.fq.gz}"
+        r2="${dir}/${base}"
         ;;
       *) continue ;;
     esac
