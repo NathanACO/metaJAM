@@ -39,7 +39,7 @@ BAMDAM_VENV="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/bamdam-
 # Point the path of your raw sequencing files or to a list containing the path of each samples to be processed
 #If a list is provided, it will perform the samples contained in it preferentially and READS_GLOB won't be perform
 READS_GLOB="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/samples/*.fastq.gz" #e.g. READS_GLOB="/data/project/*_1.fastq.gz" or READS_GLOB="/data/project/*_R1.fastq.gz"
-READS_LIST="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/list_fastq.txt"   # e.g. "/data/project/my_fastqs.list"
+READS_LIST="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/List_fastq.txt"   # e.g. "/data/project/my_fastqs.list"
 
 KRAKEN_REQUIRE_PRIMARY=1  #If you want to run Kraken GTDB on every sga or prinseq files present in the respective folder, set it to 0
 MAP_REQUIRE_PRIMARY=1 #If you want to run mapping on every kraken files present in the kraken folder, set it to 0
@@ -49,10 +49,10 @@ MAP_REQUIRE_PRIMARY=1 #If you want to run mapping on every kraken files present 
 
 # Format: either one absolute path per line, or "SAMPLE<TAB>/abs/path/to/SAMPLE_merged.fastq.gz"
 OVERRIDE_LIST_FASTP="" # Give absolute path - In the case you are not using fastp to preprocess the reads
-OVERRIDE_LIST_SGA="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/01_fastp/List_SGA_sample.txt" # Give absolute path
-OVERRIDE_LIST_PRINSEQ="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/01_fastp/List_fast_sample.txt"
+OVERRIDE_LIST_SGA="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/01_fastp/List_SGA.txt" # Give absolute path
+OVERRIDE_LIST_PRINSEQ="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/01_fastp/List_Prinseq.txt"
 OVERRIDE_LIST_KRAKEN="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/02_sga/List_Kraken.txt" # Give absolute path
-OVERRIDE_LIST_MAPPING="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/02_sga/List_Kraken.txt" # Give absolute path
+OVERRIDE_LIST_MAPPING="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/03_kraken_gtdb/List_mapping.txt" # Give absolute path
 OVERRIDE_LIST_FILTER="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/04_mapping/List_filter.txt" # Give absolute path
 
 # If you already have SGA output (name: <sample>_merged.dust.rmdup.fastq.gz)
@@ -87,19 +87,20 @@ ACC2TAX="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/acc2
 
 #### Path to roots
 OUT_ROOT="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out"
-TMP_ROOT="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/tmp"
-LOG_ROOT="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/log"
+TMP_ROOT="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/tmp"
+LOG_ROOT="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/log"
 
-# Fastp outputs by sample will go to: ${OUT_ROOT}/01_fastp/<sample>/
-# SGA outputs by sample will go to:   ${OUT_ROOT}/02_sga/<sample>/
-# Kraken2 outputs:                    ${OUT_ROOT}/03_kraken_gtdb/
-# Mapping outputs:                    ${OUT_ROOT}/04_mapping/<runname>/
-# Filtering outputs:                  ${OUT_ROOT}/05_filtering/<runname>/
-# Metrics & Excel:                    ${OUT_ROOT}/99_metrics/
+# Fastp outputs by sample will go to:     ${OUT_ROOT}/01_fastp/<sample>/
+# Prinseq outputs by sample will go to:   ${OUT_ROOT}/02_prinsea/<sample>/
+# SGA outputs by sample will go to:       ${OUT_ROOT}/02_sga/<sample>/
+# Kraken2 outputs:                        ${OUT_ROOT}/03_kraken_gtdb/
+# Mapping outputs:                        ${OUT_ROOT}/04_mapping/<runname>/
+# Filtering outputs:                      ${OUT_ROOT}/05_filtering/<runname>/
+# Metrics & Excel:                        ${OUT_ROOT}/99_metrics/
 
 
 ###################################################################################
-#                              Tools activation
+#                              Tools activation                                   #
 ###################################################################################
 
 #### 1=enable, 0=disable
@@ -114,7 +115,7 @@ ENABLE_FILTERBAM=0
 ENABLE_NGSLCA=1
 ENABLE_BAMDAM=1
 ENABLE_MMSEQS2=0
-ENABLE_METRICS=1
+ENABLE_METRICS=0
 
 #### Force re-run switches (0/1). When 1, submit the step even if its outputs exist.
 FORCE_FASTP=1
@@ -143,6 +144,7 @@ PRINSEQ_DEREP="14"                      # exact fwd+rev duplicates
 BAMDAM_STRANDED="ds"          # "ds" or "ss"
 BAMDAM_MINREADS=5             # for bamdam krona --minreads
 BAMDAM_MAXDAMAGE=0.5          # for bamdam krona --maxdamage
+TOP_GENUS=10                   # Top X genus to plot for damage
 
 ###################################################################################
 #                               SBATCH parameters
@@ -151,9 +153,9 @@ BAMDAM_MAXDAMAGE=0.5          # for bamdam krona --maxdamage
 ##### Global SBATCH defaults
 SBATCH_DEFAULT_ACCOUNT="naiss2025-5-78"
 SBATCH_DEFAULT_PARTITION="shared"
-SBATCH_DEFAULT_CPUS=20
-SBATCH_DEFAULT_MEM="64G"
-SBATCH_DEFAULT_TIME="10:00:00"
+SBATCH_DEFAULT_CPUS="32"
+SBATCH_DEFAULT_MEM="28G"
+SBATCH_DEFAULT_TIME="2:00:00"
 SBATCH_DEFAULT_QOS=""
 SBATCH_DEFAULT_EXTRA=""
 
@@ -161,9 +163,9 @@ SBATCH_DEFAULT_EXTRA=""
 # FASTP
 FASTP_SBATCH_ACCOUNT="naiss2025-5-78"
 FASTP_SBATCH_PARTITION="shared"
-FASTP_SBATCH_CPUS="2"
-FASTP_SBATCH_MEM="30G"
-FASTP_SBATCH_TIME="10:00:00"
+FASTP_SBATCH_CPUS="32"
+FASTP_SBATCH_MEM="28G"
+FASTP_SBATCH_TIME="2:00:00"
 FASTP_SBATCH_QOS=""
 FASTP_SBATCH_EXTRA=""
 FASTP_SBATCH_JOB_NAME="fastp_merge"
@@ -171,9 +173,9 @@ FASTP_SBATCH_JOB_NAME="fastp_merge"
 # SGA
 SGA_SBATCH_ACCOUNT="naiss2025-5-78"
 SGA_SBATCH_PARTITION="shared"
-SGA_SBATCH_CPUS="4"
-SGA_SBATCH_MEM="50G"
-SGA_SBATCH_TIME="10:00:00"
+SGA_SBATCH_CPUS="32"
+SGA_SBATCH_MEM="28G"
+SGA_SBATCH_TIME="4:00:00"
 SGA_SBATCH_QOS=""
 SGA_SBATCH_EXTRA=""
 SGA_SBATCH_JOB_NAME="SGA"
@@ -181,9 +183,9 @@ SGA_SBATCH_JOB_NAME="SGA"
 # SLURM for PRINSEQ array
 PRINSEQ_SBATCH_ACCOUNT="naiss2025-5-78"
 PRINSEQ_SBATCH_PARTITION="shared"
-PRINSEQ_SBATCH_CPUS="4"
-PRINSEQ_SBATCH_MEM="50G"
-PRINSEQ_SBATCH_TIME="10:00:00"
+PRINSEQ_SBATCH_CPUS="32"
+PRINSEQ_SBATCH_MEM="28G"
+PRINSEQ_SBATCH_TIME="4:00:00"
 PRINSEQ_SBATCH_QOS=""
 PRINSEQ_SBATCH_EXTRA=""
 PRINSEQ_SBATCH_JOB_NAME="prinseq"
@@ -191,19 +193,19 @@ PRINSEQ_SBATCH_JOB_NAME="prinseq"
 # Kraken2
 KRAKEN_SBATCH_ACCOUNT="naiss2025-5-78"
 KRAKEN_SBATCH_PARTITION="memory" #"memory" 
-KRAKEN_SBATCH_CPUS="16" #"16" 
+KRAKEN_SBATCH_CPUS="256" #"16" 
 KRAKEN_SBATCH_MEM="650G" #650G"         
-KRAKEN_SBATCH_TIME="4-00:00:00" #"1-20:00:00"
+KRAKEN_SBATCH_TIME="0-10:00:00" #"1-20:00:00"
 KRAKEN_SBATCH_QOS=""
 KRAKEN_SBATCH_EXTRA=""
 KRAKEN_SBATCH_JOB_NAME="GTDB"
 
 # Mapping
-MAP_SBATCH_ACCOUNT="naiss2025-5-78"
-MAP_SBATCH_PARTITION="memory"   #memory
-MAP_SBATCH_CPUS="16" #16
+MAP_SBATCH_ACCOUNT="naiss2025-5-616" #"naiss2025-5-78"
+MAP_SBATCH_PARTITION="main"   #main
+MAP_SBATCH_CPUS="256" #16
 MAP_SBATCH_MEM="550G"   #550G
-MAP_SBATCH_TIME="2-00:00:00" #"4-00:00:00"
+MAP_SBATCH_TIME="0-10:00:00" #"4-00:00:00"
 MAP_SBATCH_QOS=""
 MAP_SBATCH_EXTRA=""
 MAP_SBATCH_JOB_NAME="bowtie2"
@@ -211,9 +213,9 @@ MAP_SBATCH_JOB_NAME="bowtie2"
 # Filtering / ngsLCA
 FILTER_SBATCH_ACCOUNT="naiss2025-5-78"
 FILTER_SBATCH_PARTITION="shared"   #memory
-FILTER_SBATCH_CPUS="2"
-FILTER_SBATCH_MEM="30G"    #"880G"
-FILTER_SBATCH_TIME="1-20:00:00"
+FILTER_SBATCH_CPUS="32"
+FILTER_SBATCH_MEM="28G"    #"880G"
+FILTER_SBATCH_TIME="0-01:00:00"
 FILTER_SBATCH_QOS=""
 FILTER_SBATCH_EXTRA=""
 FILTER_SBATCH_JOB_NAME="filtering_ngslca"
@@ -221,9 +223,9 @@ FILTER_SBATCH_JOB_NAME="filtering_ngslca"
 # Metrics
 METRICS_SBATCH_ACCOUNT="naiss2025-5-78"
 METRICS_SBATCH_PARTITION="shared"
-METRICS_SBATCH_CPUS="4"
-METRICS_SBATCH_MEM="8G"
-METRICS_SBATCH_TIME="02:00:00"
+METRICS_SBATCH_CPUS="1"
+METRICS_SBATCH_MEM="5G"
+METRICS_SBATCH_TIME="00:30:00"
 METRICS_SBATCH_QOS=""
 METRICS_SBATCH_EXTRA=""
 METRICS_SBATCH_JOB_NAME="metrics"
