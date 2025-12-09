@@ -567,7 +567,8 @@ if [[ ${ENABLE_PREPROCESS:-1} -eq 1 && ${ENABLE_PRINSEQ:-0} -eq 1 ]]; then
     # depend on any FASTP jobs launched in this invocation
     deps=()
     if ((${#JID_FASTP[@]} > 0)); then
-      dep_ids=$(printf "%s," "${JID_FASTP[@]}" | sed 's/,$//')
+      # join all FASTP job IDs with ":" as required by Slurm
+      dep_ids=$(printf "%s\n" "${JID_FASTP[@]}" | sort -u | paste -sd:)
       [[ -n "${dep_ids}" ]] && deps=( --dependency="afterok:${dep_ids}" )
     fi
 
