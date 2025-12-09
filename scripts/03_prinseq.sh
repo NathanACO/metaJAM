@@ -3,7 +3,6 @@ set -euo pipefail
 set -x
 
 # From launcher
-FASTP_DIR="${FASTP_DIR}"           # OUT_ROOT/01_fastp
 OUT_DIR="${OUT_DIR}"               # OUT_ROOT/02_prinseq
 PRINSEQ_LITE="${PRINSEQ_LITE}"
 
