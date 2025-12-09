@@ -560,13 +560,15 @@ fi
 typeset -p JOB_PRINSEQ &>/dev/null || JOB_PRINSEQ=""
 if [[ ${ENABLE_PREPROCESS:-1} -eq 1 && ${ENABLE_PRINSEQ:-0} -eq 1 ]]; then
   build_prinseq_inputs
-  PRINSEQ_LIST_SNAP="${PRINSEQ_LIST%.*}.run.$(date +%s).tsv"
-  cp -f "${PRINSEQ_LIST}" "${PRINSEQ_LIST_SNAP}"
-  n_prinseq=$(wc -l < "${PRINSEQ_LIST_SNAP}" | tr -d ' ' || echo 0)
+
+  # snapshot the 2-column TSV, not the 1-column list
+  PRINSEQ_INPUTS_SNAP="${PRINSEQ_INPUTS%.*}.run.$(date +%s).tsv"
+  cp -f "${PRINSEQ_INPUTS}" "${PRINSEQ_INPUTS_SNAP}"
+  n_prinseq=$(wc -l < "${PRINSEQ_INPUTS_SNAP}" | tr -d ' ' || echo 0)
+
   if [[ "${n_prinseq}" -eq 0 ]]; then
     echo "[INFO] PRINSEQ: nothing to do."
   else
-    # Depend on FASTP per this invocation (if we launched it)
     # depend on any FASTP jobs launched in this invocation
     deps=()
     if ((${#JID_FASTP[@]} > 0)); then
@@ -581,12 +583,10 @@ if [[ ${ENABLE_PREPROCESS:-1} -eq 1 && ${ENABLE_PRINSEQ:-0} -eq 1 ]]; then
     JOB_PRINSEQ=$(sbatch "${deps[@]}" "${SBATCH_BUILT_OPTS[@]}" \
       --job-name="${PRINSEQ_SBATCH_JOB_NAME:-prinseq}_arr" \
       --array="0-$((n_prinseq-1))" \
-      --output="${LOG_ROOT}/out/fastp.%x.%j.out" \
-      --error="${LOG_ROOT}/error/fastp.%x.%j.err" \
+      --output="${LOG_ROOT}/out/prinseq.%x.%j.out" \
+      --error="${LOG_ROOT}/error/prinseq.%x.%j.err" \
       --export=ALL,\
-SAMPLE_LIST="${PRINSEQ_LIST_SNAP}",\
-PRINSEQ_INPUTS_TSV="${PRINSEQ_LIST_SNAP}",\
-FASTP_DIR="${OUT_ROOT}/01_fastp",\
+PRINSEQ_INPUTS_TSV="${PRINSEQ_INPUTS_SNAP}",\
 OUT_DIR="${OUT_ROOT}/02_prinseq",\
 PRINSEQ_LITE="${PRINSEQ_LITE}",\
 PRINSEQ_COMPLEXITY_METHOD="${PRINSEQ_COMPLEXITY_METHOD}",\
@@ -596,6 +596,8 @@ PRINSEQ_DEREP="${PRINSEQ_DEREP}" \
       "${SCRIPTS_DIR}/03_prinseq.sh" | awk '{print $4}')
     echo "[PRINSEQ] array -> ${JOB_PRINSEQ} (0-$((n_prinseq-1)))"
   fi
+else
+  echo "[INFO] PRINSEQ disabled."
 fi
 
 # -----------------------------------------------------------------------------
@@ -768,7 +770,7 @@ BAMDAM_PYTHON_MODULE="${BAMDAM_PYTHON_MODULE}",\
 BAMDAM_VENV="${BAMDAM_VENV}",\
 KRONATOOLS_MODULE="${KRONATOOLS_MODULE}",\
 THREADS="${FILTER_SBATCH_CPUS}",\
-TOP_GENUS="${FILTER_SBATCH_CPUS}",\
+TOP_GENUS="${TOP_GENUS}",\
 BAMDAM_STRANDED="${BAMDAM_STRANDED}",\
 BAMDAM_MINREADS="${BAMDAM_MINREADS}",\
 BAMDAM_MAXDAMAGE="${BAMDAM_MAXDAMAGE}" \
@@ -817,6 +819,8 @@ if [[ ${ENABLE_METRICS:-1} -eq 1 ]]; then
     deps=( --dependency="afterok:${JID_KRAKEN}" )
   elif [[ -n "${JOB_PRINSEQ:-}" ]]; then
     deps=( --dependency="afterok:${JOB_PRINSEQ}" )
+   elif [[ -n "${JOB_SGA:-}" ]]; then
+    deps=( --dependency="afterok:${JOB_SGA}" )
   fi
 
   sbatch "${deps[@]}" "${SBATCH_BUILT_OPTS[@]}" \
