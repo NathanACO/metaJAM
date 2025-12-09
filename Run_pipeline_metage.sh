@@ -273,17 +273,12 @@ build_prinseq_inputs() {
       allow["$s"]=1
     done < "${PRIMARY_LIST_PATH}"
 
-    # discover merged outputs from FASTP and keep only allowed samples
-    find "${OUT_ROOT}/01_fastp" -type f \
-      \( -name '*_merged.fastq.gz' -o -name '*_merged.fq.gz' \) 2>/dev/null \
-      | sort \
-      | while read -r merged_path; do
-          sample_id="${merged_path##*/}"
-          sample_id="${sample_id%_merged.fastq.gz}"
-          sample_id="${sample_id%_merged.fq.gz}"
-          [[ -n "${allow[$sample_id]:-}" ]] || continue
-          printf "%s\t%s\n" "${sample_id}" "${merged_path}" >> "${PRINSEQ_INPUTS}"
-        done
+    # Synthesize expected FASTP merged outputs for each allowed sample
+    # (matches your example paths)
+    for sample_id in $(printf '%s\n' "${!allow[@]}" | sort); do
+      merged_path="${OUT_ROOT}/01_fastp/${sample_id}/${sample_id}_merged.fastq.gz"
+      printf "%s\t%s\n" "${sample_id}" "${merged_path}" >> "${PRINSEQ_INPUTS}"
+    done
   fi
 
   # samples list (one SAMPLE per line)
