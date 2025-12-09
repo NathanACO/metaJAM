@@ -3,7 +3,6 @@ set -euo pipefail
 set -x
 
 # From launcher
-SAMPLE_LIST="${SAMPLE_LIST}"       # one SAMPLE per line
 FASTP_DIR="${FASTP_DIR}"           # OUT_ROOT/01_fastp
 OUT_DIR="${OUT_DIR}"               # OUT_ROOT/02_prinseq
 PRINSEQ_LITE="${PRINSEQ_LITE}"
@@ -14,20 +13,28 @@ PRINSEQ_MIN_LEN="${PRINSEQ_MIN_LEN:-30}"
 PRINSEQ_DEREP="${PRINSEQ_DEREP:-14}"
 
 # Optional TSV mapping: SAMPLE <tab> ABS_MERGED_FASTQ
-PRINSEQ_INPUTS_TSV="${PRINSEQ_INPUTS_TSV:-}"
+PRINSEQ_INPUTS_TSV="${PRINSEQ_INPUTS_TSV:?}"
 
-SAMPLE="$(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" "${SAMPLE_LIST}")"
-[[ -n "${SAMPLE}" ]] || { echo "[ERR] empty sample for task ${SLURM_ARRAY_TASK_ID}"; exit 2; }
-
-mkdir -p "${OUT_DIR}"
-
-# Resolve merged input fastq(.gz)
-if [[ -n "${PRINSEQ_INPUTS_TSV}" && -f "${PRINSEQ_INPUTS_TSV}" ]]; then
-  IN_MERGED="$(awk -F'\t' -v s="${SAMPLE}" '$1==s {print $2}' "${PRINSEQ_INPUTS_TSV}" | head -n1 || true)"
-else
-  IN_MERGED="${FASTP_DIR}/${SAMPLE}/${SAMPLE}_merged.fastq.gz"
+idx="${SLURM_ARRAY_TASK_ID:-0}"
+line=$(sed -n "$((idx+1))p" "${PRINSEQ_INPUTS_TSV}" || true)
+if [[ -z "$line" ]]; then
+  echo "[WARN] No line for array index ${idx} in ${PRINSEQ_INPUTS_TSV}, exiting."
+  exit 0
 fi
-[[ -f "${IN_MERGED}" ]] || { echo "[ERR] merged fastq missing: ${IN_MERGED}"; exit 3; }
+
+SAMPLE=$(printf '%s\n' "$line" | cut -f1)
+IN_MERGED=$(printf '%s\n' "$line" | cut -f2-)
+
+if [[ -z "$IN_MERGED" ]]; then
+  echo "[ERR] merged path empty for sample ${SAMPLE} (line: ${line})"
+  exit 3
+fi
+
+if [[ ! -f "$IN_MERGED" ]]; then
+  echo "[ERR] merged fastq missing: ${IN_MERGED}"
+  ls -l "$(dirname "$IN_MERGED")" || true
+  exit 3
+fi
 
 # File stems (NO per-sample folder)
 GOOD="${OUT_DIR}/${SAMPLE}_merged.complexity_filtered"
@@ -45,12 +52,6 @@ zcat "${IN_MERGED}" | perl "${PRINSEQ_LITE}" \
   -line_width 0
 
 gzip -f "${BAD}.fastq"
-
-# 2) Header fix for DeDup
-#gzip -df "${GOOD}.fastq.gz"
-#sed -i 's/^@/@M_/;n;n;n' "${GOOD}.fastq"
-#awk 'NR%4==1{sub(/^@/,"@M_")}1' "${GOOD}.fastq" > "${GOOD}.fixed.fastq"
-#mv -f "${GOOD}.fixed.fastq" "${GOOD}.fastq"
 
 # 3) Remove exact fwd/rev duplicates
 perl "${PRINSEQ_LITE}" \
