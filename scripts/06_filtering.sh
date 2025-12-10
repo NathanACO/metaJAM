@@ -150,6 +150,20 @@ if [[ "${ENABLE_BAMDAM}" -eq 1 ]]; then
       --maxdamage "${BAMDAM_MAXDAMAGE}"
 
     ktImportXML -o "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.html" "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.xml"
+
+    while read -r count taxid genus; do
+      bamdam plotdamage \
+      --in_subs "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.subs.txt" \
+      --tax "$taxid" \
+      --outplot "${OUT_DIR}/bamdam/${SAMPLE}/damageplot_${genus}_${taxid}_${SAMPLE}.png" \
+      || echo "Warning: bamdam failed for taxid $taxid (continuing)"
+    done < <(
+    awk '{for(i=2;i<=NF;i++){n=split($i,a,":");if(n>=3 && a[3]=="genus"){id=a[1];counts[id]++;name[id]=a[2];break}}}
+       END{for(id in counts)printf "%d\t%s\t%s\n",counts[id],id,name[id]}' \
+    "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.small.lca" \
+    | sort -nrk1,1 \
+    | head -n "$TOP_GENUS"
+    )
   fi
 fi
 
