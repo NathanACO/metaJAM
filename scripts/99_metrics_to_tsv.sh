@@ -6,6 +6,12 @@ OUT_ROOT="${OUT_ROOT:?}"               # pipeline root (same as used elsewhere)
 LOG_ROOT="${LOG_ROOT:-${OUT_ROOT}/00_logs}"
 PRIMARY_LIST_PATH="${PRIMARY_LIST_PATH:-${OUT_ROOT}/00_logs/samples.primary.txt}"
 
+# Optional: override list used ONLY by 99_metrics.sh
+# Format per line:
+#   SAMPLE<TAB>/abs/path/to/SAMPLE.small.bam
+#   or: /abs/path/to/SAMPLE.small.bam
+OVERRIDE_LIST_METRICS="${OVERRIDE_LIST_METRICS:-}"
+
 # Where to write metrics
 OUT_DIR="${OUT_ROOT}/99_metrics"
 mkdir -p "${OUT_DIR}"
@@ -14,26 +20,28 @@ NEW_ROWS="${OUT_DIR}/metrics.this_run.tsv"
 
 # -------- Helpers --------
 count_fastq () {
-  # $1: fastq(.gz) path
   local f="$1"
   [[ -s "$f" ]] || { echo "NA"; return; }
-  # Works for .gz (gzip -cd) and plain .fastq (cat fallback)
   if gzip -t "$f" >/dev/null 2>&1; then
     gzip -cd "$f" 2>/dev/null | awk 'END{print (NR?NR/4:"NA")}'
   else
-    # not gzipped (rare): read raw
     awk 'END{print (NR?NR/4:"NA")}' "$f"
   fi
 }
 
+# Load samtools module if provided
+if [[ -n "${SAMTOOLS_MODULE:-}" ]]; then
+  ml "${SAMTOOLS_MODULE}"
+fi
+
 have_samtools () { command -v samtools >/dev/null 2>&1; }
 
 count_bam () {
-  # $1: bam path
   local b="$1"
   [[ -s "$b" ]] || { echo "NA"; return; }
   if have_samtools; then
-    samtools view -c "$b" 2>/dev/null || echo "NA"
+    # -F 260 = exclude unmapped (4) + secondary (256) → primary mapped alignments only
+    samtools view -c -F 260 "$b" 2>/dev/null || echo "NA"
   else
     echo "NA"
   fi
@@ -61,65 +69,115 @@ sample_from_read_path () {
   echo "$b"
 }
 
-# -------- Build sample set (union of sources) --------
-declare -A SAMPLES=()
-
-# 1) From PRIMARY list (if present)
+# Build allowed sample set from PRIMARY_LIST_PATH (List_fastq.txt)
+declare -A ALLOWED=()
 if [[ -s "${PRIMARY_LIST_PATH}" ]]; then
   while IFS= read -r p; do
     [[ -z "$p" ]] && continue
     s="$(sample_from_read_path "$p")"
-    [[ -n "$s" ]] && SAMPLES["$s"]=1
+    [[ -n "$s" ]] && ALLOWED["$s"]=1
   done < <(awk 'NF>0 && $0 !~ /^#/' "${PRIMARY_LIST_PATH}" 2>/dev/null)
 fi
 
-# 2) From 01_fastp/<sample>/_merged.fastq.gz
-for f in "${OUT_ROOT}/01_fastp"/*/*_merged.f*q.gz; do
-  [[ -e "$f" ]] || continue
-  b="${f##*/}"; s="${b%_merged.fastq.gz}"; s="${s%_merged.fq.gz}"
-  SAMPLES["$s"]=1
-done
+# -------- Build sample set (union of sources OR override) --------
+declare -A SAMPLES=()
+declare -A OVERRIDE_SAMPLES=()
+declare -A BAMDAM_BAM_OVERRIDE=()
 
-# 3) From 02_sga/<sample>/_merged.dust*.fastq.gz
-for f in "${OUT_ROOT}/02_sga"/*/*_merged.dust*.f*q.gz; do
-  [[ -e "$f" ]] || continue
-  b="${f##*/}"; s="${b%_merged.dust.rmdup.fastq.gz}"; s="${s%_merged.dust.rmdup.fq.gz}"
-  s="${s%_merged.dust.fastq.gz}"; s="${s%_merged.dust.fq.gz}"
-  SAMPLES["$s"]=1
-done
+# If OVERRIDE_LIST_METRICS is set, we ONLY use that list
+# Lines can be:
+#   SAMPLE<TAB>/abs/path/to/SAMPLE.small.bam
+#   /abs/path/to/SAMPLE.small.bam
+if [[ -n "${OVERRIDE_LIST_METRICS}" && -f "${OVERRIDE_LIST_METRICS}" ]]; then
+  while IFS=$'\t' read -r col1 col2 || [[ -n "${col1}" ]]; do
+    [[ -z "${col1}" ]] && continue
 
-# 4) From 02_prinseq/*_merged.complexity_filtered*.fastq.gz
-for f in "${OUT_ROOT}/02_prinseq"/*_merged.complexity_filtered*.f*q.gz; do
-  [[ -e "$f" ]] || continue
-  b="${f##*/}"
-  s="${b%_merged.complexity_filtered.duplicatesremoved.fastq.gz}"
-  s="${s%_merged.complexity_filtered.duplicatesremoved.fq.gz}"
-  s="${s%_merged.complexity_filtered.fastq.gz}"
-  s="${s%_merged.complexity_filtered.fq.gz}"
-  SAMPLES["$s"]=1
-done
+    local sample bam
+    if [[ -n "${col2}" ]]; then
+      sample="${col1}"
+      bam="${col2}"
+    else
+      bam="${col1}"
+      b="${bam##*/}"
+      sample="${b%%.*}"   # up to first dot = sample prefix
+    fi
 
-# 5) From 03_kraken_gtdb/<sample>_GTDB_(clas|unclas).fastq.gz
-for f in "${OUT_ROOT}/03_kraken_gtdb"/*_GTDB_*clas.f*q.gz; do
-  [[ -e "$f" ]] || continue
-  b="${f##*/}"; s="${b%_GTDB_clas.fastq.gz}"; s="${s%_GTDB_clas.fq.gz}"
-  s="${s%_GTDB_unclas.fastq.gz}"; s="${s%_GTDB_unclas.fq.gz}"
-  SAMPLES["$s"]=1
-done
+    if [[ ! -f "${bam}" ]]; then
+      echo "[WARN] metrics override BAM not found: ${bam}"
+      continue
+    fi
 
-# 6) From 04_mapping/<sample>/*.bam
-for f in "${OUT_ROOT}/04_mapping"/*/*.bam; do
-  [[ -e "$f" ]] || continue
-  s="$(basename "$(dirname "$f")")"
-  SAMPLES["$s"]=1
-done
+    OVERRIDE_SAMPLES["${sample}"]=1
+    SAMPLES["${sample}"]=1
+    BAMDAM_BAM_OVERRIDE["${sample}"]="${bam}"
+  done < <(awk 'NF>0 && $0 !~ /^#/' "${OVERRIDE_LIST_METRICS}")
 
-# 7) From 05_filtering/{filterBAM,bamdam}/<sample>*.bam
-for f in "${OUT_ROOT}/05_filtering/filterBAM"/*.bam "${OUT_ROOT}/05_filtering/bamdam"/*.bam; do
-  [[ -e "$f" ]] || continue
-  b="${f##*/}"; s="${b%%.*}"   # up to first dot is sample prefix in our naming
-  SAMPLES["$s"]=1
-done
+else
+  # -------- Normal mode: union of sources, but restricted to ALLOWED samples --------
+
+  # Helper: add sample only if in ALLOWED (or if ALLOWED is empty)
+  add_sample_if_allowed () {
+    local s="$1"
+    if [[ ${#ALLOWED[@]} -eq 0 || -n "${ALLOWED[$s]:-}" ]]; then
+      SAMPLES["$s"]=1
+    fi
+  }
+
+  # 1) From PRIMARY list (if present)
+  if [[ -s "${PRIMARY_LIST_PATH}" ]]; then
+    for s in "${!ALLOWED[@]}"; do
+      SAMPLES["$s"]=1
+    done
+  fi
+
+  # 2) From 01_fastp/<sample>/_merged.fastq.gz
+  for f in "${OUT_ROOT}/01_fastp"/*/*_merged.f*q.gz; do
+    [[ -e "$f" ]] || continue
+    b="${f##*/}"; s="${b%_merged.fastq.gz}"; s="${s%_merged.fq.gz}"
+    add_sample_if_allowed "$s"
+  done
+
+  # 3) From 02_sga/<sample>/_merged.dust*.fastq.gz
+  for f in "${OUT_ROOT}/02_sga"/*/*_merged.dust*.f*q.gz; do
+    [[ -e "$f" ]] || continue
+    b="${f##*/}"; s="${b%_merged.dust.rmdup.fastq.gz}"; s="${s%_merged.dust.rmdup.fq.gz}"
+    s="${s%_merged.dust.fastq.gz}"; s="${s%_merged.dust.fq.gz}"
+    add_sample_if_allowed "$s"
+  done
+
+  # 4) From 02_prinseq/*_merged.complexity_filtered*.fastq.gz
+  for f in "${OUT_ROOT}/02_prinseq"/*_merged.complexity_filtered*.f*q.gz; do
+    [[ -e "$f" ]] || continue
+    b="${f##*/}"
+    s="${b%_merged.complexity_filtered.duplicatesremoved.fastq.gz}"
+    s="${s%_merged.complexity_filtered.duplicatesremoved.fq.gz}"
+    s="${s%_merged.complexity_filtered.fastq.gz}"
+    s="${s%_merged.complexity_filtered.fq.gz}"
+    add_sample_if_allowed "$s"
+  done
+
+  # 5) From 03_kraken_gtdb/<sample>_GTDB_(clas|unclas).fastq.gz
+  for f in "${OUT_ROOT}/03_kraken_gtdb"/*_GTDB_*clas.f*q.gz; do
+    [[ -e "$f" ]] || continue
+    b="${f##*/}"; s="${b%_GTDB_clas.fastq.gz}"; s="${s%_GTDB_clas.fq.gz}"
+    s="${s%_GTDB_unclas.fastq.gz}"; s="${s%_GTDB_unclas.fq.gz}"
+    add_sample_if_allowed "$s"
+  done
+
+  # 6) From 04_mapping/<sample>/*.bam
+  for f in "${OUT_ROOT}/04_mapping"/*/*.bam; do
+    [[ -e "$f" ]] || continue
+    s="$(basename "$(dirname "$f")")"
+    add_sample_if_allowed "$s"
+  done
+
+  # 7) From 05_filtering/{filterBAM,bamdam}/<sample>*.bam
+  for f in "${OUT_ROOT}/05_filtering/filterBAM"/*.bam "${OUT_ROOT}/05_filtering/bamdam"/*.bam; do
+    [[ -e "$f" ]] || continue
+    b="${f##*/}"; s="${b%%.*}"
+    add_sample_if_allowed "$s"
+  done
+fi
 
 # -------- Collect metrics per sample (this run) --------
 # TSV header (column order is important for merging)
@@ -141,8 +199,17 @@ if [[ -s "${PRIMARY_LIST_PATH}" ]]; then
   done < <(awk 'NF>0 && $0 !~ /^#/' "${PRIMARY_LIST_PATH}" 2>/dev/null)
 fi
 
+# Pick which samples to iterate:
+#  - if OVERRIDE_LIST_METRICS was used -> only those
+#  - else -> all discovered samples
+if [[ ${#OVERRIDE_SAMPLES[@]} -gt 0 ]]; then
+  sample_list=$(printf "%s\n" "${!OVERRIDE_SAMPLES[@]}" | sort)
+else
+  sample_list=$(printf "%s\n" "${!SAMPLES[@]}" | sort)
+fi
+
 # Walk samples in alpha order for reproducibility
-for sample in $(printf "%s\n" "${!SAMPLES[@]}" | sort); do
+for sample in $sample_list; do
   # ---- raw reads (use PRIMARY R1 if we have it) ----
   RAW_R1="${R1_PATH[$sample]:-}"
   raw_reads="NA"
@@ -155,7 +222,6 @@ for sample in $(printf "%s\n" "${!SAMPLES[@]}" | sort); do
   after_fastp="$( [[ -n "$f_fastp" ]] && count_fastq "$f_fastp" || echo NA )"
 
   # ---- after SGA (preprocess + filter) ----
-  # If you produce an intermediate "_merged.dust.fastq.gz", we’ll report it; else NA.
   f_sga_pre="$(first_file \
     "${OUT_ROOT}/02_sga/${sample}/${sample}_merged.dust.fastq.gz" \
     "${OUT_ROOT}/02_sga/${sample}/${sample}_merged.dust.fq.gz")"
@@ -189,19 +255,29 @@ for sample in $(printf "%s\n" "${!SAMPLES[@]}" | sort); do
   b_mi="${OUT_ROOT}/04_mapping/${sample}/${sample}.b2.k1000.Mito.bam"
   b_pl="${OUT_ROOT}/04_mapping/${sample}/${sample}.b2.k1000.Plastid.bam"
   b_mb="${OUT_ROOT}/04_mapping/${sample}/${sample}.b2.k1000.MBF.bam"
+  b_all="${OUT_ROOT}/04_mapping/${sample}/${sample}.b2.k1000.all.sorted.bam"
+
   mapped_phylonorway="$(count_bam "$b_pn")"
   mapped_mito="$(count_bam "$b_mi")"
   mapped_plastid="$(count_bam "$b_pl")"
   mapped_mbf="$(count_bam "$b_mb")"
+  mapped_all="$(count_bam "$b_all")"
 
   # ---- Post-filtering ----
   b_filtered="${OUT_ROOT}/05_filtering/filterBAM/${sample}.b2.k1000.all.filtered.bam"
-  b_bamdam="${OUT_ROOT}/05_filtering/bamdam/${sample}.small.bam"
+
+  # If override file provided a BAM path for this sample, use it; otherwise default
+  if [[ -n "${BAMDAM_BAM_OVERRIDE[$sample]:-}" ]]; then
+    b_bamdam="${BAMDAM_BAM_OVERRIDE[$sample]}"
+  else
+    b_bamdam="${OUT_ROOT}/05_filtering/bamdam/${sample}/${sample}.small.bam"
+  fi
+
   after_filterBAM="$(count_bam "$b_filtered")"
   after_bamdam="$(count_bam "$b_bamdam")"
 
   # Emit row (NO header here)
-  printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+  printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
     "$sample" \
     "$raw_reads" \
     "$after_fastp" \
@@ -214,13 +290,14 @@ for sample in $(printf "%s\n" "${!SAMPLES[@]}" | sort); do
     "$mapped_mito" \
     "$mapped_plastid" \
     "$mapped_mbf" \
+    "$mapped_all" \
     "$after_filterBAM" \
     "$after_bamdam" \
     >> "${NEW_ROWS}"
 done
 
 # -------- Merge with cumulative TSV (idempotent replace-per-sample) --------
-HEADER_LINE="sample	raw_reads	after_fastp	after_sga_preprocess	after_sga_filter	after_prinseq	kraken_classified	kraken_unclassified	mapped_phylonorway	mapped_mito	mapped_plastid	mapped_mbf	after_filterBAM	after_bamdam"
+HEADER_LINE="sample	raw_reads	after_fastp	after_sga_preprocess	after_sga_filter	after_prinseq	kraken_classified	kraken_unclassified	mapped_phylonorway	mapped_mito	mapped_plastid	mapped_mbf  mapped_all	after_filterBAM	after_bamdam"
 if [[ ! -s "${TSV}" ]]; then
   printf '%s\n' "${HEADER_LINE}" > "${TSV}"
 fi
