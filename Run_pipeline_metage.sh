@@ -823,6 +823,6 @@ if [[ ${ENABLE_METRICS:-1} -eq 1 ]]; then
     --job-name="${METRICS_SBATCH_JOB_NAME:-metrics}" \
     --output="${LOG_ROOT}/out/metrics.%x.%j.out" \
     --error="${LOG_ROOT}/error/metrics.%x.%j.err" \
-    --export=ALL,OUT_ROOT="${OUT_ROOT}",LOG_ROOT="${LOG_ROOT}",PRIMARY_LIST_PATH="${OUT_ROOT}/00_Samples_prefix/samples.primary.txt" \
+    --export=ALL,OUT_ROOT="${OUT_ROOT}",LOG_ROOT="${LOG_ROOT}",PRIMARY_LIST_PATH="${OUT_ROOT}/00_Samples_prefix/samples.primary.txt",SAMTOOLS_MODULE="${SAMTOOLS_MODULE}" \
     "${SCRIPTS_DIR}/99_metrics.sh"
 fi
