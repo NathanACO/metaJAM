@@ -92,6 +92,19 @@ To be refine based on samples size and database using
 ## Overview of the pipeline
 ![alt text](https://github.com/NathanACO/metaJAM/blob/main/metaJAM_diagram.png)
 
+## Plot output
+Two different plots are created by metaJAM and required a metadata file (see in test for metadata format and content).\
+The first plot created is giving an overview of the metrics of the samples processed:\
+
+The second plot is giving the taxa composition as a bubble plot or a heatmap (can be chosen in the config file).\
+The user can filter the minimum number of reads required to plot a taxa in the config file.\
+It will produce two different plots each time, one for the genus and one for the family, plotting in alphabetical order the Viridiplantae taxa first and then the Opisthokonta taxa.
+![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_bubbleplot.pdf)
+![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_heatmap.pdf)
+> [!NOTE]
+> FAn extra column containing information about the damage and the blast validation of each taxa will be implemented soon.
+
+
 _Why metaJAM?_\
 We like to see ancient sediment metagenomic data as a jar of jam:
 - You never really know what is inside
