@@ -21,9 +21,11 @@ CONDA_ENV_FILTERBAM="/cfs/klemming/projects/supr/naiss2025-23-301/tools/minicond
 CONDA_ENV_ngsLCA="/cfs/klemming/projects/supr/naiss2025-23-301/tools/miniconda3/envs/ngsLCA"
 PDC_MODULE="PDC"                 # only needed for Kraken2 section using $PDC_TMP
 KRONATOOLS_MODULE="kronatools/2.8.1"
+CONDA_ENV_PLOTS="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/plots"
 
 # ---- bamdam from Python venv ----
 # Optional: module to load before activating the venv (kept generic).
+# If bamdam is already in PATH (installed via pip), leave these empty
 BAMDAM_PYTHON_MODULE="python"
 BAMDAM_VENV="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/bamdam-env"
 #Install bamdam
@@ -51,9 +53,10 @@ MAP_REQUIRE_PRIMARY=1 #If you want to run mapping on every kraken files present 
 OVERRIDE_LIST_FASTP="" # Give absolute path - In the case you are not using fastp to preprocess the reads
 OVERRIDE_LIST_SGA="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/01_fastp/List_SGA.txt" # Give absolute path
 OVERRIDE_LIST_PRINSEQ="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/01_fastp/List_Prinseq.txt"
-OVERRIDE_LIST_KRAKEN="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/02_sga/List_Kraken.txt" # Give absolute path
-OVERRIDE_LIST_MAPPING="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/03_kraken_gtdb/List_mapping.txt" # Give absolute path
+OVERRIDE_LIST_KRAKEN="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/List_Kraken.txt" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/02_sga/List_Kraken.txt" # Give absolute path
+OVERRIDE_LIST_MAPPING="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/List_mapping.txt"" # Give absolute path
 OVERRIDE_LIST_FILTER="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/04_mapping/List_filter.txt" # Give absolute path
+OVERRIDE_LIST_METRICS="" #"/absolute/path/to/List_filter.txt"
 
 # If you already have SGA output (name: <sample>_merged.dust.rmdup.fastq.gz)
 SGA_OUT_DIR=""
@@ -79,7 +82,7 @@ MAM_BIRD_FISH="/cfs/klemming/projects/supr/archaeogenetics/ernjoh/mam-bird-fish_
 
 # Kraken2 GTDB 
 GTDB_SRC="/cfs/klemming/pdc/software/dardel/sw-uppmax/data/Kraken2_data/prebuilt/k2_gtdb_genome_reps_20250609"
-
+#"/cfs/klemming/scratch/e/ernjoh/GTDB_KRAKEN2_DB" 
 # NCBI taxonomy files
 NAMES="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/names_NM.dmp"
 NODES="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/nodes_NM.dmp"
@@ -89,6 +92,9 @@ ACC2TAX="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/acc2
 OUT_ROOT="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out"
 TMP_ROOT="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/tmp"
 LOG_ROOT="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/log"
+
+#### Path to metadata
+METADATA_PATH="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/metadata.txt"
 
 # Fastp outputs by sample will go to:     ${OUT_ROOT}/01_fastp/<sample>/
 # Prinseq outputs by sample will go to:   ${OUT_ROOT}/02_prinsea/<sample>/
@@ -104,18 +110,19 @@ LOG_ROOT="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_m
 ###################################################################################
 
 #### 1=enable, 0=disable
-ENABLE_PREPROCESS=1     # If set to 0, neither fastp or SGA will run
-ENABLE_FASTP=1
-ENABLE_SGA=1
-ENABLE_PRINSEQ=0       # set 1 to use PRINSEQ instead of SGA         
-ENABLE_KRAKEN_GTDB=1
-ENABLE_MAPPING=1
-ENABLE_FILTERING=1      # If set to 0, neither filterBAM or ngsLCA or bamdam will run
+ENABLE_PREPROCESS=0     # If set to 0, neither fastp or SGA will run
+ENABLE_FASTP=0
+ENABLE_SGA=0
+ENABLE_PRINSEQ=0        # set 1 to use PRINSEQ instead of SGA         
+ENABLE_KRAKEN_GTDB=0
+ENABLE_MAPPING=0
+ENABLE_FILTERING=0      # If set to 0, neither filterBAM or ngsLCA or bamdam will run
 ENABLE_FILTERBAM=0
-ENABLE_NGSLCA=1
-ENABLE_BAMDAM=1
+ENABLE_NGSLCA=0
+ENABLE_BAMDAM=0
 ENABLE_MMSEQS2=0
 ENABLE_METRICS=0
+ENABLE_PLOTS=1
 
 #### Force re-run switches (0/1). When 1, submit the step even if its outputs exist.
 FORCE_FASTP=1
@@ -146,6 +153,10 @@ BAMDAM_MINREADS=5             # for bamdam krona --minreads
 BAMDAM_MAXDAMAGE=0.5          # for bamdam krona --maxdamage
 TOP_GENUS=10                   # Top X genus to plot for damage
 
+# Plot parameters
+PLOTS_BAMDAM_MIN_READS=50    # Minimum reads per sample to include in bamdam plots
+PLOTS_BAMDAM_PLOT_MODE="both" # heatmap, bubble, both
+
 ###################################################################################
 #                               SBATCH parameters
 ###################################################################################
@@ -175,7 +186,7 @@ SGA_SBATCH_ACCOUNT="naiss2025-5-78"
 SGA_SBATCH_PARTITION="shared"
 SGA_SBATCH_CPUS="32"
 SGA_SBATCH_MEM="28G"
-SGA_SBATCH_TIME="4:00:00"
+SGA_SBATCH_TIME="2:00:00"
 SGA_SBATCH_QOS=""
 SGA_SBATCH_EXTRA=""
 SGA_SBATCH_JOB_NAME="SGA"
@@ -183,9 +194,9 @@ SGA_SBATCH_JOB_NAME="SGA"
 # SLURM for PRINSEQ array
 PRINSEQ_SBATCH_ACCOUNT="naiss2025-5-78"
 PRINSEQ_SBATCH_PARTITION="shared"
-PRINSEQ_SBATCH_CPUS="32"
-PRINSEQ_SBATCH_MEM="28G"
-PRINSEQ_SBATCH_TIME="4:00:00"
+PRINSEQ_SBATCH_CPUS="62"
+PRINSEQ_SBATCH_MEM="50G"
+PRINSEQ_SBATCH_TIME="8:00:00"
 PRINSEQ_SBATCH_QOS=""
 PRINSEQ_SBATCH_EXTRA=""
 PRINSEQ_SBATCH_JOB_NAME="prinseq"
@@ -193,17 +204,17 @@ PRINSEQ_SBATCH_JOB_NAME="prinseq"
 # Kraken2
 KRAKEN_SBATCH_ACCOUNT="naiss2025-5-78"
 KRAKEN_SBATCH_PARTITION="memory" #"memory" 
-KRAKEN_SBATCH_CPUS="256" #"16" 
+KRAKEN_SBATCH_CPUS="256" #"256" 
 KRAKEN_SBATCH_MEM="650G" #650G"         
-KRAKEN_SBATCH_TIME="0-10:00:00" #"1-20:00:00"
+KRAKEN_SBATCH_TIME="1-10:00:00" #"0-20:00:00"
 KRAKEN_SBATCH_QOS=""
 KRAKEN_SBATCH_EXTRA=""
 KRAKEN_SBATCH_JOB_NAME="GTDB"
 
 # Mapping
-MAP_SBATCH_ACCOUNT="naiss2025-5-616" #"naiss2025-5-78"
-MAP_SBATCH_PARTITION="main"   #main
-MAP_SBATCH_CPUS="256" #16
+MAP_SBATCH_ACCOUNT="naiss2025-5-78" #"naiss2025-5-78" #naiss2025-5-616
+MAP_SBATCH_PARTITION="memory"   #main #memory
+MAP_SBATCH_CPUS="256" #16 #256
 MAP_SBATCH_MEM="550G"   #550G
 MAP_SBATCH_TIME="0-10:00:00" #"4-00:00:00"
 MAP_SBATCH_QOS=""
@@ -223,12 +234,22 @@ FILTER_SBATCH_JOB_NAME="filtering_ngslca"
 # Metrics
 METRICS_SBATCH_ACCOUNT="naiss2025-5-78"
 METRICS_SBATCH_PARTITION="shared"
-METRICS_SBATCH_CPUS="1"
-METRICS_SBATCH_MEM="5G"
-METRICS_SBATCH_TIME="00:30:00"
+METRICS_SBATCH_CPUS="8"
+METRICS_SBATCH_MEM="10G"
+METRICS_SBATCH_TIME="01:00:00"
 METRICS_SBATCH_QOS=""
 METRICS_SBATCH_EXTRA=""
 METRICS_SBATCH_JOB_NAME="metrics"
+
+# Plots
+PLOTS_SBATCH_ACCOUNT="naiss2025-5-78"
+PLOTS_SBATCH_PARTITION="shared"
+PLOTS_SBATCH_CPUS="8"
+PLOTS_SBATCH_MEM="10G"
+PLOTS_SBATCH_TIME="00:30:00"
+PLOTS_SBATCH_QOS=""
+PLOTS_SBATCH_EXTRA=""
+PLOTS_SBATCH_JOB_NAME="plots"
 
 #------------------------------------------------------------------------------------------------------------#
 ###                       IMPORTANT TO DO BEFORE TO RUN ANY MAPPING SCRIPT                                 ###
