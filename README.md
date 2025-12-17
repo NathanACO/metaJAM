@@ -85,6 +85,9 @@ Precise 1 or 0 for each step, 1=enable, 0=disable
 
 ## SBATCH parameters
 To be refine based on samples size and database using
+> [!TIP]
+> We advise to set up at least 650G and 256CPUs for the Kraken step, and to allow at least 20 hours of running time for massive fastq.gz (>60M reads)
+> For smaller datasets (around 10-20M), 15h for 3-4 samples seems a coherent value, depending on your cluster queueing system.
 
 ## Overview of the pipeline
 ![alt text](https://github.com/NathanACO/metaJAM/blob/main/metaJAM_diagram.png)
