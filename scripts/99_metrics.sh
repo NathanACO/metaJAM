@@ -297,7 +297,7 @@ for sample in $sample_list; do
 done
 
 # -------- Merge with cumulative TSV (idempotent replace-per-sample) --------
-HEADER_LINE="sample	raw_reads	after_fastp	after_sga_preprocess	after_sga_filter	after_prinseq	kraken_classified	kraken_unclassified	mapped_phylonorway	mapped_mito	mapped_plastid	mapped_mbf  mapped_all	after_filterBAM	after_bamdam"
+HEADER_LINE=$'sample\traw_reads\tafter_fastp\tafter_sga_preprocess\tafter_sga_filter\tafter_prinseq\tkraken_classified\tkraken_unclassified\tmapped_phylonorway\tmapped_mito\tmapped_plastid\tmapped_mbf\tmapped_all\tafter_filterBAM\tafter_bamdam'
 if [[ ! -s "${TSV}" ]]; then
   printf '%s\n' "${HEADER_LINE}" > "${TSV}"
 fi
