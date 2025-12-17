@@ -76,7 +76,7 @@ fi
 # -----------------------------------------------------------------------------
 # Directories & logs
 # -----------------------------------------------------------------------------
-mkdir -p "${OUT_ROOT}"/{00_Samples_prefix,01_fastp,02_prinseq,02_sga,03_kraken_gtdb,04_mapping,05_filtering,99_metrics} \
+mkdir -p "${OUT_ROOT}"/{00_Samples_prefix,01_fastp,02_prinseq,02_sga,03_kraken_gtdb,04_mapping,05_filtering,99_metrics,100_plots} \
          "${TMP_ROOT}" \
          "${LOG_ROOT}"/{out,error}
 PRIMARY_LIST_PATH="${OUT_ROOT}/00_Samples_prefix/samples.primary.txt"
@@ -825,4 +825,30 @@ if [[ ${ENABLE_METRICS:-1} -eq 1 ]]; then
     --error="${LOG_ROOT}/error/metrics.%x.%j.err" \
     --export=ALL,OUT_ROOT="${OUT_ROOT}",LOG_ROOT="${LOG_ROOT}",PRIMARY_LIST_PATH="${OUT_ROOT}/00_Samples_prefix/samples.primary.txt",SAMTOOLS_MODULE="${SAMTOOLS_MODULE}" \
     "${SCRIPTS_DIR}/99_metrics.sh"
+fi
+
+# -----------------------------------------------------------------------------
+#                                   Plots                                     #
+# -----------------------------------------------------------------------------
+
+if [[ ${ENABLE_PLOTS:-1} -eq 1 ]]; then
+  sbatch_opts PLOTS
+  require_file "${SCRIPTS_DIR}/100_Plots.sh"
+  mkdir -p "${OUT_ROOT}/100_plots"
+  sbatch "${deps[@]}" "${SBATCH_BUILT_OPTS[@]}" \
+    --job-name="${PLOTS_SBATCH_JOB_NAME:-plots}" \
+    --output="${LOG_ROOT}/out/plots.%x.%j.out" \
+    --error="${LOG_ROOT}/error/plots.%x.%j.err" \
+    --export=ALL,\
+OUT_ROOT="${OUT_ROOT}",\
+LOG_ROOT="${LOG_ROOT}",\
+PRIMARY_LIST_PATH="${PRIMARY_LIST_PATH:-${OUT_ROOT}/00_Samples_prefix/samples.primary.txt}",\
+CONDA_ENV_PLOTS="${CONDA_ENV_PLOTS}",\
+SCRIPTS_DIR="${SCRIPTS_DIR}",\
+METADATA_PATH="${METADATA_PATH}",\
+PLOTS_BAMDAM_MIN_READS="${PLOTS_BAMDAM_MIN_READS}",\
+PLOTS_BAMDAM_PLOT_MODE="${PLOTS_BAMDAM_PLOT_MODE}",\
+METRICS_TSV="${METRICS_TSV:-${OUT_ROOT}/99_metrics/metrics.tsv}",\
+BAMDAM_DIR="${BAMDAM_DIR:-${OUT_ROOT}/05_filtering/bamdam}" \
+    "${SCRIPTS_DIR}/100_Plots.sh"
 fi
