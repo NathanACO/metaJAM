@@ -95,12 +95,12 @@ To be refine based on samples size and database using
 ## Plot output
 Two different plots are created by metaJAM and required a metadata file (see in test for metadata format and content).\
 The first plot created is giving an overview of the metrics of the samples processed:\
-
+![alt text](https://github.com/NathanACO/metaJAM/blob/main/reads_per_step_dots.png)
 The second plot is giving the taxa composition as a bubble plot or a heatmap (can be chosen in the config file).\
 The user can filter the minimum number of reads required to plot a taxa in the config file.\
 It will produce two different plots each time, one for the genus and one for the family, plotting in alphabetical order the Viridiplantae taxa first and then the Opisthokonta taxa.
-![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_bubbleplot.pdf)
-![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_heatmap.pdf)
+![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_bubbleplot.png)
+![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_heatmap.png)
 > [!NOTE]
 > FAn extra column containing information about the damage and the blast validation of each taxa will be implemented soon.
 
