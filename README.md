@@ -102,7 +102,7 @@ It will produce two different plots each time, one for the genus and one for the
 ![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_bubbleplot.png)
 ![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_heatmap.png)
 > [!NOTE]
-> FAn extra column containing information about the damage and the blast validation of each taxa will be implemented soon.
+> An extra column containing information about the damage and the blast validation of each taxa will be implemented soon.
 
 
 _Why metaJAM?_\
