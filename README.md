@@ -94,7 +94,7 @@ To be refine based on samples size and database using
 
 ## Plot output
 Two different plots are created by metaJAM and required a metadata file (see in test for metadata format and content).\
-The first plot created is giving an overview of the metrics of the samples processed:\
+The first plot created is giving an overview of the metrics of the samples processed:
 ![alt text](https://github.com/NathanACO/metaJAM/blob/main/reads_per_step_dots.png)
 &copy; Martin et al. 2025 plot, peatbog paper - in revision\
 
@@ -110,7 +110,7 @@ It will produce two different plots each time, one for the genus and one for the
 > An extra plot containing information about the damage is also produced for supplementary information.\
 > The damage will be coded by 3 colours (red,orange,green).\
 > Green if for this taxa the damage are superior to 5% and if the damage percent is within the interval (+-5%) of the mean of the damage of the 3 main taxa that have more than 5% damage.\
-> If only one condition is met, the associated damage column will be orange and the user will be invited to investigate deeper this taxa.\
+> If only one condition is met, the associated damage column will be orange and the user will be invited to investigate deeper this taxa.
 > 
 > ![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_bubbleplot_damage.png)
 > 
