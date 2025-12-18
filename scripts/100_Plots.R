@@ -33,6 +33,13 @@ min_reads_arg     <- get_arg("--min_reads", "1")
 min_reads <- suppressWarnings(as.numeric(min_reads_arg))
 if (is.na(min_reads) || min_reads < 0) min_reads <- 1
 
+# damage threshold in percent (default 5)
+damage_thr_arg <- get_arg("--damage_threshold", Sys.getenv("PLOTS_DAMAGE_THRESHOLD", "5"))
+damage_threshold <- suppressWarnings(as.numeric(damage_thr_arg))
+if (is.na(damage_threshold) || damage_threshold < 0) damage_threshold <- 5
+
+message("[100_Plots.R] damage_threshold(%): ", damage_threshold)
+
 if (!bamdam_plot_mode %in% c("heatmap", "bubble", "both")) {
   message("[100_Plots.R] WARNING: invalid --bamdam_plot='", bamdam_plot_mode,
           "'. Using 'heatmap'. Allowed: heatmap, bubble, both.")
@@ -51,7 +58,25 @@ read_sample_list <- function(path) {
     return(character(0))
   }
   samp <- readr::read_lines(path)
-  samp[samp != ""]
+  samp <- samp[samp != ""]
+
+  # If the sample list contains FASTQ paths, convert to sample IDs.
+  normalize_one <- function(x) {
+    if (is.na(x) || !nzchar(x)) return(x)
+    b <- basename(x)
+
+    # strip compression + fastq suffixes
+    b <- sub("\\.(fastq|fq)\\.gz$", "", b, ignore.case = TRUE)
+    b <- sub("\\.(fastq|fq)$", "", b, ignore.case = TRUE)
+
+    # strip common read mate / chunk suffixes
+    b <- sub("(_R[12]_[0-9]+)$", "", b, ignore.case = TRUE)  # SAMPLE_R1_001
+    b <- sub("(_R[12])$", "", b, ignore.case = TRUE)         # SAMPLE_R1
+
+    b
+  }
+
+  unique(vapply(samp, normalize_one, character(1)))
 }
 
 # ================================================================
@@ -61,7 +86,7 @@ make_metrics_plot <- function(metrics_path, samples_path, outdir) {
   message("[metrics] starting metrics plot")
 
   if (is.null(metrics_path) || !file.exists(metrics_path)) {
-    message("[metrics] metrics file not found at: ", metrics_path, " - skipping.")
+    message("[metrics] metrics file not found: ", metrics_path, " - skipping metrics plot.")
     return(invisible(NULL))
   }
 
@@ -73,9 +98,12 @@ make_metrics_plot <- function(metrics_path, samples_path, outdir) {
   m <- suppressMessages(read_tsv(metrics_path, show_col_types = FALSE))
   message("[metrics] metrics rows: ", nrow(m), " cols: ", ncol(m))
 
-  if (!"sample" %in% names(m)) stop("[metrics] ERROR: metrics TSV must contain a 'sample' column.")
+  if (!"sample" %in% names(m)) {
+    message("[metrics] WARNING: metrics TSV has no 'sample' column - skipping metrics plot.")
+    return(invisible(NULL))
+  }
 
-  if (!is.null(primary_samples) && length(primary_samples) > 0) {
+  if (length(primary_samples) > 0) {
     m <- m %>% filter(sample %in% primary_samples)
   }
   if (nrow(m) == 0L) {
@@ -83,24 +111,51 @@ make_metrics_plot <- function(metrics_path, samples_path, outdir) {
     return(invisible(NULL))
   }
 
-  step_col  <- intersect(c("step", "Steps", "pipeline_step"), names(m))[1]
-  reads_col <- intersect(c("reads", "read_count", "n_reads", "Reads"), names(m))[1]
-  if (is.na(step_col))  stop("[metrics] ERROR: metrics TSV must contain a step column (step / Steps / pipeline_step).")
-  if (is.na(reads_col)) stop("[metrics] ERROR: metrics TSV must contain a reads column (reads / read_count / n_reads / Reads).")
+  # Case 1: already long format with a step column
+  step_col  <- intersect(c("step", "Steps", "pipeline_step", "Step", "STEPS"), names(m))[1]
+  reads_col <- intersect(c("reads", "read_count", "n_reads", "Reads", "READS"), names(m))[1]
 
-  m <- m %>%
-    mutate(
-      step  = as.factor(.data[[step_col]]),
-      reads = as.numeric(.data[[reads_col]])
-    )
+  if (!is.na(step_col) && !is.na(reads_col)) {
+    df <- m %>%
+      mutate(
+        step  = as.factor(.data[[step_col]]),
+        reads = as.numeric(.data[[reads_col]])
+      ) %>%
+      select(sample, step, reads)
+  } else {
+    # Case 2: wide format (one row per sample; step columns are numeric)
+    num_cols <- names(m)[vapply(m, is.numeric, logical(1))]
+    num_cols <- setdiff(num_cols, "sample")
 
-  p <- ggplot(m, aes(x = step, y = reads, colour = sample)) +
+    if (length(num_cols) == 0) {
+      message("[metrics] WARNING: couldn't find step+reads columns and no numeric step columns to pivot - skipping metrics plot.")
+      message("[metrics] columns: ", paste(names(m), collapse = ", "))
+      return(invisible(NULL))
+    }
+
+    # Keep the column order as the step order
+    df <- m %>%
+      select(sample, all_of(num_cols)) %>%
+      pivot_longer(cols = all_of(num_cols), names_to = "step", values_to = "reads") %>%
+      mutate(
+        step  = factor(step, levels = num_cols),
+        reads = as.numeric(reads)
+      )
+  }
+
+  # Drop missing/zero reads safely
+  df <- df %>% filter(!is.na(reads))
+  if (nrow(df) == 0L) {
+    message("[metrics] no numeric reads to plot - skipping.")
+    return(invisible(NULL))
+  }
+
+  p <- ggplot(df, aes(x = step, y = reads, colour = sample)) +
     geom_point(size = 2, alpha = 0.8, position = position_jitter(width = 0.15, height = 0)) +
     scale_y_log10() +
     labs(x = NULL, y = "Reads (log10)", colour = "Sample") +
     theme_bw(base_size = 10) +
     theme(
-      panel.border      = element_blank(),
       axis.text.x       = element_text(angle = 45, hjust = 1),
       panel.grid.major  = element_blank(),
       panel.grid.minor  = element_blank(),
@@ -176,7 +231,7 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
   bam_list <- purrr::map(files, function(f) {
     x <- suppressMessages(read_tsv(f, show_col_types = FALSE))
 
-    needed <- c("TaxName", "TotalReads", "taxpath")
+    needed <- c("TaxName", "TotalReads", "taxpath", "Damage+1")
     missing <- setdiff(needed, names(x))
     if (length(missing) > 0) {
       stop("Bamdam file ", f, " is missing columns: ", paste(missing, collapse = ", "))
@@ -199,6 +254,7 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
       taxon   = as.character(x$TaxName),
       rank    = ranks,
       reads   = as.numeric(x$TotalReads),
+      damage_p1 = as.numeric(x$`Damage+1`),
       taxpath = as.character(x$taxpath)
     ) %>%
       filter(rank %in% c("genus", "family"))
@@ -314,6 +370,53 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
         log_reads = log10(reads + 1)
       )
 
+
+# ---- damage class per cell (sample-dependent) ----
+# Use Damage+1 directly from TSV (fraction). Convert to percent for thresholding.
+damage_cell <- dat_rank %>%
+  filter(sample %in% sample_order) %>%
+  group_by(taxon, sample) %>%
+  summarise(
+    reads = sum(reads, na.rm = TRUE),
+    dmg   = dplyr::first(damage_p1),
+    .groups = "drop"
+  ) %>%
+  mutate(dmg_pct = 100 * dmg)
+
+# For each sample: mean damage (percent) of the 3 most abundant taxa with >5% damage
+ref_by_sample <- damage_cell %>%
+  filter(dmg_pct > damage_threshold) %>%
+  group_by(sample) %>%
+  arrange(desc(reads), .by_group = TRUE) %>%
+  slice_head(n = 3) %>%
+  summarise(ref_mean = mean(dmg_pct, na.rm = TRUE), .groups = "drop") %>%
+  mutate(ref_low = pmax(damage_threshold, ref_mean - 5), ref_high = ref_mean + 5)
+
+damage_cell <- damage_cell %>%
+  left_join(ref_by_sample, by = "sample") %>%
+  mutate(
+    cond_damage_gt5 = dmg_pct > damage_threshold,
+    cond_near_ref   = ifelse(is.na(ref_mean), FALSE, (dmg_pct >= ref_low & dmg_pct <= ref_high)),
+    damage_class = dplyr::case_when(
+      cond_damage_gt5 & cond_near_ref ~ "green",
+      xor(cond_damage_gt5, cond_near_ref) ~ "orange",
+      TRUE ~ "red"
+    )
+  ) %>%
+  select(taxon, sample, damage_class)
+
+df_long <- df_long %>%
+  mutate(taxon_chr = as.character(taxon), sample_chr = as.character(sample)) %>%
+  left_join(
+    damage_cell %>% transmute(taxon_chr = taxon, sample_chr = sample, damage_class),
+    by = c("taxon_chr", "sample_chr")
+  ) %>%
+  mutate(
+    damage_class = factor(tidyr::replace_na(damage_class, "red"),
+                          levels = c("red", "orange", "green"))
+  ) %>%
+  select(-taxon_chr, -sample_chr)
+
     list(df = df_long, max_log = max(df_long$log_reads, na.rm = TRUE))
   }
 
@@ -414,29 +517,31 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
   }
 
   # ---- plot: bubble ----
-  plot_bubble <- function(df_long, max_log, out_prefix) {
+  plot_bubble_damage <- function(df_long, max_log, out_prefix) {
     max_log <- max(max_log, max(legend_breaks))
     min_log <- 0
 
     # bubble size based on log10(reads+1)
-    df_plot <- df_long %>% dplyr::filter(reads > 0)
+    df_plot <- df_long %>%
+      dplyr::filter(reads > 0) %>%
+      dplyr::mutate(label = formatC(as.integer(round(reads)), format = "f", digits = 0, big.mark = ","))
 
     p <- ggplot(df_plot, aes(x = sample, y = taxon)) +
-      geom_point(aes(size = log_reads, fill = log_reads), shape = 21, colour = "black", stroke = 0.15, alpha = 0.9) +
+      geom_point(aes(size = log_reads, fill = damage_class), shape = 21, colour = "black", stroke = 0.15, alpha = 0.9) +
+      geom_text(aes(label = label), colour = "black", size = 2) +
       scale_x_discrete(
         position = "top",
         limits   = sample_order,
         labels   = rep("", length(sample_order)),
-        expand   = expansion(add = c(0.5, 0.5))
+        expand   = expansion(add = c(0.6, 0.6))
       ) +
       scale_y_discrete(name = NULL) +
-      scale_fill_gradientn(
-        colours = heat_colors,
-        limits  = c(min_log, max_log),
-        breaks  = legend_breaks,
-        labels  = formatC(legend_counts, format = "fg", big.mark = ","),
-        name    = "Unique Reads",
-        guide   = guide_colorbar(order = 1, title.position = "top")
+      scale_fill_manual(
+        name   = "Damage",
+        values = c(red = "red", orange = "orange", green = "green"),
+        breaks = c("green","orange","red"),
+        labels = c("Confident", "Require investigation", "Insufficiently damaged"),
+        guide  = guide_legend(order = 1, title.position = "top")
       ) +
       scale_size_continuous(
         range  = c(0.2, 7),
@@ -503,7 +608,7 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
         scale_colour_manual(
           name = "Sample type",
           values = setNames(sample_type_cols, levels(label_df_name$sample_type)),
-          guide = guide_legend(order = 2, title.position = "top")
+          guide = guide_legend(order = 3, title.position = "top")
         )
     }
 
@@ -516,6 +621,106 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
     message("[bamdam] saving: ", png_file)
     ggsave(png_file, p, width = 9, height = 8, dpi = 300)
   }
+
+plot_bubble_reads <- function(df_long, max_log, out_prefix) {
+  legend_counts <- c(1, 10, 100, 1000, 10000, 100000)
+  legend_breaks <- log10(legend_counts)
+
+  max_log <- max(max_log, max(legend_breaks))
+  min_log <- 0
+
+  df_plot <- df_long %>%
+    dplyr::filter(reads > 0) %>%
+    dplyr::mutate(label = formatC(as.integer(round(reads)), format = "f", digits = 0, big.mark = ","))
+
+  p <- ggplot(df_plot, aes(x = sample, y = taxon)) +
+    geom_point(aes(size = log_reads, fill = log_reads),
+               shape = 21, colour = "black", stroke = 0.15, alpha = 0.9) +
+    geom_text(aes(label = label), colour = "black", size = 2) +
+    scale_x_discrete(
+      position = "top",
+      limits   = sample_order,
+      labels   = rep("", length(sample_order)),
+      expand   = expansion(add = c(0.6, 0.6))
+    ) +
+    scale_y_discrete(name = NULL) +
+    scale_fill_gradientn(
+      colours = heat_colors,
+      limits  = c(min_log, max_log),
+      breaks  = legend_breaks,
+      labels  = formatC(legend_counts, format = "fg", big.mark = ","),
+      name    = "Unique Reads",
+      guide   = guide_colorbar(order = 1, title.position = "top")
+    ) +
+    scale_size_continuous(
+      name  = "Unique Reads",
+      range = c(0.5, 6),
+      guide = guide_legend(order = 2, title.position = "top")
+    ) +
+    labs(x = NULL, y = NULL) +
+    coord_cartesian(clip = "off") +
+    theme_bw(base_size = 9) +
+    theme(
+      axis.title.x.bottom = element_blank(),
+      axis.ticks.x        = element_blank(),
+      panel.grid          = element_blank(),
+      legend.position     = "right",
+      legend.title        = element_text(size = 8),
+      legend.text         = element_text(size = 7),
+      plot.margin         = grid::unit(c(1.2, 0.5, 0.5, 1.0), "lines")
+    ) +
+    annotate("text",
+             x = 0.5, y = Inf,
+             label = "Samples\nThousand years ago",
+             hjust = 1, vjust = -0.3, size = 2.5)
+
+  if (requireNamespace("ggnewscale", quietly = TRUE)) {
+    p <- p +
+      ggnewscale::new_scale_fill() +
+      geom_label(
+        data = label_df_name, inherit.aes = FALSE,
+        aes(x = sample, y = Inf, label = label, fill = sample_type),
+        vjust = -1.3, size = 2.7,
+        linewidth = 0.15,
+        label.r = grid::unit(0.08, "lines"),
+        key_glyph = ggplot2::draw_key_rect
+      ) +
+      geom_text(
+        data = label_df_age, inherit.aes = FALSE,
+        aes(x = sample, y = Inf, label = label),
+        vjust = -0.7, size = 2.6, colour = "black",
+        show.legend = FALSE
+      ) +
+      scale_fill_manual(
+        name = "Sample type",
+        values = setNames(sample_type_cols, levels(label_df_name$sample_type)),
+        guide = guide_legend(order = 3, title.position = "top")
+      )
+  } else {
+    p <- p +
+      geom_text(
+        data = label_df_name, inherit.aes = FALSE,
+        aes(x = sample, y = Inf, label = label),
+        vjust = 1.35, size = 2.7, colour = "black", show.legend = FALSE
+      ) +
+      geom_text(
+        data = label_df_age, inherit.aes = FALSE,
+        aes(x = sample, y = Inf, label = label),
+        vjust = 2.60, size = 2.6, colour = "black",
+        show.legend = FALSE
+      )
+  }
+
+  pdf_file <- file.path(outdir, paste0(out_prefix, ".pdf"))
+  png_file <- file.path(outdir, paste0(out_prefix, ".png"))
+
+  message("[bamdam] saving: ", pdf_file)
+  ggsave(pdf_file, p, width = 9, height = 8)
+
+  message("[bamdam] saving: ", png_file)
+  ggsave(png_file, p, width = 9, height = 8, dpi = 300)
+}
+
 
   # ---- run genus + family ----
   for (rank_sel in c("genus", "family")) {
@@ -533,7 +738,8 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
     }
     if (plot_mode %in% c("bubble", "both")) {
       out_prefix <- paste0("bamdam_", rank_sel, "_bubbleplot")
-      plot_bubble(df_long, max_log, out_prefix)
+      plot_bubble_damage(df_long, max_log, paste0(out_prefix, "_damage"))
+      plot_bubble_reads(df_long, max_log, paste0(out_prefix, "_reads"))
     }
   }
 
