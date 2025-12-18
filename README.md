@@ -102,7 +102,7 @@ The second plot is giving the taxa composition as a bubble plot or a heatmap (ca
 The user can filter the minimum number of reads required to plot a taxa in the config file.\
 It will produce two different plots each time, one for the genus and one for the family, plotting in alphabetical order the Viridiplantae taxa first and then the Opisthokonta taxa.
 
-![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_bubbleplot.png)
+![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_bubbleplot_reads.png)
 ![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_heatmap.png)
 &copy; Inspired by Tyler Murchie and Scott Cocker plot - in revision
 
