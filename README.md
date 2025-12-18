@@ -108,6 +108,7 @@ It will produce two different plots each time, one for the genus and one for the
 > The damage will be coded by 3 colours (red,orange,green).\
 > Green if for this taxa the damage are superior to 5% and if the damage percent is within the interval (+-5%) of the mean of the damage of the 3 main taxa that have more than 5% damage.\
 > If only one condition is met, the associated damage column will be orange and the user will be invited to investigate deeper this taxa.\
+> ![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_bubbleplot_damage.png)
 > Also add a feature of the maximum number of taxa to be plotted together on the graph and the maximum number of sites will be implemented soon.
 
 
