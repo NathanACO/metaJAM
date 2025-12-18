@@ -13,6 +13,7 @@ METRICS_TSV="${METRICS_TSV:-${OUT_ROOT}/99_metrics/metrics.tsv}"
 BAMDAM_DIR="${BAMDAM_DIR:-${OUT_ROOT}/05_filtering/bamdam}"
 MIN_READS="${PLOTS_BAMDAM_MIN_READS:-1}"    # Minimum reads per sample to include in bamdam plots
 PLOTS_BAMDAM_PLOT_MODE="${PLOTS_BAMDAM_PLOT_MODE:-heatmap}"
+PLOTS_DAMAGE_THRESHOLD="${PLOTS_DAMAGE_THRESHOLD:-5}"
 # User-provided metadata file
 METADATA_PATH="${METADATA_PATH:?Need METADATA_PATH pointing to metadata TSV}"
 
@@ -72,6 +73,7 @@ fi
   --outdir "${PLOT_DIR}" \
   --min_reads "${MIN_READS}" \
   --bamdam_plot "${PLOTS_BAMDAM_PLOT_MODE}" \
+  --damage_threshold "${PLOTS_DAMAGE_THRESHOLD}" \
   > "${LOG_ROOT}/100_plots.R.out" 2>&1
 
 echo "[100_Plots] finished. Plots in ${PLOT_DIR}"
