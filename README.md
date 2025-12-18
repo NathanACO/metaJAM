@@ -82,7 +82,7 @@ Precise 1 or 0 for each step, 1=enable, 0=disable
 --stranded             (default=ds)\
 --minreads             (default=5)\
 --maxdamage            (default=0.5)\
-TOP_GENUS              (default=10) # Top X genus to plot for damage
+TOP_GENUS              (default=10)    - Number of the most abundant genus to plot for damage
 6. *Plots*\
 PLOTS_BAMDAM_MIN_READS (default=50)    - Minimum reads per sample to include in bamdam plots\
 PLOTS_BAMDAM_PLOT_MODE (default=both)  - Chose which plots to produce: heatmap, bubble or both\
