@@ -23,6 +23,8 @@ JOB_PRINSEQ=""
 JID_KRAKEN=""
 JOB_MAP=""
 JOB_FILTER=""
+JOB_METRICS=""
+JOB_PLOTS=""
 
 # Resolve where the step scripts are
 RUN_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -805,26 +807,24 @@ if [[ ${ENABLE_METRICS:-1} -eq 1 ]]; then
   require_file "${SCRIPTS_DIR}/99_metrics.sh"
   mkdir -p "${OUT_ROOT}/99_metrics"
 
-  # Make metrics wait on the latest relevant stage (filtering if enabled, else mapping, else Kraken, else SGA/PRINSEQ, else run immediately).
-  deps=()
+  # Metrics should wait for filtering jobs, if filtering was launched.
+  METRICS_DEPS=()
   if [[ -n "${JOB_FILTER:-}" ]]; then
-    deps=( --dependency="afterok:${JOB_FILTER}" )
-  elif [[ -n "${JOB_MAP:-}" ]]; then
-    deps=( --dependency="afterok:${JOB_MAP}" )
-  elif [[ -n "${JID_KRAKEN:-}" ]]; then
-    deps=( --dependency="afterok:${JID_KRAKEN}" )
-  elif [[ -n "${JOB_PRINSEQ:-}" ]]; then
-    deps=( --dependency="afterok:${JOB_PRINSEQ}" )
-   elif [[ -n "${JOB_SGA:-}" ]]; then
-    deps=( --dependency="afterok:${JOB_SGA}" )
+    METRICS_DEPS=( --dependency="afterok:${JOB_FILTER}" )
   fi
 
-  sbatch "${deps[@]}" "${SBATCH_BUILT_OPTS[@]}" \
+  JOB_METRICS=$(sbatch "${METRICS_DEPS[@]}" "${SBATCH_BUILT_OPTS[@]}" \
     --job-name="${METRICS_SBATCH_JOB_NAME:-metrics}" \
     --output="${LOG_ROOT}/out/metrics.%x.%j.out" \
     --error="${LOG_ROOT}/error/metrics.%x.%j.err" \
-    --export=ALL,OUT_ROOT="${OUT_ROOT}",LOG_ROOT="${LOG_ROOT}",PRIMARY_LIST_PATH="${OUT_ROOT}/00_Samples_prefix/samples.primary.txt",SAMTOOLS_MODULE="${SAMTOOLS_MODULE}" \
-    "${SCRIPTS_DIR}/99_metrics.sh"
+    --export=ALL,\
+OUT_ROOT="${OUT_ROOT}",\
+LOG_ROOT="${LOG_ROOT}",\
+PRIMARY_LIST_PATH="${PRIMARY_LIST_PATH:-${OUT_ROOT}/00_Samples_prefix/samples.primary.txt}",\
+SAMTOOLS_MODULE="${SAMTOOLS_MODULE}" \
+    "${SCRIPTS_DIR}/99_metrics.sh" | awk '{print $4}')
+
+  echo "[METRICS] -> ${JOB_METRICS}"
 fi
 
 # -----------------------------------------------------------------------------
@@ -835,7 +835,14 @@ if [[ ${ENABLE_PLOTS:-1} -eq 1 ]]; then
   sbatch_opts PLOTS
   require_file "${SCRIPTS_DIR}/100_Plots.sh"
   mkdir -p "${OUT_ROOT}/100_plots"
-  sbatch "${deps[@]}" "${SBATCH_BUILT_OPTS[@]}" \
+
+  # Plots should wait for metrics job, if metrics was launched.
+  PLOTS_DEPS=()
+  if [[ -n "${JOB_METRICS:-}" ]]; then
+    PLOTS_DEPS=( --dependency="afterok:${JOB_METRICS}" )
+  fi
+
+  JOB_PLOTS=$(sbatch "${PLOTS_DEPS[@]}" "${SBATCH_BUILT_OPTS[@]}" \
     --job-name="${PLOTS_SBATCH_JOB_NAME:-plots}" \
     --output="${LOG_ROOT}/out/plots.%x.%j.out" \
     --error="${LOG_ROOT}/error/plots.%x.%j.err" \
@@ -848,7 +855,9 @@ SCRIPTS_DIR="${SCRIPTS_DIR}",\
 METADATA_PATH="${METADATA_PATH}",\
 PLOTS_BAMDAM_MIN_READS="${PLOTS_BAMDAM_MIN_READS}",\
 PLOTS_BAMDAM_PLOT_MODE="${PLOTS_BAMDAM_PLOT_MODE}",\
+PLOTS_DAMAGE_THRESHOLD="${PLOTS_DAMAGE_THRESHOLD}",\
 METRICS_TSV="${METRICS_TSV:-${OUT_ROOT}/99_metrics/metrics.tsv}",\
 BAMDAM_DIR="${BAMDAM_DIR:-${OUT_ROOT}/05_filtering/bamdam}" \
-    "${SCRIPTS_DIR}/100_Plots.sh"
+    "${SCRIPTS_DIR}/100_Plots.sh" | awk '{print $4}')
+  echo "[PLOTS] -> ${JOB_PLOTS}"
 fi
