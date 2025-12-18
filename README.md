@@ -96,7 +96,7 @@ To be refine based on samples size and database using
 Two different plots are created by metaJAM and required a metadata file (see in test for metadata format and content).\
 The first plot created is giving an overview of the metrics of the samples processed:
 ![alt text](https://github.com/NathanACO/metaJAM/blob/main/reads_per_step_dots.png)
-&copy; Martin et al. 2025 plot, peatbog paper - in revision\
+&copy; Martin et al. 2025 plot, peatbog paper - in revision
 
 The second plot is giving the taxa composition as a bubble plot or a heatmap (can be chosen in the config file).\
 The user can filter the minimum number of reads required to plot a taxa in the config file.\
