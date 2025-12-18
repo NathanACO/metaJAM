@@ -155,7 +155,8 @@ TOP_GENUS=10                   # Top X genus to plot for damage
 
 # Plot parameters
 PLOTS_BAMDAM_MIN_READS=50    # Minimum reads per sample to include in bamdam plots
-PLOTS_BAMDAM_PLOT_MODE="both" # heatmap, bubble, both
+PLOTS_BAMDAM_PLOT_MODE="both"   # heatmap, bubble, both
+PLOTS_DAMAGE_THRESHOLD=3.5        # Minimum percentage of damage for plotting
 
 ###################################################################################
 #                               SBATCH parameters
