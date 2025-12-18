@@ -120,6 +120,7 @@ It will produce two different plots each time, one for the genus and one for the
 > ![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_bubbleplot_damage.png)
 > 
 > Also add a feature of the maximum number of taxa to be plotted together on the graph and the maximum number of sites will be implemented soon.
+> We will also add a list of taxa given by the user to exclude from the graph, or suggested by metaJAM from the damage supplementary plot.
 
 
 _Why metaJAM?_\
