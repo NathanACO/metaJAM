@@ -69,19 +69,24 @@ Precise 1 or 0 for each step, 1=enable, 0=disable
 
 ## Parameters to precise for specific tools
 1. *fastp*\
--overlap_len_require (default=20)\
--l (default=30)
+-overlap_len_require   (default=20)\
+-l                     (default=30)
 2. *SGA*\
---dust-threshold (default=4)
+--dust-threshold       (default=4)
 3. *PRINSEQ*\
--lc_method (default=dust)\
--lc_threshold (default=4)\
--min_len (default=35)\
--derep (default=1)
+-lc_method             (default=dust)\
+-lc_threshold          (default=4)\
+-min_len               (default=35)\
+-derep                 (default=1)
 4. *bamdam*\
---stranded (default=ds)\
---minreads (default=5)\
---maxdamage (default=0.5)
+--stranded             (default=ds)\
+--minreads             (default=5)\
+--maxdamage            (default=0.5)\
+TOP_GENUS              (default=10) # Top X genus to plot for damage
+6. *Plots*\
+PLOTS_BAMDAM_MIN_READS (default=50)    - Minimum reads per sample to include in bamdam plots\
+PLOTS_BAMDAM_PLOT_MODE (default=both)  - Chose which plots to produce: heatmap, bubble or both\
+PLOTS_DAMAGE_THRESHOLD (default=3.5)   - Minimum percentage of damage for plotting
 
 ## SBATCH parameters
 To be refine based on samples size and database using
