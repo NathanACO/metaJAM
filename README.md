@@ -96,17 +96,19 @@ To be refine based on samples size and database using
 Two different plots are created by metaJAM and required a metadata file (see in test for metadata format and content).\
 The first plot created is giving an overview of the metrics of the samples processed:\
 ![alt text](https://github.com/NathanACO/metaJAM/blob/main/reads_per_step_dots.png)
+&copy; Nathan Martin plot, peatbog paper - in revision
 The second plot is giving the taxa composition as a bubble plot or a heatmap (can be chosen in the config file).\
 The user can filter the minimum number of reads required to plot a taxa in the config file.\
 It will produce two different plots each time, one for the genus and one for the family, plotting in alphabetical order the Viridiplantae taxa first and then the Opisthokonta taxa.
 ![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_bubbleplot.png)
 ![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_heatmap.png)
+&copy; Tyler Murchie and Scott Cocker plot - in revision
 > [!NOTE]
-> An extra column containing information about the damage and the blast validation of each taxa will be implemented soon.\
+> An extra plot containing information about the damage is also produced for supplementary information.\
 > The damage will be coded by 3 colours (red,orange,green).\
 > Green if for this taxa the damage are superior to 5% and if the damage percent is within the interval (+-5%) of the mean of the damage of the 3 main taxa that have more than 5% damage.\
 > If only one condition is met, the associated damage column will be orange and the user will be invited to investigate deeper this taxa.\
-> Also add a feature of the maximum number of taxa to be plotted together on the graph and the maximum of number.
+> Also add a feature of the maximum number of taxa to be plotted together on the graph and the maximum number of sites will be implemented soon.
 
 
 _Why metaJAM?_\
