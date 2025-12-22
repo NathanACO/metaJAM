@@ -33,6 +33,20 @@ RUN_DIR="$(cd "$(dirname "$0")" && pwd)"
 # tiny helpers
 require_dir()  { [[ -d "$1" ]] || { echo "[ERROR] Missing dir: $1"; exit 1; }; }
 require_file() { [[ -f "$1" ]] || { echo "[ERROR] Missing file: $1"; exit 1; }; }
+
+# Derive a clean tag from a Bowtie2 index prefix path (used for run-specific mapping folders)
+db_tag_from_prefix() {
+  local p="$1"
+  p="${p%/}"
+  local tag
+  tag="$(basename "$p")"
+  while [[ "$tag" == *_ ]]; do tag="${tag%_}"; done
+  if [[ -z "$tag" ]]; then
+    tag="$(basename "$(dirname "$p")")"
+  fi
+  echo "$tag"
+}
+
 require_dir "${SCRIPTS_DIR}"
 
 # 3) (Optional but helpful) guard + echo
@@ -40,6 +54,18 @@ require_nonempty() { local k="$1"; [[ -n "${!k:-}" ]] || { echo "[CONFIG] $k is 
 require_nonempty OUT_ROOT
 require_nonempty TMP_ROOT
 require_nonempty LOG_ROOT
+
+# Mapping DB list (order matters). If unset, default to original 4 DBs.
+: "${MAP_DB_LIST:=${PHYLONORWAY} ${PLASTID} ${MITO} ${MAM_BIRD_FISH}}"
+# Compute the tag for the LAST DB (drives run-specific output folder naming)
+read -r -a __map_dbs_arr <<< "${MAP_DB_LIST}"
+MAP_LAST_DB_PREFIX="${__map_dbs_arr[$((${#__map_dbs_arr[@]}-1))]}"
+MAP_LAST_DB_TAG="$(db_tag_from_prefix "${MAP_LAST_DB_PREFIX}")"
+unset __map_dbs_arr
+
+echo "[CONFIG] MAP_DB_LIST=${MAP_DB_LIST}"
+echo "[CONFIG] MAP_LAST_DB_TAG=${MAP_LAST_DB_TAG}"
+
 echo "[CONFIG] using $CFG"
 echo "[CONFIG] OUT_ROOT=$OUT_ROOT"
 echo "[CONFIG] TMP_ROOT=$TMP_ROOT"
@@ -156,8 +182,12 @@ build_primary_list() {
     ls -1 "${KRAKEN_UNCLAS_DIR}"/*_GTDB_unclas.fastq.gz 2>/dev/null \
       | sed -E 's/_GTDB_unclas\.fastq\.gz$//' >> "${PRIMARY_LIST_PATH}" || true
   elif [[ -n "${MAPPING_BAM_DIR:-}" ]];   then
-    ls -1 "${MAPPING_BAM_DIR}"/*.b2.k1000.all.sorted.bam 2>/dev/null \
-      | sed -E 's/\.b2\.k1000\.all\.sorted\.bam$//' >> "${PRIMARY_LIST_PATH}" || true
+    shopt -s nullglob
+    for f in "${MAPPING_BAM_DIR}"/*/*/*.b2.k1000.all.sorted.bam "${MAPPING_BAM_DIR}"/*.b2.k1000.all.sorted.bam; do
+      [[ -f "$f" ]] || continue
+      basename "$f" | sed -E 's/\.b2\.k1000\.all\.sorted\.bam$//' >> "${PRIMARY_LIST_PATH}" || true
+    done
+    shopt -u nullglob
   fi
   sort -u -o "${PRIMARY_LIST_PATH}" "${PRIMARY_LIST_PATH}" || true
   echo "[INFO] Primary samples: $(wc -l < "${PRIMARY_LIST_PATH}" | tr -d ' ') -> ${PRIMARY_LIST_PATH}"
@@ -705,8 +735,9 @@ SAMPLE_LIST="${MAP_LIST_SNAP}",\
 INPUT_DIR="${OUT_ROOT}/03_kraken_gtdb",\
 OUTPUT_DIR="${OUT_ROOT}/04_mapping",\
 TMPDIR="${TMP_ROOT}",\
+MAP_DB_LIST="${MAP_DB_LIST}",\
 PHYLONORWAY="${PHYLONORWAY}",\
-HEADER="${PHYLONORWAY_HEADER}",\
+PHYLONORWAY_HEADER="${PHYLONORWAY_HEADER}",\
 PLASTID="${PLASTID}",\
 MITO="${MITO}",\
 MAM_BIRD_FISH="${MAM_BIRD_FISH}",\
@@ -755,6 +786,8 @@ if [[ ${ENABLE_FILTERING:-1} -eq 1 ]]; then
       --export=ALL,\
 SAMPLE_LIST="${FILTER_LIST_SNAP}",\
 MAP_DIR="${OUT_ROOT}/04_mapping",\
+MAP_DB_LIST="${MAP_DB_LIST}",\
+MAP_LAST_DB_TAG="${MAP_LAST_DB_TAG}",\
 OUT_DIR="${OUT_ROOT}/05_filtering",\
 ENABLE_FILTERBAM="${ENABLE_FILTERBAM}",\
 ENABLE_NGSLCA="${ENABLE_NGSLCA}",\
