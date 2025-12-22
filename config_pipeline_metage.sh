@@ -53,7 +53,7 @@ MAP_REQUIRE_PRIMARY=1 #If you want to run mapping on every kraken files present 
 OVERRIDE_LIST_FASTP="" # Give absolute path - In the case you are not using fastp to preprocess the reads
 OVERRIDE_LIST_SGA="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/01_fastp/List_SGA.txt" # Give absolute path
 OVERRIDE_LIST_PRINSEQ="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/01_fastp/List_Prinseq.txt"
-OVERRIDE_LIST_KRAKEN="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/List_Kraken.txt" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/02_sga/List_Kraken.txt" # Give absolute path
+OVERRIDE_LIST_KRAKEN="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/List_Kraken.txt" # Give absolute path
 OVERRIDE_LIST_MAPPING="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/List_mapping.txt"" # Give absolute path
 OVERRIDE_LIST_FILTER="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/04_mapping/List_filter.txt" # Give absolute path
 OVERRIDE_LIST_METRICS="" #"/absolute/path/to/List_filter.txt"
@@ -78,7 +78,21 @@ PHYLONORWAY="/cfs/klemming/projects/supr/sediment_paleogenomics/databases/metage
 PHYLONORWAY_HEADER="/cfs/klemming/projects/supr/sediment_paleogenomics/databases/metagenomic/PhyloNorway_masked/PhyloNorway_index/PhyloNorway_sq_header.tsv"
 PLASTID="/cfs/klemming/projects/supr/sediment_paleogenomics/tom/CHLOROPLAST/plastids.genomic"
 MITO="/cfs/klemming/projects/snic/sediment_paleogenomics/databases/bowtie2/refseq_mito/mitochondrion.1.1.genomic"
-MAM_BIRD_FISH="/cfs/klemming/projects/supr/archaeogenetics/ernjoh/mam-bird-fish_v2/mam-bird-fish_v2"
+MAM_BIRD_FISH="/cfs/klemming/projects/supr/archaeogenetics/ernjoh/mam-bird-fish_v2/mam-bird-fish_v2" #"/cfs/klemming/projects/supr/archaeogenetics/ernjoh/mam-bird-fish_v2/mam-bird-fish_v2"
+MAM_FISH="/cfs/klemming/projects/snic/sediment_paleogenomics/databases/bowtie2/nordic_fish" #"/cfs/klemming/projects/supr/archaeogenetics/ernjoh/mam-bird-fish_v2/mam-bird-fish_v2"
+
+
+# Databases to map with Bowtie2 (order matters). Space-separated list of index prefixes.
+# Example:
+#   MAP_DB_LIST="${PHYLONORWAY} ${PLASTID} ${MITO} ${MAM_BIRD_FISH}"
+MAP_DB_LIST="${PHYLONORWAY} ${MAM_FISH}"
+
+# Optional: explicitly select which mapping run folder to use when filtering-only.
+# This must match the folder suffix created by mapping:
+# 04_mapping/<SAMPLE>/<SAMPLE>_<MAP_LAST_DB_TAG>/
+# Example: nordic_fish
+MAP_LAST_DB_TAG="${MAP_LAST_DB_TAG:-}"
+
 
 # Kraken2 GTDB 
 GTDB_SRC="/cfs/klemming/pdc/software/dardel/sw-uppmax/data/Kraken2_data/prebuilt/k2_gtdb_genome_reps_20250609"
@@ -86,7 +100,7 @@ GTDB_SRC="/cfs/klemming/pdc/software/dardel/sw-uppmax/data/Kraken2_data/prebuilt
 # NCBI taxonomy files
 NAMES="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/names_NM.dmp"
 NODES="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/nodes_NM.dmp"
-ACC2TAX="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/acc2taxid_NM_PhyloNorway_MBF_3col_noNA.txt.gz"
+ACC2TAX="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/acc2taxid_nordic_fish2.tsv.gz" #"/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/acc2taxid_NM_PhyloNorway_MBF_3col_noNA.txt.gz"
 
 #### Path to roots
 OUT_ROOT="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out"
@@ -115,14 +129,14 @@ ENABLE_FASTP=0
 ENABLE_SGA=0
 ENABLE_PRINSEQ=0        # set 1 to use PRINSEQ instead of SGA         
 ENABLE_KRAKEN_GTDB=0
-ENABLE_MAPPING=0
-ENABLE_FILTERING=0      # If set to 0, neither filterBAM or ngsLCA or bamdam will run
+ENABLE_MAPPING=1
+ENABLE_FILTERING=1      # If set to 0, neither filterBAM or ngsLCA or bamdam will run
 ENABLE_FILTERBAM=0
-ENABLE_NGSLCA=0
-ENABLE_BAMDAM=0
+ENABLE_NGSLCA=1
+ENABLE_BAMDAM=1
 ENABLE_MMSEQS2=0
 ENABLE_METRICS=0
-ENABLE_PLOTS=1
+ENABLE_PLOTS=0
 
 #### Force re-run switches (0/1). When 1, submit the step even if its outputs exist.
 FORCE_FASTP=1
@@ -154,7 +168,7 @@ BAMDAM_MAXDAMAGE=0.5          # for bamdam krona --maxdamage
 TOP_GENUS=10                   # Top X genus to plot for damage
 
 # Plot parameters
-PLOTS_BAMDAM_MIN_READS=50    # Minimum reads per sample to include in bamdam plots
+PLOTS_BAMDAM_MIN_READS=50       # Minimum reads per sample to include in bamdam plots
 PLOTS_BAMDAM_PLOT_MODE="both"   # heatmap, bubble, both
 PLOTS_DAMAGE_THRESHOLD=3.5        # Minimum percentage of damage for plotting
 
@@ -217,7 +231,7 @@ MAP_SBATCH_ACCOUNT="naiss2025-5-78" #"naiss2025-5-78" #naiss2025-5-616
 MAP_SBATCH_PARTITION="memory"   #main #memory
 MAP_SBATCH_CPUS="256" #16 #256
 MAP_SBATCH_MEM="550G"   #550G
-MAP_SBATCH_TIME="0-10:00:00" #"4-00:00:00"
+MAP_SBATCH_TIME="0-10:00:00" #"0-10:00:00"
 MAP_SBATCH_QOS=""
 MAP_SBATCH_EXTRA=""
 MAP_SBATCH_JOB_NAME="bowtie2"
