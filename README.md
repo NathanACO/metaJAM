@@ -18,14 +18,14 @@ Metagenomic Pipeline for ancient DNA analysis performed at the Centre for Palaeo
 ## How to launch it:
 sbatch -x Run_pipeline_metage.sh config_pipeline_metage.sh\
 It will creates different folders for the different steps of the pipeline, where the files will be stored:
-- 00_logs -> Containing files with list of processed samples at each step
+- 00_Samples_prefix -> Containing files with list of processed samples at each step 
 - 01_fastp
 - 02_sga
 - 03_kraken_gtdb
 - 04_mapping
 - 05_filtering
 - 99_metrics
-- log -> Containing one error and one out folder where the sbatch information are stored
+- log -> Containing one error and one out folder where the sbatch information are stored (no need to precise it in the sbatch)
 
 > [!TIP]
 > You can run it with the Test samples present in the test folder of this github.
@@ -45,6 +45,14 @@ A few requirements are needed to run this pipeline, and only the config file nee
 - SGA
 - FilterBAM
 - ngsLCA
+
+3. Python environment:
+- bamdam (Install it from https://github.com/bdesanctis/bamdam):
+  1) Makes it accessible from everywhere on your cluster
+  2) Create a python environment
+python -m venv bamdam-env \
+source bamdam-env/bin/activate \
+pip install bamdam
 
 ## Input files
 1. If running the pipeline from scratch
