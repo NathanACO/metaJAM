@@ -49,7 +49,7 @@ A few requirements are needed to run this pipeline, and only the config file nee
 3. Python environment:
 - bamdam (Install it from https://github.com/bdesanctis/bamdam):
   1) Makes it accessible from everywhere on your cluster
-  2) Create a python environment
+  2) Create a python environment \
 python -m venv bamdam-env \
 source bamdam-env/bin/activate \
 pip install bamdam
