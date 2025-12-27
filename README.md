@@ -59,7 +59,8 @@ pip install bamdam
   2) Create a python environment: \
 python -m venv taxadb \
 source taxadb/bin/activate \
-pip3 install taxadb \
+pip3 install taxadb
+
 
 ## Input files
 1. If running the pipeline from scratch
