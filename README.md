@@ -54,6 +54,13 @@ python -m venv bamdam-env \
 source bamdam-env/bin/activate \
 pip install bamdam
 
+- taxadb
+  1) Makes it accessible from everywhere on your cluster
+  2) Create a python environment \
+python -m venv taxadb \ 
+source taxadb/bin/activate \
+pip3 install taxadb
+
 ## Input files
 1. If running the pipeline from scratch
 Path of the raw sequencing samples to be processed
