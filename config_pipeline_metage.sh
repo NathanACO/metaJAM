@@ -79,20 +79,22 @@ PHYLONORWAY_HEADER="/cfs/klemming/projects/supr/sediment_paleogenomics/databases
 PLASTID="/cfs/klemming/projects/supr/sediment_paleogenomics/tom/CHLOROPLAST/plastids.genomic"
 MITO="/cfs/klemming/projects/snic/sediment_paleogenomics/databases/bowtie2/refseq_mito/mitochondrion.1.1.genomic"
 MAM_BIRD_FISH="/cfs/klemming/projects/supr/archaeogenetics/ernjoh/mam-bird-fish_v2/mam-bird-fish_v2" #"/cfs/klemming/projects/supr/archaeogenetics/ernjoh/mam-bird-fish_v2/mam-bird-fish_v2"
-MAM_FISH="/cfs/klemming/projects/snic/sediment_paleogenomics/databases/bowtie2/nordic_fish" #"/cfs/klemming/projects/supr/archaeogenetics/ernjoh/mam-bird-fish_v2/mam-bird-fish_v2"
+#MAM_FISH="/cfs/klemming/projects/snic/sediment_paleogenomics/databases/bowtie2/nordic_fish/nordic_fish.index" #"/cfs/klemming/projects/supr/archaeogenetics/ernjoh/mam-bird-fish_v2/mam-bird-fish_v2"
 
 
 # Databases to map with Bowtie2 (order matters). Space-separated list of index prefixes.
 # Example:
 #   MAP_DB_LIST="${PHYLONORWAY} ${PLASTID} ${MITO} ${MAM_BIRD_FISH}"
-MAP_DB_LIST="${PHYLONORWAY} ${MAM_FISH}"
+# Note: Think to add the path to the database you want to use in the mapping before
+# Instance: DB1="Path2DB1"
+MAP_DB_LIST="${PHYLONORWAY} ${PLASTID} ${MITO} ${MAM_BIRD_FISH}"
 
 # Optional: explicitly select which mapping run folder to use when filtering-only.
 # This must match the folder suffix created by mapping:
 # 04_mapping/<SAMPLE>/<SAMPLE>_<MAP_LAST_DB_TAG>/
 # Example: nordic_fish
-MAP_LAST_DB_TAG="${MAP_LAST_DB_TAG:-}"
-
+#MAP_LAST_DB_TAG="${MAP_LAST_DB_TAG:-}"
+MAP_LAST_DB_TAG="mam-bird-fish_v2" #nordic_fish
 
 # Kraken2 GTDB 
 GTDB_SRC="/cfs/klemming/pdc/software/dardel/sw-uppmax/data/Kraken2_data/prebuilt/k2_gtdb_genome_reps_20250609"
@@ -100,7 +102,8 @@ GTDB_SRC="/cfs/klemming/pdc/software/dardel/sw-uppmax/data/Kraken2_data/prebuilt
 # NCBI taxonomy files
 NAMES="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/names_NM.dmp"
 NODES="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/nodes_NM.dmp"
-ACC2TAX="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/acc2taxid_nordic_fish2.tsv.gz" #"/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/acc2taxid_NM_PhyloNorway_MBF_3col_noNA.txt.gz"
+ACC2TAX="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/acc2taxid_NM_PhyloNorway_MBF_3col_noNA.txt.gz" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/acc2taxid_nordic_fish2.3col.gz" #"/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/acc2taxid_NM_PhyloNorway_MBF_3col_noNA.txt.gz"
+
 
 #### Path to roots
 OUT_ROOT="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out"
@@ -129,14 +132,14 @@ ENABLE_FASTP=0
 ENABLE_SGA=0
 ENABLE_PRINSEQ=0        # set 1 to use PRINSEQ instead of SGA         
 ENABLE_KRAKEN_GTDB=0
-ENABLE_MAPPING=1
-ENABLE_FILTERING=1      # If set to 0, neither filterBAM or ngsLCA or bamdam will run
+ENABLE_MAPPING=0
+ENABLE_FILTERING=0      # If set to 0, neither filterBAM or ngsLCA or bamdam will run
 ENABLE_FILTERBAM=0
-ENABLE_NGSLCA=1
-ENABLE_BAMDAM=1
+ENABLE_NGSLCA=0
+ENABLE_BAMDAM=0
 ENABLE_MMSEQS2=0
 ENABLE_METRICS=0
-ENABLE_PLOTS=0
+ENABLE_PLOTS=1
 
 #### Force re-run switches (0/1). When 1, submit the step even if its outputs exist.
 FORCE_FASTP=1
@@ -165,13 +168,17 @@ PRINSEQ_DEREP="14"                      # exact fwd+rev duplicates
 BAMDAM_STRANDED="ds"          # "ds" or "ss"
 BAMDAM_MINREADS=5             # for bamdam krona --minreads
 BAMDAM_MAXDAMAGE=0.5          # for bamdam krona --maxdamage
-TOP_GENUS=10                   # Top X genus to plot for damage
+TOP_GENUS=10                  # Top X genus to plot for damage
+BAMDAM_TAXA_PER_PLOT=50       # Number of taxa passing the filters to plot per graph
 
 # Plot parameters
 PLOTS_BAMDAM_MIN_READS=50       # Minimum reads per sample to include in bamdam plots
 PLOTS_BAMDAM_PLOT_MODE="both"   # heatmap, bubble, both
-PLOTS_DAMAGE_THRESHOLD=3.5        # Minimum percentage of damage for plotting
+PLOTS_DAMAGE_THRESHOLD=3.5      # Minimum percentage of damage for plotting
+PLOTS_PLOT_LOW_DAMAGE_TAXA=0    # 1 = keep low-damage taxa (default) 
+                                # 0 = drop taxa whose max damage across samples is < PLOTS_DAMAGE_THRESHOLD
 
+PLOTS_EXCLUDE_TAXA="Homo;Zea;Canis;Veronica" # comma / semicolon / space separated (exact taxon name matches)
 ###################################################################################
 #                               SBATCH parameters
 ###################################################################################
@@ -273,4 +280,5 @@ PLOTS_SBATCH_JOB_NAME="plots"
 #             Don't run more than 8-10 samples in the same time as Kraken2 might get killed                  #
 #      Check carefully the disk space, so you don't have any jobs being killed for out of disk space         #
 # Carefull about the input fastq.gz -> Better to add it as Sample_name_1.fastq.gz and Sample_name_2.fastq.gz #
+# Don't forget to precise the MAP_LAST_DB_TAG, especially if you run the filtering or mapping step alone     #
 #------------------------------------------------------------------------------------------------------------#
