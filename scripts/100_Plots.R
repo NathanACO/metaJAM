@@ -38,7 +38,21 @@ damage_thr_arg <- get_arg("--damage_threshold", Sys.getenv("PLOTS_DAMAGE_THRESHO
 damage_threshold <- suppressWarnings(as.numeric(damage_thr_arg))
 if (is.na(damage_threshold) || damage_threshold < 0) damage_threshold <- 5
 
+# taxa per bamdam plot panel (0 = no splitting)
+taxa_per_plot_arg <- get_arg("--taxa_per_plot", Sys.getenv("BAMDAM_TAXA_PER_PLOT", "0"))
+taxa_per_plot <- suppressWarnings(as.integer(taxa_per_plot_arg))
+if (is.na(taxa_per_plot) || taxa_per_plot < 0) taxa_per_plot <- 0
+
 message("[100_Plots.R] damage_threshold(%): ", damage_threshold)
+message("[100_Plots.R] taxa_per_plot: ", taxa_per_plot)
+# --- NEW: taxa exclusion list for HEATMAP only ---
+# Accepts comma / semicolon / whitespace separated names (exact matches).
+exclude_taxa_arg <- get_arg("--exclude_taxa", Sys.getenv("PLOTS_EXCLUDE_TAXA", ""))
+exclude_taxa <- stringr::str_split(exclude_taxa_arg, "[,;[:space:]]+")[[1]]
+exclude_taxa <- exclude_taxa[nzchar(exclude_taxa)]
+exclude_taxa <- stringr::str_trim(exclude_taxa)
+
+message("[100_Plots.R] exclude_taxa (heatmap only) count: ", length(exclude_taxa))
 
 if (!bamdam_plot_mode %in% c("heatmap", "bubble", "both")) {
   message("[100_Plots.R] WARNING: invalid --bamdam_plot='", bamdam_plot_mode,
@@ -103,6 +117,13 @@ make_metrics_plot <- function(metrics_path, samples_path, outdir) {
     return(invisible(NULL))
   }
 
+
+  # Optional: restrict metrics to the selected mapping/database tag
+  map_tag <- Sys.getenv("MAP_LAST_DB_TAG", "")
+  if (nzchar(map_tag) && "Database_name" %in% names(m)) {
+    m <- m %>% filter(.data$Database_name == map_tag)
+  }
+
   if (length(primary_samples) > 0) {
     m <- m %>% filter(sample %in% primary_samples)
   }
@@ -150,13 +171,23 @@ make_metrics_plot <- function(metrics_path, samples_path, outdir) {
     return(invisible(NULL))
   }
 
-  p <- ggplot(df, aes(x = step, y = reads, colour = sample)) +
-    geom_point(size = 2, alpha = 0.8, position = position_jitter(width = 0.15, height = 0)) +
+  # Order samples along x-axis as in the primary sample list (when provided)
+  if (length(primary_samples) > 0) {
+    df <- df %>% mutate(sample = factor(sample, levels = primary_samples))
+  } else {
+    df <- df %>% mutate(sample = factor(sample))
+  }
+
+
+
+  p <- ggplot(df, aes(x = sample, y = reads, colour = step)) +
+    geom_point(size = 2, alpha = 0.8, position = position_dodge(width = 0.7)) +
     scale_y_log10() +
-    labs(x = NULL, y = "Reads (log10)", colour = "Sample") +
+    coord_flip() +
+    labs(x = "Sample", y = "Number of reads", colour = "Step") +
     theme_bw(base_size = 10) +
     theme(
-      axis.text.x       = element_text(angle = 45, hjust = 1),
+      axis.text.x       = element_text(size = 9),
       panel.grid.major  = element_blank(),
       panel.grid.minor  = element_blank(),
       legend.position   = "right",
@@ -178,8 +209,10 @@ make_metrics_plot <- function(metrics_path, samples_path, outdir) {
 # ================================================================
 # 2) BAMDAM ABUNDANCE PLOTS (heatmap OR bubble)
 # ================================================================
-make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path, outdir, min_reads = 1, plot_mode = "heatmap") {
+make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path, outdir, min_reads = 1, plot_mode = "heatmap", taxa_per_plot = 0) {
   message("[bamdam] starting bamdam plot(s)")
+
+  map_tag <- Sys.getenv("MAP_LAST_DB_TAG", "")
 
   if (is.null(bamdam_dir) || !dir.exists(bamdam_dir)) {
     message("[bamdam] directory not found at: ", bamdam_dir, " - skipping.")
@@ -197,7 +230,17 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
 
   # bamdam files: *.tsv with TaxName / TotalReads / taxpath
   files <- list.files(bamdam_dir, pattern = "\\.tsv$", full.names = TRUE, recursive = TRUE)
+
+  # If MAP_LAST_DB_TAG is set, pre-filter to files inside <SAMPLE>_<TAG>/ to avoid mixing runs
+  if (nzchar(map_tag)) {
+    tag_needle <- paste0("_", map_tag, .Platform$file.sep)
+    files <- files[grepl(tag_needle, files, fixed = TRUE)]
+  }
+
   message("[bamdam] found ", length(files), " bamdam *.tsv files")
+  if (length(files) > 0) {
+    message("[bamdam] example tsv: ", files[[1]])
+  }
   if (length(files) == 0L) {
     message("[bamdam] no bamdam files found, skipping.")
     return(invisible(NULL))
@@ -237,14 +280,24 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
       stop("Bamdam file ", f, " is missing columns: ", paste(missing, collapse = ", "))
     }
 
-    folder_name <- basename(dirname(f))
-    file_base   <- basename(f)
-    file_base   <- sub("\\.tsv$", "", file_base)
+    # Derive sample + database tag from the folder structure:
+    # bamdam_dir/<sample>/<sample>_<tag>/.../*.tsv
+    f_norm  <- normalizePath(f, winslash = "/", mustWork = FALSE)
+    bd_norm <- normalizePath(bamdam_dir, winslash = "/", mustWork = FALSE)
+    rel     <- sub(paste0("^", bd_norm, "/?"), "", f_norm)
+    parts   <- strsplit(rel, "/", fixed = TRUE)[[1]]
 
-    sample_id <- if (!is.na(folder_name) && nzchar(folder_name) && folder_name != "bamdam") {
-      folder_name
-    } else {
-      file_base
+    sample_id <- if (length(parts) >= 1) parts[1] else NA_character_
+    tag_dir   <- if (length(parts) >= 2) parts[2] else NA_character_
+
+    db_tag <- NA_character_
+    if (!is.na(sample_id) && !is.na(tag_dir) && startsWith(tag_dir, paste0(sample_id, "_"))) {
+      db_tag <- sub(paste0("^", sample_id, "_"), "", tag_dir)
+    }
+
+    # If MAP_LAST_DB_TAG is set, keep only matching-tag files
+    if (nzchar(map_tag) && (is.na(db_tag) || db_tag != map_tag)) {
+      return(tibble())
     }
 
     ranks <- vapply(x$taxpath, get_rank, character(1))
@@ -283,7 +336,11 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
   }
 
   meta_filt <- meta %>% filter(sample %in% used_samples)
-  if (nrow(meta_filt) == 0L) meta_filt <- meta
+  if (nrow(meta_filt) == 0L) {
+    message("[bamdam] WARNING: no metadata rows match bamdam samples; proceeding without ages (sample-only ordering).")
+    meta_filt <- tibble(sample = used_samples)
+    meta_filt[[age_col]] <- NA_real_
+  }
 
   meta_filt <- meta_filt %>% arrange(.data[[age_col]])
   sample_order <- meta_filt$sample
@@ -383,6 +440,12 @@ damage_cell <- dat_rank %>%
   ) %>%
   mutate(dmg_pct = 100 * dmg)
 
+
+# ---- NEW (heatmap-only): per-taxon max damage across samples (percent) ----
+taxon_max_damage <- damage_cell %>%
+  group_by(taxon) %>%
+  summarise(max_dmg_pct = max(dmg_pct, na.rm = TRUE), .groups = "drop")
+
 # For each sample: mean damage (percent) of the 3 most abundant taxa with >5% damage
 ref_by_sample <- damage_cell %>%
   filter(dmg_pct > damage_threshold) %>%
@@ -417,7 +480,7 @@ df_long <- df_long %>%
   ) %>%
   select(-taxon_chr, -sample_chr)
 
-    list(df = df_long, max_log = max(df_long$log_reads, na.rm = TRUE))
+    list(df = df_long, max_log = max(df_long$log_reads, na.rm = TRUE), taxon_max_damage = taxon_max_damage)
   }
 
   # ---- plot: heatmap ----
@@ -731,15 +794,70 @@ plot_bubble_reads <- function(df_long, max_log, out_prefix) {
     }
     df_long <- built$df
     max_log <- built$max_log
+    taxon_max_damage <- built$taxon_max_damage
 
-    if (plot_mode %in% c("heatmap", "both")) {
-      out_prefix <- paste0("bamdam_", rank_sel, "_heatmap")
-      plot_heatmap(df_long, max_log, out_prefix)
+    # ---- split taxa into multiple panels if requested ----
+    tax_levels <- levels(df_long$taxon)
+    if (is.null(tax_levels) || length(tax_levels) == 0L) {
+      tax_levels <- unique(as.character(df_long$taxon))
     }
-    if (plot_mode %in% c("bubble", "both")) {
-      out_prefix <- paste0("bamdam_", rank_sel, "_bubbleplot")
-      plot_bubble_damage(df_long, max_log, paste0(out_prefix, "_damage"))
-      plot_bubble_reads(df_long, max_log, paste0(out_prefix, "_reads"))
+
+    if (taxa_per_plot > 0 && length(tax_levels) > taxa_per_plot) {
+      idx <- seq_along(tax_levels)
+      chunk_ids <- ceiling(idx / taxa_per_plot)
+      chunks <- split(tax_levels, chunk_ids)
+    } else {
+      chunks <- list(tax_levels)
+    }
+
+    for (ci in seq_along(chunks)) {
+      taxa_chunk <- chunks[[ci]]
+
+      df_chunk <- df_long %>%
+        filter(.data$taxon %in% taxa_chunk) %>%
+        mutate(taxon = factor(as.character(taxon), levels = taxa_chunk))
+
+      part_lab <- NULL
+      if (taxa_per_plot > 0) {
+        start_i <- (ci - 1L) * taxa_per_plot + 1L
+        end_i   <- start_i + length(taxa_chunk) - 1L
+        part_lab <- sprintf("part%02d_%04d-%04d", ci, start_i, end_i)
+      }
+
+      if (plot_mode %in% c("heatmap", "both")) {
+        out_prefix <- paste0("bamdam_", rank_sel, "_heatmap", if (!is.null(part_lab)) paste0(".", part_lab) else "")
+
+        # ---- NEW: HEATMAP ONLY filter ----
+        # Keep taxa whose max damage across samples is >= damage_threshold.
+        keep_taxa <- taxon_max_damage %>%
+          filter(max_dmg_pct >= damage_threshold) %>%
+          pull(taxon) %>%
+          as.character()
+
+        df_heat <- df_chunk %>%
+          filter(as.character(taxon) %in% keep_taxa)
+
+        # Optional: user-specified exclusion list (exact matches on TaxName)
+        if (length(exclude_taxa) > 0) {
+          df_heat <- df_heat %>% filter(!(as.character(taxon) %in% exclude_taxa))
+        }
+
+        if (nrow(df_heat) == 0L) {
+          message("[bamdam] heatmap: no taxa left after damage-threshold filter (", damage_threshold, "%); skipping: ", out_prefix)
+        } else {
+          # Drop unused factor levels to keep the y-axis clean.
+          df_heat <- df_heat %>%
+            mutate(taxon = factor(as.character(taxon), levels = levels(df_chunk$taxon))) %>%
+            droplevels()
+
+          plot_heatmap(df_heat, max_log, out_prefix)
+        }
+      }
+      if (plot_mode %in% c("bubble", "both")) {
+        out_prefix <- paste0("bamdam_", rank_sel, "_bubbleplot", if (!is.null(part_lab)) paste0(".", part_lab) else "")
+        plot_bubble_damage(df_chunk, max_log, paste0(out_prefix, "_damage"))
+        plot_bubble_reads(df_chunk, max_log, paste0(out_prefix, "_reads"))
+      }
     }
   }
 
@@ -750,6 +868,6 @@ plot_bubble_reads <- function(df_long, max_log, out_prefix) {
 # RUN
 # ================================================================
 make_metrics_plot(metrics_path, samples_path, outdir)
-make_bamdam_abundance_plots(bamdam_dir, samples_path, metadata_path, outdir, min_reads, bamdam_plot_mode)
+make_bamdam_abundance_plots(bamdam_dir, samples_path, metadata_path, outdir, min_reads, bamdam_plot_mode, taxa_per_plot)
 
 message("[100_Plots.R] all done.")
