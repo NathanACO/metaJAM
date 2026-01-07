@@ -679,7 +679,7 @@ if [[ ${ENABLE_KRAKEN_GTDB:-1} -eq 1 ]]; then
 
   sbatch_opts KRAKEN
   mkdir -p "${OUT_ROOT}/03_kraken_gtdb"
-  require_file "${SCRIPTS_DIR}/04_Kraken_gtdb.sh"
+  require_file "${SCRIPTS_DIR}/04_Kraken_gtdb2.sh"
 
   JID_KRAKEN=$(
     sbatch "${deps[@]}" "${SBATCH_BUILT_OPTS[@]}" \
@@ -691,11 +691,12 @@ SAMPLE_LIST="${KRAKEN_LIST_SNAP}",\
 INPUT_DIR="${KRAKEN_INPUT_DIR}",\
 INPUT_MODE="${KRAKEN_INPUT_MODE}",\
 OUTPUT_DIR="${OUT_ROOT}/03_kraken_gtdb",\
+TMP_ROOT="${TMP_ROOT}",\
 KRAKEN2_MODULE="${KRAKEN2_MODULE}",\
 PDC_MODULE="${PDC_MODULE}",\
 GTDB_SRC="${GTDB_SRC}",\
 THREADS="${KRAKEN_SBATCH_CPUS}" \
-      "${SCRIPTS_DIR}/04_Kraken_gtdb.sh" | awk '{print $4}'
+      "${SCRIPTS_DIR}/04_Kraken_gtdb2.sh" | awk '{print $4}'
   )
   echo "[KRAKEN] batch -> ${JID_KRAKEN}"
 else
@@ -853,6 +854,7 @@ if [[ ${ENABLE_METRICS:-1} -eq 1 ]]; then
     --export=ALL,\
 OUT_ROOT="${OUT_ROOT}",\
 LOG_ROOT="${LOG_ROOT}",\
+MAP_LAST_DB_TAG="${MAP_LAST_DB_TAG}",\
 PRIMARY_LIST_PATH="${PRIMARY_LIST_PATH:-${OUT_ROOT}/00_Samples_prefix/samples.primary.txt}",\
 SAMTOOLS_MODULE="${SAMTOOLS_MODULE}" \
     "${SCRIPTS_DIR}/99_metrics.sh" | awk '{print $4}')
@@ -882,6 +884,7 @@ if [[ ${ENABLE_PLOTS:-1} -eq 1 ]]; then
     --export=ALL,\
 OUT_ROOT="${OUT_ROOT}",\
 LOG_ROOT="${LOG_ROOT}",\
+MAP_LAST_DB_TAG="${MAP_LAST_DB_TAG}",\
 PRIMARY_LIST_PATH="${PRIMARY_LIST_PATH:-${OUT_ROOT}/00_Samples_prefix/samples.primary.txt}",\
 CONDA_ENV_PLOTS="${CONDA_ENV_PLOTS}",\
 SCRIPTS_DIR="${SCRIPTS_DIR}",\
@@ -889,6 +892,9 @@ METADATA_PATH="${METADATA_PATH}",\
 PLOTS_BAMDAM_MIN_READS="${PLOTS_BAMDAM_MIN_READS}",\
 PLOTS_BAMDAM_PLOT_MODE="${PLOTS_BAMDAM_PLOT_MODE}",\
 PLOTS_DAMAGE_THRESHOLD="${PLOTS_DAMAGE_THRESHOLD}",\
+PLOTS_PLOT_LOW_DAMAGE_TAXA="${PLOTS_PLOT_LOW_DAMAGE_TAXA}",\
+PLOTS_EXCLUDE_TAXA="${PLOTS_EXCLUDE_TAXA}",\
+BAMDAM_TAXA_PER_PLOT="${BAMDAM_TAXA_PER_PLOT}",\
 METRICS_TSV="${METRICS_TSV:-${OUT_ROOT}/99_metrics/metrics.tsv}",\
 BAMDAM_DIR="${BAMDAM_DIR:-${OUT_ROOT}/05_filtering/bamdam}" \
     "${SCRIPTS_DIR}/100_Plots.sh" | awk '{print $4}')
