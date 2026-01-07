@@ -10,6 +10,10 @@ PRIMARY_LIST_PATH="${PRIMARY_LIST_PATH:-${OUT_ROOT}/00_Samples_prefix/samples.pr
 
 # Inputs produced by previous steps (can be overridden)
 METRICS_TSV="${METRICS_TSV:-${OUT_ROOT}/99_metrics/metrics.tsv}"
+
+# Optional: mapping/filtering run tag (used to select the correct run folders)
+MAP_LAST_DB_TAG="${MAP_LAST_DB_TAG:-}"
+
 BAMDAM_DIR="${BAMDAM_DIR:-${OUT_ROOT}/05_filtering/bamdam}"
 MIN_READS="${PLOTS_BAMDAM_MIN_READS:-1}"    # Minimum reads per sample to include in bamdam plots
 PLOTS_BAMDAM_PLOT_MODE="${PLOTS_BAMDAM_PLOT_MODE:-heatmap}"
@@ -18,7 +22,11 @@ PLOTS_DAMAGE_THRESHOLD="${PLOTS_DAMAGE_THRESHOLD:-5}"
 METADATA_PATH="${METADATA_PATH:?Need METADATA_PATH pointing to metadata TSV}"
 
 # Plot output dir
-PLOT_DIR="${PLOT_DIR:-${OUT_ROOT}/100_plots}"
+if [[ -n "${MAP_LAST_DB_TAG}" ]]; then
+  PLOT_DIR="${PLOT_DIR:-${OUT_ROOT}/100_plots/${MAP_LAST_DB_TAG}}"
+else
+  PLOT_DIR="${PLOT_DIR:-${OUT_ROOT}/100_plots}"
+fi
 
 # Optional conda env
 CONDA_ENV_PLOTS="${CONDA_ENV_PLOTS:-plots}"
@@ -65,15 +73,19 @@ if [[ ! -d "${BAMDAM_DIR}" ]]; then
 fi
 
 # --- run the R plotting script ---
-"${RSCRIPT}" "${SCRIPTS_DIR}/100_Plots.R" \
+"${RSCRIPT}" "${PLOTS_R}" \
   --metrics "${METRICS_TSV}" \
   --samples "${PRIMARY_LIST_PATH}" \
   --bamdam_dir "${BAMDAM_DIR}" \
   --metadata "${METADATA_PATH}" \
+  --db_tag "${MAP_LAST_DB_TAG}" \
   --outdir "${PLOT_DIR}" \
   --min_reads "${MIN_READS}" \
   --bamdam_plot "${PLOTS_BAMDAM_PLOT_MODE}" \
   --damage_threshold "${PLOTS_DAMAGE_THRESHOLD}" \
-  > "${LOG_ROOT}/100_plots.R.out" 2>&1
+  --plot_low_damage_taxa "${PLOTS_PLOT_LOW_DAMAGE_TAXA:-1}" \
+  --exclude_taxa "${PLOTS_EXCLUDE_TAXA:-}" \
+  --taxa_per_plot "${BAMDAM_TAXA_PER_PLOT:-30}"
+  > "${LOG_ROOT}/100_plots${MAP_LAST_DB_TAG:+.${MAP_LAST_DB_TAG}}.R.out" 2>&1
 
 echo "[100_Plots] finished. Plots in ${PLOT_DIR}"
