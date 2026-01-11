@@ -6,6 +6,10 @@ OUT_ROOT="${OUT_ROOT:?}"               # pipeline root (same as used elsewhere)
 LOG_ROOT="${LOG_ROOT:-${OUT_ROOT}/00_logs}"
 PRIMARY_LIST_PATH="${PRIMARY_LIST_PATH:-${OUT_ROOT}/00_logs/samples.primary.txt}"
 
+# Mapping run tag (used to locate mapping/filtering outputs in the new folder architecture)
+# If empty, 99_metrics.sh will auto-detect the most recent mapping folder per sample.
+MAP_LAST_DB_TAG="${MAP_LAST_DB_TAG:-}"
+
 # Optional: override list used ONLY by 99_metrics.sh
 # Format per line:
 #   SAMPLE<TAB>/abs/path/to/SAMPLE.small.bam
@@ -54,6 +58,20 @@ first_file () {
     [[ -s "$f" ]] && { echo "$f"; return; }
   done
   echo ""
+}
+
+# Grab first existing file matching one or more glob patterns
+# Usage: first_glob "dir/*.bam" "other/*.bam"
+first_glob () {
+  local pat f
+  shopt -s nullglob
+  for pat in "$@"; do
+    for f in $pat; do
+      [[ -s "$f" ]] && { echo "$f"; shopt -u nullglob; return; }
+    done
+  done
+  shopt -u nullglob
+  echo \"\"
 }
 
 # Normalize a sample name from a read path
@@ -164,24 +182,25 @@ else
     add_sample_if_allowed "$s"
   done
 
-  # 6) From 04_mapping/<sample>/*.bam
-  for f in "${OUT_ROOT}/04_mapping"/*/*.bam; do
+  # 6) From 04_mapping/<sample>/<sample_tag>/*.bam
+  for f in "${OUT_ROOT}/04_mapping"/*/*/*.bam; do
     [[ -e "$f" ]] || continue
-    s="$(basename "$(dirname "$f")")"
+    s="$(basename "$(dirname "$(dirname "$f")")")"
     add_sample_if_allowed "$s"
   done
 
-  # 7) From 05_filtering/{filterBAM,bamdam}/<sample>*.bam
-  for f in "${OUT_ROOT}/05_filtering/filterBAM"/*.bam "${OUT_ROOT}/05_filtering/bamdam"/*.bam; do
+  # 7) From 05_filtering/{filterBAM,bamdam}/<sample>/<sample_tag>/*.bam
+  for f in "${OUT_ROOT}/05_filtering/filterBAM"/*/*/*.bam "${OUT_ROOT}/05_filtering/bamdam"/*/*/*.bam; do
     [[ -e "$f" ]] || continue
-    b="${f##*/}"; s="${b%%.*}"
+    s="$(basename "$(dirname "$(dirname "$f")")")"
     add_sample_if_allowed "$s"
   done
 fi
 
 # -------- Collect metrics per sample (this run) --------
 # TSV header (column order is important for merging)
-HEADER="sample	raw_reads	after_fastp	after_sga_preprocess	after_sga_filter	after_prinseq	kraken_classified	kraken_unclassified	mapped_phylonorway	mapped_mito	mapped_plastid	mapped_mbf	after_filterBAM	after_bamdam"
+# Database_name corresponds to the mapping run tag used to locate files for this sample.
+HEADER="sample	Database_name	raw_reads	after_fastp	after_sga_preprocess	after_sga_filter	after_prinseq	kraken_classified	kraken_unclassified	mapped_phylonorway	mapped_mito	mapped_plastid	mapped_mbf	mapped_all	after_filterBAM	after_bamdam"
 
 # Start a fresh per-run rows file (no header here)
 : > "${NEW_ROWS}"
@@ -251,11 +270,50 @@ for sample in $sample_list; do
   kraken_unclassified="$( [[ -n "$f_kraken_unclas" ]] && count_fastq "$f_kraken_unclas" || echo NA )"
 
   # ---- Mapping BAMs (per DB) ----
-  b_pn="${OUT_ROOT}/04_mapping/${sample}/${sample}.b2.k1000.PhyloNorway.bam"
-  b_mi="${OUT_ROOT}/04_mapping/${sample}/${sample}.b2.k1000.Mito.bam"
-  b_pl="${OUT_ROOT}/04_mapping/${sample}/${sample}.b2.k1000.Plastid.bam"
-  b_mb="${OUT_ROOT}/04_mapping/${sample}/${sample}.b2.k1000.MBF.bam"
-  b_all="${OUT_ROOT}/04_mapping/${sample}/${sample}.b2.k1000.all.sorted.bam"
+  # New mapping layout:
+  #   04_mapping/<sample>/<sample>_<MAP_TAG>/
+  # If MAP_LAST_DB_TAG is empty, auto-detect the most recent <sample>_<tag> folder.
+  MAP_TAG="${MAP_LAST_DB_TAG:-}"
+  if [[ -z "${MAP_TAG}" ]]; then
+    _d="$(ls -1dt "${OUT_ROOT}/04_mapping/${sample}/${sample}_"* 2>/dev/null | head -n 1 || true)"
+    if [[ -n "${_d}" ]]; then
+      _bn="$(basename "${_d}")"
+      MAP_TAG="${_bn#${sample}_}"
+    fi
+  fi
+
+  MAP_RUN_DIR=""
+  if [[ -n "${MAP_TAG}" ]]; then
+    MAP_RUN_DIR="${OUT_ROOT}/04_mapping/${sample}/${sample}_${MAP_TAG}"
+  else
+    # Fallback to old layout if present
+    MAP_RUN_DIR="${OUT_ROOT}/04_mapping/${sample}"
+  fi
+
+  # Try to find per-DB BAMs in the mapping run dir (pattern-based to handle renamed DB tags)
+  b_pn="$(first_glob \
+    "${MAP_RUN_DIR}/${sample}.b2.k1000."*PhyloNorway*.bam \
+    "${MAP_RUN_DIR}/${sample}.b2.k1000."*phylonorway*.bam )"
+  b_mi="$(first_glob \
+    "${MAP_RUN_DIR}/${sample}.b2.k1000."*Mito*.bam \
+    "${MAP_RUN_DIR}/${sample}.b2.k1000."*mito*.bam )"
+  b_pl="$(first_glob \
+    "${MAP_RUN_DIR}/${sample}.b2.k1000."*Plastid*.bam \
+    "${MAP_RUN_DIR}/${sample}.b2.k1000."*plastid*.bam )"
+  if [[ -n "${MAP_TAG}" ]]; then
+    b_mb="$(first_glob \
+      "${MAP_RUN_DIR}/${sample}.b2.k1000."*"${MAP_TAG}"*.bam \
+      "${MAP_RUN_DIR}/${sample}.b2.k1000."*MBF*.bam \
+      "${MAP_RUN_DIR}/${sample}.b2.k1000."*mam-bird-fish*.bam )"
+  else
+    b_mb="$(first_glob \
+      "${MAP_RUN_DIR}/${sample}.b2.k1000."*MBF*.bam \
+      "${MAP_RUN_DIR}/${sample}.b2.k1000."*mam-bird-fish*.bam )"
+  fi
+
+  b_all="$(first_glob \
+    "${MAP_RUN_DIR}/${sample}.b2.k1000.all.sorted.bam" \
+    "${MAP_RUN_DIR}/${sample}.b2.k1000.all"*.sorted.bam )"
 
   mapped_phylonorway="$(count_bam "$b_pn")"
   mapped_mito="$(count_bam "$b_mi")"
@@ -264,21 +322,39 @@ for sample in $sample_list; do
   mapped_all="$(count_bam "$b_all")"
 
   # ---- Post-filtering ----
-  b_filtered="${OUT_ROOT}/05_filtering/filterBAM/${sample}.b2.k1000.all.filtered.bam"
+  # New filtering layout (matches the updated filtering scripts):
+  #   05_filtering/filterBAM/<sample>/<sample>_<MAP_TAG>/
+  #   05_filtering/bamdam/<sample>/<sample>_<MAP_TAG>/
+  if [[ -n "${MAP_TAG}" ]]; then
+    FILTER_DIR="${OUT_ROOT}/05_filtering/filterBAM/${sample}/${sample}_${MAP_TAG}"
+    BAMDAM_DIR="${OUT_ROOT}/05_filtering/bamdam/${sample}/${sample}_${MAP_TAG}"
+  else
+    # Fallback to legacy filtering layout if present
+    FILTER_DIR="${OUT_ROOT}/05_filtering/filterBAM"
+    BAMDAM_DIR="${OUT_ROOT}/05_filtering/bamdam/${sample}"
+  fi
+
+  b_filtered="$(first_glob \
+    "${FILTER_DIR}/${sample}.b2.k1000.all.filtered.bam" \
+    "${FILTER_DIR}/${sample}.b2.k1000.all.filtered"*.bam \
+    "${FILTER_DIR}/${sample}"*.filtered*.bam )"
 
   # If override file provided a BAM path for this sample, use it; otherwise default
   if [[ -n "${BAMDAM_BAM_OVERRIDE[$sample]:-}" ]]; then
     b_bamdam="${BAMDAM_BAM_OVERRIDE[$sample]}"
   else
-    b_bamdam="${OUT_ROOT}/05_filtering/bamdam/${sample}/${sample}.small.bam"
+    b_bamdam="$(first_glob \
+      "${BAMDAM_DIR}/${sample}.small.bam" \
+      "${BAMDAM_DIR}/${sample}"*.small*.bam )"
   fi
 
   after_filterBAM="$(count_bam "$b_filtered")"
   after_bamdam="$(count_bam "$b_bamdam")"
 
   # Emit row (NO header here)
-  printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+  printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
     "$sample" \
+    "${MAP_TAG:-NA}" \
     "$raw_reads" \
     "$after_fastp" \
     "$after_sga_preprocess" \
@@ -297,7 +373,7 @@ for sample in $sample_list; do
 done
 
 # -------- Merge with cumulative TSV (idempotent replace-per-sample) --------
-HEADER_LINE=$'sample\traw_reads\tafter_fastp\tafter_sga_preprocess\tafter_sga_filter\tafter_prinseq\tkraken_classified\tkraken_unclassified\tmapped_phylonorway\tmapped_mito\tmapped_plastid\tmapped_mbf\tmapped_all\tafter_filterBAM\tafter_bamdam'
+HEADER_LINE=$'sample\tDatabase_name\traw_reads\tafter_fastp\tafter_sga_preprocess\tafter_sga_filter\tafter_prinseq\tkraken_classified\tkraken_unclassified\tmapped_phylonorway\tmapped_mito\tmapped_plastid\tmapped_mbf\tmapped_all\tafter_filterBAM\tafter_bamdam'
 if [[ ! -s "${TSV}" ]]; then
   printf '%s\n' "${HEADER_LINE}" > "${TSV}"
 fi
@@ -311,6 +387,18 @@ tmp_tsv="$(mktemp)"
   # NEW_ROWS has no header
   cat "${NEW_ROWS}" 2>/dev/null || true
 } |
+# Normalize older metrics rows to the current schema by inserting Database_name
+# and (if needed) mapped_all.
+awk -F'\t' 'BEGIN{OFS="\t"}
+  NF==14 { # legacy: no Database_name, no mapped_all
+    # sample, raw_reads..mapped_mbf, after_filterBAM, after_bamdam
+    print $1, "NA", $2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,"NA",$13,$14; next
+  }
+  NF==15 { # legacy: no Database_name, has mapped_all
+    print $1, "NA", $2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15; next
+  }
+  { print $0 }
+' |
 awk -F'\t' '{
   row[$1]=$0
 }
