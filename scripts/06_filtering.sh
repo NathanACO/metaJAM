@@ -7,10 +7,6 @@ SAMPLE_LIST="${SAMPLE_LIST}"
 MAP_DIR="${MAP_DIR}"
 OUT_DIR="${OUT_DIR}"
 
-# Which mapping run folder to use (recommended when running filtering alone).
-# If empty, we'll auto-detect the most recent mapping folder for each sample.
-MAP_LAST_DB_TAG="${MAP_LAST_DB_TAG:-}"
-
 # Toggles (honor config if set; default otherwise)
 ENABLE_FILTERBAM="${ENABLE_FILTERBAM:-0}"
 ENABLE_NGSLCA="${ENABLE_NGSLCA:-1}"
@@ -31,9 +27,6 @@ BAMDAM_STRANDED="${BAMDAM_STRANDED:-ds}"     # ds/ss
 BAMDAM_MINREADS="${BAMDAM_MINREADS:-5}"
 BAMDAM_MAXDAMAGE="${BAMDAM_MAXDAMAGE:-0.5}"
 
-# Used only if ENABLE_BAMDAM=1
-TOP_GENUS="${TOP_GENUS:-20}"
-
 # -------- resolve one list line: SAMPLE id OR absolute BAM path --------
 LINE="$(sed -n "$((SLURM_ARRAY_TASK_ID+1))p" "${SAMPLE_LIST}")"
 [[ -n "${LINE}" ]] || { echo "[ERR] empty line for task ${SLURM_ARRAY_TASK_ID}"; exit 2; }
@@ -43,60 +36,32 @@ if [[ "${LINE}" == /* && "${LINE}" == *.bam ]]; then
   IN_BAM="${LINE}"
   SAMPLE="$(basename "${IN_BAM}")"
   SAMPLE="${SAMPLE%.b2.k1000.all.sorted.bam}"
-
-  # Infer tag from folder name: .../<SAMPLE>_<TAG>/<SAMPLE>.b2.k1000.all.sorted.bam
-  if [[ -z "${MAP_LAST_DB_TAG}" ]]; then
-    _parent="$(basename "$(dirname "${IN_BAM}")")"
-    if [[ "${_parent}" == "${SAMPLE}_"* ]]; then
-      MAP_LAST_DB_TAG="${_parent#${SAMPLE}_}"
-    fi
-  fi
 else
   SAMPLE="${LINE}"
-
-  if [[ -n "${MAP_LAST_DB_TAG}" ]]; then
-    IN_BAM="${MAP_DIR}/${SAMPLE}/${SAMPLE}_${MAP_LAST_DB_TAG}/${SAMPLE}.b2.k1000.all.sorted.bam"
-  else
-    # Auto-detect: choose the most recently modified merged BAM under the mapping folder
-    IN_BAM="$(ls -1t "${MAP_DIR}/${SAMPLE}/${SAMPLE}_"*/"${SAMPLE}.b2.k1000.all.sorted.bam" 2>/dev/null | head -n 1 || true)"
-
-    if [[ -n "${IN_BAM}" ]]; then
-      _parent="$(basename "$(dirname "${IN_BAM}")")"
-      if [[ "${_parent}" == "${SAMPLE}_"* ]]; then
-        MAP_LAST_DB_TAG="${_parent#${SAMPLE}_}"
-      fi
-    fi
-  fi
+  IN_BAM="${MAP_DIR}/${SAMPLE}/${SAMPLE}.b2.k1000.all.sorted.bam"
 fi
 
-[[ -n "${MAP_LAST_DB_TAG}" ]] || MAP_LAST_DB_TAG="unknown"
-
-# Output layout (same top-level structure as before, with run-scoped subfolders)
-FILTER_DIR="${OUT_DIR}/filterBAM/${SAMPLE}/${SAMPLE}_${MAP_LAST_DB_TAG}"
-NGSLCA_DIR="${OUT_DIR}/ngsLCA/${SAMPLE}/${SAMPLE}_${MAP_LAST_DB_TAG}"
-BAMDAM_DIR="${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}_${MAP_LAST_DB_TAG}"
-
-mkdir -p "${NGSLCA_DIR}"
+# Output layout (flat)
+mkdir -p "${OUT_DIR}/ngsLCA/${SAMPLE}"
 BAM_FOR_LCA="${IN_BAM}"
-LCA_PREFIX="${NGSLCA_DIR}/${SAMPLE}.b2.k1000.all.sorted"
+LCA_PREFIX="${OUT_DIR}/ngsLCA/${SAMPLE}/${SAMPLE}.b2.k1000.all.sorted"
 
 [[ -f "${IN_BAM}" ]] || { echo "[ERR] Missing BAM: ${IN_BAM}"; exit 2; }
 echo "[INFO] SAMPLE=${SAMPLE}"
-echo "[INFO] TAG=${MAP_LAST_DB_TAG}"
 echo "[INFO] BAM=${IN_BAM}"
 
 
 # -------- filterBAM (optional) --------
 if [[ "${ENABLE_FILTERBAM}" -eq 1 ]]; then
-  mkdir -p "${FILTER_DIR}"
+  mkdir -p "${OUT_DIR}/filterBAM/${SAMPLE}"
   set +u
   conda activate "${CONDA_ENV_FILTERBAM}"
   set -u
   filterBAM filter \
     --bam "${IN_BAM}" \
-    --bam-filtered "${FILTER_DIR}/${SAMPLE}.b2.k1000.all.filtered.bam" \
-    --stats "${FILTER_DIR}/${SAMPLE}.b2.k1000.all.stats.tsv.gz" \
-    --stats-filtered "${FILTER_DIR}/${SAMPLE}.b2.k1000.all.stats-filtered.tsv.gz" \
+    --bam-filtered "${OUT_DIR}/filterBAM/${SAMPLE}/${SAMPLE}.b2.k1000.all.filtered.bam" \
+    --stats "${OUT_DIR}/filterBAM/${SAMPLE}/${SAMPLE}.b2.k1000.all.stats.tsv.gz" \
+    --stats-filtered "${OUT_DIR}/filterBAM/${SAMPLE}/${SAMPLE}.b2.k1000.all.stats-filtered.tsv.gz" \
     --threads "${THREADS}" \
     --min-read-count 3 \
     --min-read-ani 94 \
@@ -109,9 +74,9 @@ if [[ "${ENABLE_FILTERBAM}" -eq 1 ]]; then
     --min-coverage-mean 0 \
     --include-low-detection \
     --sort-by-name
-  BAM_FOR_LCA="${FILTER_DIR}/${SAMPLE}.b2.k1000.all.filtered.bam"
-  mkdir -p "${NGSLCA_DIR}"
-  LCA_PREFIX="${NGSLCA_DIR}/${SAMPLE}.b2.k1000.all.filtered"
+  BAM_FOR_LCA="${OUT_DIR}/filterBAM/${SAMPLE}/${SAMPLE}.b2.k1000.all.filtered.bam"
+  mkdir -p "${OUT_DIR}/ngsLCA/${SAMPLE}"
+  LCA_PREFIX="${OUT_DIR}/ngsLCA/${SAMPLE}/${SAMPLE}.b2.k1000.all.filtered"
   set +u
   conda deactivate
   set -u
@@ -119,7 +84,7 @@ fi
 
 # -------- ngsLCA (optional) --------
 if [[ "${ENABLE_NGSLCA}" -eq 1 ]]; then
-  mkdir -p "${NGSLCA_DIR}"
+  mkdir -p "${OUT_DIR}/ngsLCA/${SAMPLE}"
   set +u
   conda activate "${CONDA_ENV_ngsLCA}"
   set -u
@@ -139,7 +104,7 @@ fi
 
 # -------- bamdam full per-sample pipeline (shrink + compute + krona) --------
 if [[ "${ENABLE_BAMDAM}" -eq 1 ]]; then
-  mkdir -p "${BAMDAM_DIR}"
+  mkdir -p "${OUT_DIR}/bamdam/${SAMPLE}"
   # Needs a matching LCA file
   IN_LCA="${LCA_PREFIX}.lca"
   if [[ ! -f "${IN_LCA}" ]]; then
@@ -163,39 +128,39 @@ if [[ "${ENABLE_BAMDAM}" -eq 1 ]]; then
     bamdam shrink \
       --in_bam "${BAM_FOR_LCA}" \
       --in_lca "${IN_LCA}" \
-      --out_bam "${BAMDAM_DIR}/${SAMPLE}.small.bam" \
-      --out_lca "${BAMDAM_DIR}/${SAMPLE}.small.lca" \
+      --out_bam "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.small.bam" \
+      --out_lca "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.small.lca" \
       --stranded "${BAMDAM_STRANDED}" \
       --show_progress
 
     # compute
     bamdam compute \
-      --in_bam "${BAMDAM_DIR}/${SAMPLE}.small.bam" \
-      --in_lca "${BAMDAM_DIR}/${SAMPLE}.small.lca" \
-      --out_tsv "${BAMDAM_DIR}/${SAMPLE}.tsv" \
-      --out_subs "${BAMDAM_DIR}/${SAMPLE}.subs.txt" \
+      --in_bam "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.small.bam" \
+      --in_lca "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.small.lca" \
+      --out_tsv "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.tsv" \
+      --out_subs "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.subs.txt" \
       --stranded "${BAMDAM_STRANDED}" \
       --show_progress
 
     # krona + HTML (per-sample)
     bamdam krona \
-      --in_tsv "${BAMDAM_DIR}/${SAMPLE}.tsv" \
-      --out_xml "${BAMDAM_DIR}/${SAMPLE}.xml" \
+      --in_tsv "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.tsv" \
+      --out_xml "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.xml" \
       --minreads "${BAMDAM_MINREADS}" \
       --maxdamage "${BAMDAM_MAXDAMAGE}"
 
-    ktImportXML -o "${BAMDAM_DIR}/${SAMPLE}.html" "${BAMDAM_DIR}/${SAMPLE}.xml"
+    ktImportXML -o "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.html" "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.xml"
 
     while read -r count taxid genus; do
       bamdam plotdamage \
-      --in_subs "${BAMDAM_DIR}/${SAMPLE}.subs.txt" \
+      --in_subs "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.subs.txt" \
       --tax "$taxid" \
-      --outplot "${BAMDAM_DIR}/damageplot_${genus}_${taxid}_${SAMPLE}.png" \
+      --outplot "${OUT_DIR}/bamdam/${SAMPLE}/damageplot_${genus}_${taxid}_${SAMPLE}.png" \
       || echo "Warning: bamdam failed for taxid $taxid (continuing)"
     done < <(
     awk '{for(i=2;i<=NF;i++){n=split($i,a,":");if(n>=3 && a[3]=="genus"){id=a[1];counts[id]++;name[id]=a[2];break}}}
        END{for(id in counts)printf "%d\t%s\t%s\n",counts[id],id,name[id]}' \
-    "${BAMDAM_DIR}/${SAMPLE}.small.lca" \
+    "${OUT_DIR}/bamdam/${SAMPLE}/${SAMPLE}.small.lca" \
     | sort -nrk1,1 \
     | head -n "$TOP_GENUS"
     )
