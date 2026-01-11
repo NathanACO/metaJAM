@@ -444,6 +444,71 @@ write_step_list() {
   rm -f "${tmp}"
 }
 
+# ------------------------------------------ MMSeqs2 ----------------------------------------------
+
+MMSEQS2_LIST="${OUT_ROOT}/00_Samples_prefix/samples.for_mmseqs2.txt"
+
+build_mmseqs2_sample_list() {
+  : > "${MMSEQS2_LIST}"
+
+  # Override: accept SAMPLE IDs or absolute *.small.lca / *.all.sorted.bam
+  if [[ -n "${OVERRIDE_LIST_MMSEQS2:-}" && -f "${OVERRIDE_LIST_MMSEQS2}" ]]; then
+    awk 'NF>0 && $0 !~ /^#/' "${OVERRIDE_LIST_MMSEQS2}" \
+      | sed 's/[[:space:]]*$//' \
+      | while IFS= read -r line; do
+          [[ -z "$line" ]] && continue
+          if [[ "$line" == /* ]]; then
+            b="${line##*/}"
+            if [[ "$b" == *.small.lca ]]; then
+              echo "${b%.small.lca}"
+            elif [[ "$b" == *.all.sorted.bam ]]; then
+              s="${b%.b2.k1000.all.sorted.bam}"; s="${s%.all.sorted.bam}"
+              echo "$s"
+            else
+              echo "$b"
+            fi
+          else
+            echo "$line"
+          fi
+        done | sort -u > "${MMSEQS2_LIST}"
+    echo "[INFO] MMSeqs2 samples (override): $(wc -l < "${MMSEQS2_LIST}" | tr -d " ")"
+    return
+  fi
+
+  # Default: reuse filtering list if present; normalize BAM paths to SAMPLE IDs
+  if [[ -s "${FILTER_LIST}" ]]; then
+    awk 'NF>0 && $0 !~ /^#/' "${FILTER_LIST}" \
+      | sed 's/[[:space:]]*$//' \
+      | while IFS= read -r line; do
+          [[ -z "$line" ]] && continue
+          if [[ "$line" == /* && "$line" == *.all.sorted.bam ]]; then
+            b="${line##*/}"
+            s="${b%.b2.k1000.all.sorted.bam}"; s="${s%.all.sorted.bam}"
+            echo "$s"
+          else
+            echo "$line"
+          fi
+        done | sort -u > "${MMSEQS2_LIST}"
+    echo "[INFO] MMSeqs2 samples (from filter list): $(wc -l < "${MMSEQS2_LIST}" | tr -d " ") -> ${MMSEQS2_LIST}"
+    return
+  fi
+
+  # Fallback: derive SAMPLE IDs from PRIMARY
+  while read -r r; do
+    [[ -z "$r" ]] && continue
+    s="${r##*/}"
+    s="${s%_R1_001.fastq.gz}"; s="${s%_R2_001.fastq.gz}"
+    s="${s%_R1.fastq.gz}";     s="${s%_R2.fastq.gz}"
+    s="${s%_1.fastq.gz}";      s="${s%_2.fastq.gz}"
+    s="${s%_R1_001.fq.gz}";    s="${s%_R2_001.fq.gz}"
+    s="${s%_R1.fq.gz}";        s="${s%_R2.fq.gz}"
+    s="${s%_1.fq.gz}";         s="${s%_2.fq.gz}"
+    [[ -n "$s" ]] && echo "$s"
+  done < "${PRIMARY_LIST_PATH}" | sort -u > "${MMSEQS2_LIST}"
+
+  echo "[INFO] MMSeqs2 samples (from primary): $(wc -l < "${MMSEQS2_LIST}" | tr -d " ") -> ${MMSEQS2_LIST}"
+}
+
 # -----------------------------------------------------------------------------
 build_primary_list
 
@@ -679,7 +744,7 @@ if [[ ${ENABLE_KRAKEN_GTDB:-1} -eq 1 ]]; then
 
   sbatch_opts KRAKEN
   mkdir -p "${OUT_ROOT}/03_kraken_gtdb"
-  require_file "${SCRIPTS_DIR}/04_Kraken_gtdb.sh"
+  require_file "${SCRIPTS_DIR}/04_Kraken_gtdb2.sh"
 
   JID_KRAKEN=$(
     sbatch "${deps[@]}" "${SBATCH_BUILT_OPTS[@]}" \
@@ -696,7 +761,7 @@ KRAKEN2_MODULE="${KRAKEN2_MODULE}",\
 PDC_MODULE="${PDC_MODULE}",\
 GTDB_SRC="${GTDB_SRC}",\
 THREADS="${KRAKEN_SBATCH_CPUS}" \
-      "${SCRIPTS_DIR}/04_Kraken_gtdb.sh" | awk '{print $4}'
+      "${SCRIPTS_DIR}/04_Kraken_gtdb2.sh" | awk '{print $4}'
   )
   echo "[KRAKEN] batch -> ${JID_KRAKEN}"
 else
@@ -812,24 +877,69 @@ BAMDAM_MAXDAMAGE="${BAMDAM_MAXDAMAGE}" \
 else
   echo "[INFO] Filtering/ngsLCA disabled."
 fi
-# -------------------------------------------------------------------------------
-
-#===============================================================================#
-#     Exta bamdam plot to assess top x damageplot                               #
-#===============================================================================#
-
-#awk '{for(i=2;i<=NF;i++){n=split($i,a,":");if(n>=3 && a[3]=="genus"){id=a[1];counts[id]++;name[id]=a[2];break}}}END{for(id in counts)printf "%d\t%s\t%s\n",counts[id],id,name[id]}' \
-#pipeline_metage_out/05_filtering/bamdam/NS_096/NS_096.small.lca \
-#| sort -nrk1,1 | head -10 > pipeline_metage_out/05_filtering/bamdam/NS_096/NS_096.top10.txt
-
-#bamdam plotdamage --in_subs pipeline_metage_out/05_filtering/bamdam/NS_096/NS_096.subs.txt --tax 30409 --outplot damageplot_lagopus_96.png
-
 
 # -----------------------------------------------------------------------------
 # MMSeqs2 (optional stub)
 # -----------------------------------------------------------------------------
+
+JOB_MMSEQS2=""
+
 if [[ ${ENABLE_MMSEQS2:-0} -eq 1 ]]; then
-  echo "[INFO] MMSeqs2 is enabled; add commands in "${SCRIPTS_DIR}/07_mmseqs2.sh"."
+  sbatch_opts MMSEQS2
+  require_file "${SCRIPTS_DIR}/07_mmseqs2.sh"
+
+  build_mmseqs2_sample_list
+  MMSEQS2_LIST_SNAP="${MMSEQS2_LIST%.*}.run.$(date +%s).txt"
+  cp -f "${MMSEQS2_LIST}" "${MMSEQS2_LIST_SNAP}"
+  n_mmseqs2=$(wc -l < "${MMSEQS2_LIST_SNAP}" | tr -d ' ')
+
+  if [[ "${n_mmseqs2}" -eq 0 ]]; then
+    echo "[MMSEQS2] No samples to process."
+  else
+    MMSEQS2_DEPS=()
+    if [[ -n "${JOB_FILTER:-}" ]]; then
+      MMSEQS2_DEP="--dependency=afterok:${JOB_FILTER}"
+    fi
+
+    JOB_MMSEQS2=$(sbatch "${MMSEQS2_DEPS[@]}" "${SBATCH_BUILT_OPTS[@]}" \
+      --job-name="${MMSEQS2_SBATCH_JOB_NAME:-mmseqs2}" \
+      --array="0-$((n_mmseqs2-1))" \
+      --output="${LOG_ROOT}/out/mmseqs2.%x.%A_%a.out" \
+      --error="${LOG_ROOT}/error/mmseqs2.%x.%A_%a.err" \
+      --export=ALL,\
+OUT_ROOT="${OUT_ROOT}",\
+TMP_ROOT="${TMP_ROOT}",\
+LOG_ROOT="${LOG_ROOT}",\
+SCRIPTS_DIR="${SCRIPTS_DIR}",\
+SAMPLE_LIST="${MMSEQS2_LIST_SNAP}",\
+MAP_LAST_DB_TAG="${MAP_LAST_DB_TAG}",\
+MMSEQS2_DB="${MMSEQS2_DB}",\
+MMSEQS2_GENERA_FILE="${MMSEQS2_GENERA_FILE}",\
+MMSEQS2_MIN_DMG="${MMSEQS2_MIN_DMG}",\
+MMSEQS2_TOP_GENERA="${MMSEQS2_TOP_GENERA:-10}",\
+MMSEQS2_MAX_READS="${MMSEQS2_MAX_READS:-100}",\
+MMSEQS2_MIN_READS="${MMSEQS2_MIN_READS:-30}",\
+MMSEQS2_SEED="${MMSEQS2_SEED:-}",\
+MMSEQS2_FILTER_LCA_SCRIPT="${MMSEQS2_FILTER_LCA_SCRIPT:-${SCRIPTS_DIR}/filter_lca_top10_subset_reads.py}",\
+MMSEQS2_POSTPROCESS_SCRIPT="${MMSEQS2_POSTPROCESS_SCRIPT:-${SCRIPTS_DIR}/postprocess_mmseqs_taxonomy_compare.py}",\
+TAXADB_SQLITE="${TAXADB_SQLITE:-}",\
+TAXADB_VENV="${TAXADB_VENV:-}",\
+MMSEQS2_AMBIG_FRAC="${MMSEQS2_AMBIG_FRAC:-0.005}",\
+MMSEQS2_MODULE="${MMSEQS2_MODULE:-}",\
+MMSEQS2_DATA_MODULE="${MMSEQS2_DATA_MODULE:-}",\
+MMSEQS2_DATA="${MMSEQS2_DATA:-}",\
+MMSEQS2_THREADS="${MMSEQS2_THREADS:-}",\
+MMSEQS2_MAX_SEQS="${MMSEQS2_MAX_SEQS:-}",\
+MIN_SEQID="${MIN_SEQID:-}",\
+MIN_BITS="${MIN_BITS:-}",\
+MMSEQS2_MIN_LENGTH="${MMSEQS2_MIN_LENGTH:-}",\
+MMSEQS2_S="${MMSEQS2_S:-}",\
+MMSEQS2_SPACED_KMER_MODE="${MMSEQS2_SPACED_KMER_MODE:-}",\
+MMSEQS2_SPLIT_MEM_LIMIT="${MMSEQS2_SPLIT_MEM_LIMIT:-}" \
+      "${SCRIPTS_DIR}/07_mmseqs2.sh" | awk '{print $4}')
+
+    echo "[MMSEQS2] array -> ${JOB_MMSEQS2} (0-$((n_mmseqs2-1)))"
+  fi
 fi
 
 # -----------------------------------------------------------------------------
@@ -841,10 +951,20 @@ if [[ ${ENABLE_METRICS:-1} -eq 1 ]]; then
   require_file "${SCRIPTS_DIR}/99_metrics.sh"
   mkdir -p "${OUT_ROOT}/99_metrics"
 
-  # Metrics should wait for filtering jobs, if filtering was launched.
+  # Metrics should wait for any upstream jobs that were launched in this run.
   METRICS_DEPS=()
-  if [[ -n "${JOB_FILTER:-}" ]]; then
-    METRICS_DEPS=( --dependency="afterok:${JOB_FILTER}" )
+  deps=()
+
+  # Add any job IDs that exist
+  for v in JOB_FILTER JOB_MAP JOB_PRINSEQ JOB_SGA JOB_MMSEQS2 JID_KRAKEN; do
+    if [[ -n "${!v:-}" ]]; then
+      deps+=( "${!v}" )
+    fi
+  done
+
+  if (( ${#deps[@]} > 0 )); then
+    dep_str="$(IFS=:; echo "${deps[*]}")"
+    METRICS_DEPS=( --dependency="afterok:${dep_str}" )
   fi
 
   JOB_METRICS=$(sbatch "${METRICS_DEPS[@]}" "${SBATCH_BUILT_OPTS[@]}" \
@@ -871,10 +991,27 @@ if [[ ${ENABLE_PLOTS:-1} -eq 1 ]]; then
   require_file "${SCRIPTS_DIR}/100_Plots.sh"
   mkdir -p "${OUT_ROOT}/100_plots"
 
+  
   # Plots should wait for metrics job, if metrics was launched.
+
   PLOTS_DEPS=()
+  deps=()
+
+  # Add any job IDs that exist (same set as metrics)
+  for v in JOB_FILTER JOB_MAP JOB_PRINSEQ JOB_SGA JOB_MMSEQS2 JID_KRAKEN; do
+    if [[ -n "${!v:-}" ]]; then
+      deps+=( "${!v}" )
+    fi
+  done
+
+# Also wait for metrics, if metrics was submitted
   if [[ -n "${JOB_METRICS:-}" ]]; then
-    PLOTS_DEPS=( --dependency="afterok:${JOB_METRICS}" )
+    deps+=( "${JOB_METRICS}" )
+  fi
+
+  if (( ${#deps[@]} > 0 )); then
+    dep_str="$(IFS=:; echo "${deps[*]}")"
+    PLOTS_DEPS=( --dependency="afterok:${dep_str}" )
   fi
 
   JOB_PLOTS=$(sbatch "${PLOTS_DEPS[@]}" "${SBATCH_BUILT_OPTS[@]}" \
@@ -884,7 +1021,9 @@ if [[ ${ENABLE_PLOTS:-1} -eq 1 ]]; then
     --export=ALL,\
 OUT_ROOT="${OUT_ROOT}",\
 LOG_ROOT="${LOG_ROOT}",\
+PLOTS_KRONA=${PLOTS_KRONA},\
 MAP_LAST_DB_TAG="${MAP_LAST_DB_TAG}",\
+SITE_TAG="${SITE_TAG}",\
 PRIMARY_LIST_PATH="${PRIMARY_LIST_PATH:-${OUT_ROOT}/00_Samples_prefix/samples.primary.txt}",\
 CONDA_ENV_PLOTS="${CONDA_ENV_PLOTS}",\
 SCRIPTS_DIR="${SCRIPTS_DIR}",\
@@ -894,7 +1033,14 @@ PLOTS_BAMDAM_PLOT_MODE="${PLOTS_BAMDAM_PLOT_MODE}",\
 PLOTS_DAMAGE_THRESHOLD="${PLOTS_DAMAGE_THRESHOLD}",\
 PLOTS_PLOT_LOW_DAMAGE_TAXA="${PLOTS_PLOT_LOW_DAMAGE_TAXA}",\
 PLOTS_EXCLUDE_TAXA="${PLOTS_EXCLUDE_TAXA}",\
+PLOTS_LIST_TAXA_EVOLUTION_FILE="${PLOTS_LIST_TAXA_EVOLUTION_FILE}",\
 BAMDAM_TAXA_PER_PLOT="${BAMDAM_TAXA_PER_PLOT}",\
+BAMDAM_PYTHON_MODULE="${BAMDAM_PYTHON_MODULE}",\
+BAMDAM_VENV="${BAMDAM_VENV}",\
+KRONATOOLS_MODULE="${KRONATOOLS_MODULE}",\
+THREADS="${FILTER_SBATCH_CPUS}",\
+BAMDAM_MINREADS="${BAMDAM_MINREADS}",\
+BAMDAM_MAXDAMAGE="${BAMDAM_MAXDAMAGE}",\
 METRICS_TSV="${METRICS_TSV:-${OUT_ROOT}/99_metrics/metrics.tsv}",\
 BAMDAM_DIR="${BAMDAM_DIR:-${OUT_ROOT}/05_filtering/bamdam}" \
     "${SCRIPTS_DIR}/100_Plots.sh" | awk '{print $4}')

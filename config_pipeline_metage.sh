@@ -17,6 +17,8 @@ PRINSEQ_LITE="/cfs/klemming/projects/snic/sediment_paleogenomics/tools/prinseq-l
 KRAKEN2_MODULE="kraken2/2.1.2"
 BOWTIE2_MODULE="bowtie2/2.5.4"
 SAMTOOLS_MODULE="samtools/1.20"
+MMSEQS2_MODULE="MMseqs2/15-6f452"
+MMSEQS2_DATA_MODULE="MMseqs2_data/latest"
 CONDA_ENV_FILTERBAM="/cfs/klemming/projects/supr/naiss2025-23-301/tools/miniconda3/envs/bam-filter"
 CONDA_ENV_ngsLCA="/cfs/klemming/projects/supr/naiss2025-23-301/tools/miniconda3/envs/ngsLCA"
 PDC_MODULE="PDC"                 # only needed for Kraken2 section using $PDC_TMP
@@ -28,10 +30,7 @@ CONDA_ENV_PLOTS="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/plo
 # If bamdam is already in PATH (installed via pip), leave these empty
 BAMDAM_PYTHON_MODULE="python"
 BAMDAM_VENV="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/bamdam-env"
-#Install bamdam
-#python -m venv bamdam-env
-#source bamdam-env/bin/activate
-#pip install bamdam
+TAXADB_VENV="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/taxadb" #plus install pandas through pip
 
 ###################################################################################
 #                        Input files
@@ -56,6 +55,7 @@ OVERRIDE_LIST_PRINSEQ="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/
 OVERRIDE_LIST_KRAKEN="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/List_Kraken.txt" # Give absolute path
 OVERRIDE_LIST_MAPPING="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/List_mapping.txt"" # Give absolute path
 OVERRIDE_LIST_FILTER="" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/04_mapping/List_filter.txt" # Give absolute path
+OVERRIDE_LIST_MMSEQS2="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/mmseqs2_test.list"
 OVERRIDE_LIST_METRICS="" #"/absolute/path/to/List_filter.txt"
 
 # If you already have SGA output (name: <sample>_merged.dust.rmdup.fastq.gz)
@@ -74,13 +74,12 @@ SCRIPTS_DIR="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/scripts
 
 # NOTE: Please verify your DB versions are current; if DBs are updated, paths likely change.
 #  - PhyloNorway masked bowtie2 index (prefix ending with "_"):
-PHYLONORWAY="/cfs/klemming/projects/supr/sediment_paleogenomics/databases/metagenomic/PhyloNorway_masked/PhyloNorway_index/PhyloNorway_index_"
-PHYLONORWAY_HEADER="/cfs/klemming/projects/supr/sediment_paleogenomics/databases/metagenomic/PhyloNorway_masked/PhyloNorway_index/PhyloNorway_sq_header.tsv"
+PHYLONORWAY="/cfs/klemming/projects/supr/sediment_paleogenomics/databases/metagenome/PhyloNorway_masked/PhyloNorway_index/PhyloNorway_index_"
+PHYLONORWAY_HEADER="/cfs/klemming/projects/supr/sediment_paleogenomics/databases/metagenome/PhyloNorway_masked/PhyloNorway_index/PhyloNorway_sq_header.tsv"
 PLASTID="/cfs/klemming/projects/supr/sediment_paleogenomics/tom/CHLOROPLAST/plastids.genomic"
 MITO="/cfs/klemming/projects/snic/sediment_paleogenomics/databases/bowtie2/refseq_mito/mitochondrion.1.1.genomic"
 MAM_BIRD_FISH="/cfs/klemming/projects/supr/archaeogenetics/ernjoh/mam-bird-fish_v2/mam-bird-fish_v2" #"/cfs/klemming/projects/supr/archaeogenetics/ernjoh/mam-bird-fish_v2/mam-bird-fish_v2"
 #MAM_FISH="/cfs/klemming/projects/snic/sediment_paleogenomics/databases/bowtie2/nordic_fish/nordic_fish.index" #"/cfs/klemming/projects/supr/archaeogenetics/ernjoh/mam-bird-fish_v2/mam-bird-fish_v2"
-
 
 # Databases to map with Bowtie2 (order matters). Space-separated list of index prefixes.
 # Example:
@@ -95,6 +94,7 @@ MAP_DB_LIST="${PHYLONORWAY} ${PLASTID} ${MITO} ${MAM_BIRD_FISH}"
 # Example: nordic_fish
 #MAP_LAST_DB_TAG="${MAP_LAST_DB_TAG:-}"
 MAP_LAST_DB_TAG="mam-bird-fish_v2" #nordic_fish
+SITE_TAG="Orsa"
 
 # Kraken2 GTDB 
 GTDB_SRC="/cfs/klemming/pdc/software/dardel/sw-uppmax/data/Kraken2_data/prebuilt/k2_gtdb_genome_reps_20250609"
@@ -104,6 +104,9 @@ NAMES="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/names_
 NODES="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/nodes_NM.dmp"
 ACC2TAX="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/acc2taxid_NM_PhyloNorway_MBF_3col_noNA.txt.gz" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/acc2taxid_nordic_fish2.3col.gz" #"/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/acc2taxid_NM_PhyloNorway_MBF_3col_noNA.txt.gz"
 
+#MMSeqs2 database
+MMSEQS2_DB="/sw/data/MMseqs2_data/latest/rackham/NT"
+TAXADB_SQLITE="/cfs/klemming/projects/supr/sediment_paleogenomics/tools/metaJAM/taxadb_nucl.sqlite"
 
 #### Path to roots
 OUT_ROOT="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out"
@@ -111,7 +114,7 @@ TMP_ROOT="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_m
 LOG_ROOT="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/log"
 
 #### Path to metadata
-METADATA_PATH="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/metadata.txt"
+METADATA_PATH="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/metadata.txt" #Carefull it needs to be as a tsv tab-delimited
 
 # Fastp outputs by sample will go to:     ${OUT_ROOT}/01_fastp/<sample>/
 # Prinseq outputs by sample will go to:   ${OUT_ROOT}/02_prinsea/<sample>/
@@ -138,7 +141,7 @@ ENABLE_FILTERBAM=0
 ENABLE_NGSLCA=0
 ENABLE_BAMDAM=0
 ENABLE_MMSEQS2=0
-ENABLE_METRICS=0
+ENABLE_METRICS=1
 ENABLE_PLOTS=1
 
 #### Force re-run switches (0/1). When 1, submit the step even if its outputs exist.
@@ -147,6 +150,7 @@ FORCE_SGA=1
 FORCE_KRAKEN=1
 FORCE_MAPPING=1
 FORCE_FILTER=1
+FORCE_MMSEQS2=1
  
 ###################################################################################
 #                       Tools' parameters to precise
@@ -171,14 +175,32 @@ BAMDAM_MAXDAMAGE=0.5          # for bamdam krona --maxdamage
 TOP_GENUS=10                  # Top X genus to plot for damage
 BAMDAM_TAXA_PER_PLOT=50       # Number of taxa passing the filters to plot per graph
 
+# MMseqs2 search settings (optional, but good to centralize)
+MMSEQS2_THREADS=60
+MMSEQS2_MAX_SEQS=300
+MMSEQS2_MIN_LENGTH=30
+MIN_SEQID=0.85
+MIN_BITS=50
+MMSEQS2_S=7.5
+MMSEQS2_SPACED_KMER_MODE=1
+MMSEQS2_SPLIT_MEM_LIMIT="220G"
+# MMSeqs2 evaluation parameters
+MMSEQS2_TOP_GENERA=10
+MMSEQS2_GENERA_FILE="list_mmseqs.txt" #If a list file is give, the genera selected for investigation through MMSeqs2 will be provided from the list file and the TOP_GENERA argument will be skipped. The lsit should be in shape of 1 genera name per line.
+MMSEQS2_MIN_DMG=3.5
+MMSEQS2_MAX_READS=100
+MMSEQS2_MIN_READS=30
+MMSEQS2_SEED="42"               # Leave empty to have different reads each run, othewise set an integer (e.g. 42)
+MMSEQS2_AMBIG_FRAC=0.05         # Percent of e-value difference for the second best hit for a different genera than the mmseqs2 best hit 
+
 # Plot parameters
 PLOTS_BAMDAM_MIN_READS=50       # Minimum reads per sample to include in bamdam plots
 PLOTS_BAMDAM_PLOT_MODE="both"   # heatmap, bubble, both
 PLOTS_DAMAGE_THRESHOLD=3.5      # Minimum percentage of damage for plotting
-PLOTS_PLOT_LOW_DAMAGE_TAXA=0    # 1 = keep low-damage taxa (default) 
-                                # 0 = drop taxa whose max damage across samples is < PLOTS_DAMAGE_THRESHOLD
-
+PLOTS_PLOT_LOW_DAMAGE_TAXA=0    # 1 = keep low-damage taxa (default); 0 = drop taxa whose max damage across samples is < PLOTS_DAMAGE_THRESHOLD
 PLOTS_EXCLUDE_TAXA="Homo;Zea;Canis;Veronica" # comma / semicolon / space separated (exact taxon name matches)
+PLOTS_KRONA=1                   # Plots the bamdam results for all samples in metadata if enable. 1=enable, 0=disable
+PLOTS_LIST_TAXA_EVOLUTION_FILE=taxa_list_reads_single_plot.txt # Give a list of taxa with one taxa per line, to produce plot of abundance of each taxa as a line representation
 ###################################################################################
 #                               SBATCH parameters
 ###################################################################################
@@ -252,6 +274,16 @@ FILTER_SBATCH_TIME="0-01:00:00"
 FILTER_SBATCH_QOS=""
 FILTER_SBATCH_EXTRA=""
 FILTER_SBATCH_JOB_NAME="filtering_ngslca"
+
+# MMSeqs2
+MMSEQS2_SBATCH_ACCOUNT="naiss2025-5-78"
+MMSEQS2_SBATCH_PARTITION="memory" #memory
+MMSEQS2_SBATCH_CPUS="256" #256
+MMSEQS2_SBATCH_MEM="880G" #880G
+MMSEQS2_SBATCH_TIME="08:10:00" #10:00:00
+MMSEQS2_SBATCH_QOS=""
+MMSEQS2_SBATCH_EXTRA=""
+MMSEQS2_SBATCH_JOB_NAME="mmseqs2"
 
 # Metrics
 METRICS_SBATCH_ACCOUNT="naiss2025-5-78"
