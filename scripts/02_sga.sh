@@ -33,5 +33,14 @@ sga filter --homopolymer-check \
   "${output}/${sample}_merged.dust.fastq.gz" \
   -o "${output}/${sample}_merged.dust.rmdup.fastq.gz"
 
+# ---- Optional cleanup: remove SGA index artifacts (not needed downstream) ----
+if [[ "${SGA_CLEAN_INDEX:-1}" -eq 1 ]]; then
+  echo "[INFO] Removing SGA index files (*.bwt *.rbwt *.sai *.rsai) from ${sample} from: ${output}"
+  rm -f "${output}/${sample}"*.bwt \
+        "${output}/${sample}"*.rbwt \
+        "${output}/${sample}"*.sai \
+        "${output}/${sample}"*.rsai
+fi
+
 set +x
 conda deactivate
