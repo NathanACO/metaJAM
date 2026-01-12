@@ -161,6 +161,7 @@ FASTP_OVERLAP_LEN_REQUIRE=20   # --overlap_len_require
 FASTP_MIN_LENGTH=30            # -l
 # SGA
 SGA_DUST_THRESHOLD=4           # --dust-threshold
+SGA_CLEAN_INDEX=1              # 0 (disable) or 1 (enable). If enable it will remove all index files after sga step is done, to get extra space
 # PRINSEQ params (defaults mirror your snippet)
 PRINSEQ_COMPLEXITY_METHOD="dust"
 PRINSEQ_COMPLEXITY_THRESHOLD=4
