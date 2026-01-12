@@ -635,6 +635,7 @@ INPUT_MERGED="${merged}",\
 OUTPUT_DIR="${outdir}",\
 CONDA_INIT="${CONDA_INIT}",\
 CONDA_ENV_SGA="${CONDA_ENV_SGA}",\
+SGA_CLEAN_INDEX="${SGA_CLEAN_INDEX:-1}",\
 SGA_DUST_THRESHOLD="${SGA_DUST_THRESHOLD}" \
       "${SCRIPTS_DIR}/02_sga.sh" | awk '{print $4}')
     JID_SGA["$s"]="$jid"
