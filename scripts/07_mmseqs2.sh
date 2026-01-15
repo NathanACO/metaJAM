@@ -181,13 +181,13 @@ rm -f "${OUTPUT_DIR}/nt_query.resultDB."[0-9]* # Remove intermediate files
 AMBIG_FRAC="${MMSEQS2_AMBIG_FRAC:-0.005}"
 
 python3 "${SCRIPTS_DIR}/mmseqs_pick_besthit_with_ambiguity.py" \
-  --m8 "${OUTPUT_DIR}/${DATABASE}.resultDB_bits_nucl_taxid.m8" \
+  --m8 "${OUTPUT_DIR}/${sample}.${DATABASE}.resultDB_bits_nucl_taxid.m8" \
   --ambig-frac "${AMBIG_FRAC}" \
-  --out "${OUTPUT_DIR}/${DATABASE}.besthit.assigned.tsv"
+  --out "${OUTPUT_DIR}/${sample}.${DATABASE}.besthit.assigned.tsv"
 
 python3 "${SCRIPTS_DIR}/postprocess_mmseqs_taxonomy_compare.py" \
   --expected-map "${OUTPUT_DIR}/${sample}.mmseqs_expected.tsv" \
-  --assigned "${OUTPUT_DIR}/${DATABASE}.besthit.assigned.tsv" \
-  --out-summary "${OUTPUT_DIR}/${DATABASE}.bamdam_mmseqs.evaluation.summary.tsv"
+  --assigned "${OUTPUT_DIR}/${sample}.${DATABASE}.besthit.assigned.tsv" \
+  --out-summary "${OUTPUT_DIR}/${sample}.${DATABASE}.bamdam_mmseqs.evaluation.summary.tsv"
 
-echo "[mmseqs2] Evaluation summary written: "${OUTPUT_DIR}/${DATABASE}.bamdam_mmseqs.evaluation.summary.tsv""
+echo "[mmseqs2] Evaluation summary written: "${OUTPUT_DIR}/${sample}.${DATABASE}.bamdam_mmseqs.evaluation.summary.tsv""
