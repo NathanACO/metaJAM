@@ -135,6 +135,7 @@ else
     --search-type 3 \
     --spaced-kmer-mode "${SKM}" \
     -s "${S_PARAM}" \
+    -e "${MAX_EVALUE:-1e-5}" \
     --min-length "${MIN_LEN}" \
     --min-seq-id "${MIN_SEQID}" \
     --max-seqs "${MAX_SEQS}" \
@@ -179,7 +180,7 @@ rm -f "${OUTPUT_DIR}/nt_query.resultDB."[0-9]* # Remove intermediate files
 # -----------------------------------------------------------------------------
 # Post-processing: pick one best hit per query + compare taxonomy vs expected
 # -----------------------------------------------------------------------------
-AMBIG_FRAC="${MMSEQS2_AMBIG_FRAC:-0.005}"
+AMBIG_FRAC="${MMSEQS2_AMBIG_FRAC:-0.10}"
 
 python3 "${SCRIPTS_DIR}/mmseqs_pick_besthit_with_ambiguity.py" \
   --m8 "${OUTPUT_DIR}/${sample}.${DATABASE}.resultDB_bits_nucl_taxid.m8" \
