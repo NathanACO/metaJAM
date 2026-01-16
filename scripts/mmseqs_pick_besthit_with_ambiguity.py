@@ -2,14 +2,14 @@
 """This script has been written for metaJAM pipeline, it aims to:
 - Reads the nt_query.resultDB_nucl_taxid.m8 (semicolon-separated, with header)
 - Per query:
-    Picks best hit = lowest evalue (tie-breaker: highest bits)
+    Picks best hit = max bits (tie-break by min evalue)
     Finds best hit from a different genus
-    If that different-genus hit has an evalue 5% greater → genus is ambiguous, so output genus taxid as 0 (and keep family/order/kingdom from the best hit) writes a TSV with 1 line per query:query_id, lca_taxid, genus;family;order;kingdom, assigned_level
+    If that different-genus hit has a bit less than 10% lower → genus is ambiguous, so output genus taxid as 0 (and keep family/order/kingdom from the best hit) writes a TSV with 1 line per query:query_id, lca_taxid, genus;family;order;kingdom, assigned_level
 
 How to use it:
 python3 mmseqs_pick_besthit_with_ambiguity.py \
   --m8 nt_query.resultDB_nucl_taxid.m8 \
-  --ambig-frac 0.05 \
+  --ambig-frac 0.10 \
   --out nt_query.besthit.assigned.tsv
 """
 
@@ -18,18 +18,18 @@ import csv
 
 def main():
     ap = argparse.ArgumentParser(
-        description="Pick one best MMseqs hit per query (min evalue, tie-break by max bits) and mark genus as ambiguous if best alt-genus is within +X% evalue."
+        description="Pick one best MMseqs hit per query (max bits, tie-break by min evalue) and mark genus as ambiguous if best alt-genus is within X% bitscore."
     )
     ap.add_argument("--m8", required=True, help="MMseqs convertalis output with taxonomy columns (semicolon-separated)")
     ap.add_argument("--out", required=True, help="Output TSV (tab-separated)")
-    ap.add_argument("--ambig-frac", type=float, default=0.05, help="Ambiguity fraction (0.05 = 5%%)")
+    ap.add_argument("--ambig-frac", type=float, default=0.10, help="Ambiguity fraction (0.10 = 10%%)")
     args = ap.parse_args()
 
     m8 = args.m8
     out = args.out
     ambig = args.ambig_frac
 
-    best = {}      # q -> (e, -bits, taxid, genus, family, order, kingdom)
+    best = {}      # q -> (-bits, evalue, taxid, genus, family, order, kingdom)
     best_alt = {}  # q -> best hit with different genus
 
     with open(m8, encoding="utf-8", errors="replace") as fh:
@@ -55,7 +55,7 @@ def main():
 
             taxid = row[it]
             genus, fam, order, king = row[ig], row[ifa], row[io], row[ik]
-            rec = (e, -bits, taxid, genus, fam, order, king)
+            rec = (-bits, e, taxid, genus, fam, order, king)
 
             if q not in best or rec < best[q]:
                 old = best.get(q)
@@ -78,13 +78,13 @@ def main():
         ])
 
         for q, rec in best.items():
-            e1, _, taxid, genus, fam, order, king = rec
+            nbits1, e1, taxid, genus, fam, order, king = rec
             alt = best_alt.get(q)
-
             ambiguous = False
             if alt:
-                e2 = alt[0]
-                ambiguous = (e1 == 0.0 and e2 == 0.0) or (e1 > 0.0 and e2 <= e1 * (1.0 + ambig))
+                bits1 = -nbits1
+                bits2 = -alt[0]
+                ambiguous = (bits1 > 0.0 and bits2 >= bits1 * (1.0 - ambig))
 
             if ambiguous:
                 w.writerow([q, taxid, "NA", fam, order, king, "family"])
