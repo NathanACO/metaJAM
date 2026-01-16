@@ -138,6 +138,7 @@ else
     --min-length "${MIN_LEN}" \
     --min-seq-id "${MIN_SEQID}" \
     --max-seqs "${MAX_SEQS}" \
+    --cov-mode 2 -c "${MIN_QUERY_COV}" \
     --split-memory-limit "${SPLIT_MEM}"
 fi
 
