@@ -633,7 +633,6 @@ if [[ ${ENABLE_PREPROCESS:-1} -eq 1 && ${ENABLE_SGA:-1} -eq 1 ]]; then
 SAMPLE="${s}",\
 INPUT_MERGED="${merged}",\
 OUTPUT_DIR="${outdir}",\
-CONDA_INIT="${CONDA_INIT}",\
 CONDA_ENV_SGA="${CONDA_ENV_SGA}",\
 SGA_CLEAN_INDEX="${SGA_CLEAN_INDEX:-1}",\
 SGA_DUST_THRESHOLD="${SGA_DUST_THRESHOLD}" \
@@ -880,7 +879,7 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# MMSeqs2 (optional stub)
+# MMSeqs2
 # -----------------------------------------------------------------------------
 
 JOB_MMSEQS2=""
@@ -897,9 +896,17 @@ if [[ ${ENABLE_MMSEQS2:-0} -eq 1 ]]; then
   if [[ "${n_mmseqs2}" -eq 0 ]]; then
     echo "[MMSEQS2] No samples to process."
   else
+    # Build dependencies: wait for any upstream jobs that were submitted in this run
     MMSEQS2_DEPS=()
-    if [[ -n "${JOB_FILTER:-}" ]]; then
-      MMSEQS2_DEP="--dependency=afterok:${JOB_FILTER}"
+    dep_ids=()
+
+    # Add upstream job IDs if they exist (extend this list if you have more JOB_* vars)
+    for jid in "${JOB_FILTER:-}" "${JOB_MAP:-}" "${JID_KRAKEN:-}" "${JOB_PRINSEQ:-}"; do
+      [[ -n "${jid}" ]] && dep_ids+=("${jid}")
+    done
+
+    if [[ ${#dep_ids[@]} -gt 0 ]]; then
+      MMSEQS2_DEPS=( --dependency="afterok:$(IFS=:; echo "${dep_ids[*]}")" )
     fi
 
     JOB_MMSEQS2=$(sbatch "${MMSEQS2_DEPS[@]}" "${SBATCH_BUILT_OPTS[@]}" \
