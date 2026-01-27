@@ -96,7 +96,7 @@ Precise 1 or 0 for each step, 1=enable, 0=disable
 --minreads                  (default=5)\
 --maxdamage                 (default=0.5)\
 TOP_GENUS                   (default=10)           # Number of the most abundant genus to plot for damage
-5. *MMSeqs2*\
+5.1 *MMSeqs2*\
 MMSEQS2_THREADS             (default=60)\
 MMSEQS2_MAX_SEQS            (default=300)\
 MMSEQS2_MIN_LENGTH          (default=30)\
@@ -107,7 +107,7 @@ MAX_EVALUE                  (default="1e-5")\
 MMSEQS2_S                   (default=7.5)\
 MMSEQS2_SPACED_KMER_MODE    (default=1)\
 MMSEQS2_SPLIT_MEM_LIMIT     (default=220G)\
-# MMSeqs2 evaluation parameters
+5.2 *MMSeqs2 evaluation*\
 MMSEQS2_TOP_GENERA          (default=10)\
 MMSEQS2_MIN_DMG             (default=3.5)\
 MMSEQS2_MAX_READS           (default=100)\
