@@ -1,22 +1,19 @@
 <img src="https://github.com/NathanACO/metaJAM/blob/main/metaJAM_logo.png" width="200" /> 
 
-# metaJAM v1.0.1
+# metaJAM v1.1.1
 
 Metagenomic Pipeline for ancient DNA analysis performed at the Centre for Palaeogenetics, Stockholm University.
 
 This pipeline performs processing and analysis of metagenomic data, starting from paired-end fastq files or any intermediate files used in the pipeline if not the entire workflow is desired to run. 
 
-> [!CAUTION]
-> Ongoing fixes for the MMSeqs2 part - It won't work if you run it
-
 > [!NOTE]
-> Further developments will be included in metaJAM v1.0.2 soon:
+> Further developments will be included in metaJAM v1.2.1 (Release 03.02.2026):
 > - Conversion of the pipeline into Nextflow to ensure compatability across different HPC clusters
+> - Extra module to mask databases based on microbial content
+> And in metaJAM v1.2.2 in early March:
 > - Addition of leeHom as an alternative choice to fastp
-> - Addition of parameters to define in fastp, sga, prinseq and bamdam
-> - Different features to chose to concatenate diverse plant database or run specific databases iteratively
 > - Choice of the mapping strategy by iteration or not
-> - Extra module to mask databases of undesired regions will be added in the future
+
 
 ## Overview of the pipeline
 ![alt text](https://github.com/NathanACO/metaJAM/blob/main/metaJAM_diagram.png)
@@ -76,35 +73,48 @@ Path of the raw sequencing samples to be processed
 File containing a list of samples with absolute path to be processed
 
 ## Path to scripts and databases
-So far metaCPG is configured to be run through 4 different databases:
-1. PhyloNorway
-2. RefSeq Plastid
-3. RefSeq Mito
-4. Custom Database - containing any specific taxa of interest, build by the user
-
-> [!CAUTION]
-> So far metaJAM is designed to run with 4 databases present together, you can play around only with the Custom Database. \
-> New version of metaJAM 1.0.3 will include the choice of using 1 to x databases.
+So far metaCPG is configured to be run through different databases iteratively.
+Please specify any databases that you want to use in the MAP_DB_LIST variable of the config file.
+If the same samples are planning to be run against different databases, we strongly advise to define a name for each combination of databases in the MAP_LAST_DB_TAG variable of the config.
 
 ## Tools activation
 Precise 1 or 0 for each step, 1=enable, 0=disable
 
 ## Parameters to precise for specific tools
 1. *fastp*\
--overlap_len_require   (default=20)\
--l                     (default=30)
+-overlap_len_require        (default=20)\
+-l                          (default=30)
 2. *SGA*\
---dust-threshold       (default=4)
+--dust-threshold            (default=4)
 3. *PRINSEQ*\
--lc_method             (default=dust)\
--lc_threshold          (default=4)\
--min_len               (default=35)\
--derep                 (default=1)
+-lc_method                  (default=dust)\
+-lc_threshold               (default=4)\
+-min_len                    (default=35)\
+-derep                      (default=1)
 4. *bamdam*\
---stranded             (default=ds)\
---minreads             (default=5)\
---maxdamage            (default=0.5)\
-TOP_GENUS              (default=10)    - Number of the most abundant genus to plot for damage
+--stranded                  (default=ds)\
+--minreads                  (default=5)\
+--maxdamage                 (default=0.5)\
+TOP_GENUS                   (default=10)           # Number of the most abundant genus to plot for damage
+5. *MMSeqs2*\
+MMSEQS2_THREADS             (default=60)\
+MMSEQS2_MAX_SEQS            (default=300)\
+MMSEQS2_MIN_LENGTH          (default=30)\
+MIN_SEQID                   (default=0.93)\
+MIN_BITS                    (default=50)\
+MIN_QUERY_COV               (default=0.95)\
+MAX_EVALUE                  (default="1e-5")\
+MMSEQS2_S                   (default=7.5)\
+MMSEQS2_SPACED_KMER_MODE    (default=1)\
+MMSEQS2_SPLIT_MEM_LIMIT     (default=220G)\
+# MMSeqs2 evaluation parameters
+MMSEQS2_TOP_GENERA          (default=10)\
+MMSEQS2_MIN_DMG             (default=3.5)\
+MMSEQS2_MAX_READS           (default=100)\
+MMSEQS2_MIN_READS           (default=30\
+MMSEQS2_SEED                (default=42)\           # Leave empty to have different reads each run, othewise set an integer (e.g. 42)
+MMSEQS2_AMBIG_FRAC          (default=0.05)\         # Percent of e-value difference for the second best hit for a different genera than the mmseqs2 best hit 
+
 6. *Plots*\
 PLOTS_BAMDAM_MIN_READS (default=50)    - Minimum reads per sample to include in bamdam plots\
 PLOTS_BAMDAM_PLOT_MODE (default=both)  - Chose which plots to produce: heatmap, bubble or both\
@@ -117,7 +127,7 @@ To be refine based on samples size and database using
 > For smaller datasets (around 10-20M), 15h for 3-4 samples seems a coherent value, depending on your cluster queueing system.
 
 ## Plot output
-Two different plots are created by metaJAM and required a metadata file (see in test for metadata format and content).\
+Different plots are created by metaJAM and required a metadata file (see in test for metadata format and content).\
 The first plot created is giving an overview of the metrics of the samples processed:
 ![alt text](https://github.com/NathanACO/metaJAM/blob/main/reads_per_step_dots.png)
 &copy; Martin et al. 2025 plot, peatbog paper - in revision
@@ -132,14 +142,11 @@ It will produce two different plots each time, one for the genus and one for the
 
 > [!NOTE]
 > An extra plot containing information about the damage is also produced for supplementary information.\
-> The damage will be coded by 3 colours (red,orange,green).\
+> The damage is coded by 3 colours (red,orange,green).\
 > Green if for this taxa the damage are superior to 5% and if the damage percent is within the interval (+-5%) of the mean of the damage of the 3 main taxa that have more than 5% damage.\
 > If only one condition is met, the associated damage column will be orange and the user will be invited to investigate deeper this taxa.
 > 
 > ![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_bubbleplot_damage.png)
-> 
-> Also add a feature of the maximum number of taxa to be plotted together on the graph and the maximum number of sites will be implemented soon.
-> We will also add a list of taxa given by the user to exclude from the graph, or suggested by metaJAM from the damage supplementary plot.
 
 
 _Why metaJAM?_\
