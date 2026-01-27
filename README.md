@@ -2,18 +2,24 @@
 
 # metaJAM v1.0.1
 
-Metagenomic Pipeline for ancient DNA analysis performed at the Centre for Palaeogenetics - Stockholm
+Metagenomic Pipeline for ancient DNA analysis performed at the Centre for Palaeogenetics, Stockholm University.
+
+This pipeline performs processing and analysis of metagenomic data, starting from paired-end fastq files or any intermediate files used in the pipeline if not the entire workflow is desired to run. 
 
 > [!CAUTION]
 > Ongoing fixes for the MMSeqs2 part - It won't work if you run it
 
 > [!NOTE]
 > Further developments will be included in metaJAM v1.0.2 soon:
+> - Conversion of the pipeline into Nextflow to ensure compatability across different HPC clusters
 > - Addition of leeHom as an alternative choice to fastp
 > - Addition of parameters to define in fastp, sga, prinseq and bamdam
 > - Different features to chose to concatenate diverse plant database or run specific databases iteratively
 > - Choice of the mapping strategy by iteration or not
-> - Extra pipeline to mask databases will be added in the future
+> - Extra module to mask databases of undesired regions will be added in the future
+
+## Overview of the pipeline
+![alt text](https://github.com/NathanACO/metaJAM/blob/main/metaJAM_diagram.png)
 
 ## How to launch it:
 sbatch -x Run_pipeline_metage.sh config_pipeline_metage.sh\
@@ -109,9 +115,6 @@ To be refine based on samples size and database using
 > [!TIP]
 > We advise to set up at least 650G and 256CPUs for the Kraken step, and to allow at least 20 hours of running time for massive fastq.gz (>60M reads)\
 > For smaller datasets (around 10-20M), 15h for 3-4 samples seems a coherent value, depending on your cluster queueing system.
-
-## Overview of the pipeline
-![alt text](https://github.com/NathanACO/metaJAM/blob/main/metaJAM_diagram.png)
 
 ## Plot output
 Two different plots are created by metaJAM and required a metadata file (see in test for metadata format and content).\
