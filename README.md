@@ -95,7 +95,7 @@ Precise 1 or 0 for each step, 1=enable, 0=disable
 --stranded                  (default=ds)\
 --minreads                  (default=5)\
 --maxdamage                 (default=0.5)\
-TOP_GENUS                   (default=10)           # Number of the most abundant genus to plot for damage
+TOP_GENUS                   (default=10)           # Number of the most abundant genus to plot for damage\
 5.1 *MMSeqs2*\
 MMSEQS2_THREADS             (default=60)\
 MMSEQS2_MAX_SEQS            (default=300)\
@@ -112,7 +112,7 @@ MMSEQS2_TOP_GENERA          (default=10)\
 MMSEQS2_MIN_DMG             (default=3.5)\
 MMSEQS2_MAX_READS           (default=100)\
 MMSEQS2_MIN_READS           (default=30\
-MMSEQS2_SEED                (default=42)\           # Leave empty to have different reads each run, othewise set an integer (e.g. 42)
+MMSEQS2_SEED                (default=42)            # Leave empty to have different reads each run, othewise set an integer (e.g. 42)\
 MMSEQS2_AMBIG_FRAC          (default=0.05)\         # Percent of e-value difference for the second best hit for a different genera than the mmseqs2 best hit 
 
 6. *Plots*\
