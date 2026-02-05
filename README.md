@@ -19,51 +19,29 @@ This pipeline performs processing and analysis of metagenomic data, starting fro
 ![alt text](https://github.com/NathanACO/metaJAM/blob/main/metaJAM_diagram.png)
 
 ## How to launch it:
-sbatch -x Run_pipeline_metage.sh config_pipeline_metage.sh\
+`nextflow run main.nf -profile conda`\
+if you want to resume, add also `-resume`, and `--with-trace` for output a trace*.txt reporting memory and time for each process.
 It will creates different folders for the different steps of the pipeline, where the files will be stored:
 - 00_Samples_prefix -> Containing files with list of processed samples at each step 
 - 01_fastp
-- 02_sga
-- 03_kraken_gtdb
+- 02_sga (or 02_prinseq)
+- 03_kraken2_filter
 - 04_mapping
-- 05_filtering
+- 05_merged_bam
+- 06_masked_bam 
+- 07_ngslca
+- 08_bamdam
+- 09_kronaTools
 - 99_metrics
-- log -> Containing one error and one out folder where the sbatch information are stored (no need to precise it in the sbatch)
 
 > [!TIP]
 > You can run it with the Test samples present in the test folder of this github.
 
-A few requirements are needed to run this pipeline, and only the config file need to be modify in order to run it.
+A few requirements are needed to run this pipeline, and only the config `nextflow.config` file need to be modify in order to run it.
 
-## Required modules
-1. Modules from Dardel:
-- Fastp -v. 0.24+
-- Prinseq lite - v.0.20.4+
-- Kraken2 - v.2.1.2+
-- Bowtie2 - v.2.5.4+
-- Samtools - v1.20+
-- Kronatools - v2.8.1+
-
-2. Conda environments:
-- SGA
-- FilterBAM
-- ngsLCA
-
-3. Python environment:
-- bamdam (Install it from https://github.com/bdesanctis/bamdam):
-  1) Makes it accessible from everywhere on your cluster
-  2) Create a python environment: \
-python -m venv bamdam-env \
-source bamdam-env/bin/activate \
-pip install bamdam
-
-- taxadb
-  1) Makes it accessible from everywhere on your cluster
-  2) Create a python environment: \
-python -m venv taxadb \
-source taxadb/bin/activate \
-pip3 install taxadb
-
+## Required program
+nextflow (developed in v25.10.3)\
+conda 
 
 ## Input files
 1. If running the pipeline from scratch
@@ -77,8 +55,7 @@ So far metaCPG is configured to be run through different databases iteratively.
 Please specify any databases that you want to use in the MAP_DB_LIST variable of the config file.
 If the same samples are planning to be run against different databases, we strongly advise to define a name for each combination of databases in the MAP_LAST_DB_TAG variable of the config.
 
-## Tools activation
-Precise 1 or 0 for each step, 1=enable, 0=disable
+## Tools activation with "enable" or "disable"
 
 ## Parameters to precise for specific tools
 1. *fastp*\
