@@ -27,7 +27,19 @@ if you want to resume, add also `-resume`, and `--with-trace` for output a trace
 
 ## Required program
 nextflow (developed in v25.10.3)\
-conda 
+conda
+taxadb #use to download a file for setup
+
+run the script once before running anything
+`
+mkdir assets
+touch assets/NO_FILE
+cd assets
+taxadb download -o taxadb
+taxadb create -i taxadb --dbname taxadb.sqlite
+cd ../
+`
+
 
 ## Input files specified in the config `nextflow.config` file
 ### 1. If running the pipeline from scratch
