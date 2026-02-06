@@ -236,7 +236,7 @@ process MASK_REGIONS {
     output:
         tuple val(ID), path("*.mic_masked.bam")
     
-    publishDir "${params.OUTPUT_Dir}/05_masked_bam", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/06_masked_bam", mode: "copy"
         
     script:
     """
@@ -403,7 +403,16 @@ process KRONATOOLS {
 
 
 process MMSEQ2 {
-    conda 'bioconda::mmseqs2'
+    conda 'envs/mmseq2.yml'
+
+    label 'small_memory'
+
+    // setting for NT database
+    //cpus 256
+    //memory 880.GB
+    //time 10.hour
+    //queue 'memory'
+
     
     input:    
         tuple val(ID), path(bam), path(lca), path(lca_tsv),
@@ -423,8 +432,9 @@ process MMSEQ2 {
         val(DATABASE_NAME),
         val(MMSEQS2_DB),
         val(SEED),
-        path(GENERA_FILE),
-        val(MIN_BITS)
+        val(MIN_BITS),
+        path(TAXADB_SQLITE),
+        path(GENERA_FILE)
 
     output:
         tuple val(ID),
@@ -438,7 +448,7 @@ process MMSEQ2 {
 
     script:
     def seedArg = SEED ? "--seed ${SEED}" : ""
-    def genusArg = (GENERA_FILE && file(GENERA_FILE).exists()) ? "--genera-file ${GENERA_FILE}" : ""
+    def genusArg = GENERA_FILE.name != 'NO_FILE' ? "--genera-file ${GENERA_FILE}" : ''
 
     """
     # -----------------------------------------------------------------------------
@@ -506,8 +516,6 @@ process MMSEQ2 {
     # -----------------------------------------------------------------------------
     # 3) Add taxonomic info to MMseqs2 m8 (optional; requires TAXADB)
     # -----------------------------------------------------------------------------
-    # if [[ -n "${TAXADB_VEN}" && -n "${TAXADB_SQLITE}" && -f "${TAXADB_SQLITE}" ]]; then
-    # source "${TAXADB_VENV}/bin/activate"
     add_taxid_info.py \
         -blst Mmseqs2 \
         -b "${DATABASE_NAME}.resultDB_bits.m8" \

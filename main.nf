@@ -128,31 +128,34 @@ workflow {
 
 	KRONATOOLS( BAMDAM.out.xml )
 
-	// ASSIGN_LCA.out
-	// .map(tuple{it[0], it[1], it[2], it[3],
-	// params.MMSEQS2_MIN_DMG,
-	// params.MMSEQS2_TOP_GENERA,
-	// params.MMSEQS2_MAX_READS,
-	// params.MMSEQS2_MIN_READS,
-	// params.MMSEQS2_SPACED_KMER_MODE,
-	// params.MMSEQS2_S,
-	// params.MMSEQS2_MAX_EVALUE,
-	// params.MMSEQS2_MIN_LENGTH,
-	// params.MMSEQS2_MIN_SEQID,
-	// params.MMSEQS2_MAX_SEQS,
-	// params.MMSEQS2_MIN_QUERY_COV,
-	// params.MMSEQS2_SPLIT_MEM_LIMIT,
-	// params.MMSEQS2_AMBIG_FRAC,
-	// params.MMSEQS2_DATABASE_NAME,
-	// params.MMSEQS2_DB,
-	// params.MMSEQS2_SEED,
-	// params.MMSEQS2_GENERA_FILE,
-	// params.MMSEQS2_MIN_BITS
-	//})
-	// .set{ input_mmseq2 }
-	// .view()
+	MMSEQS2_GENERA_FILE = Channel.fromPath(params.MMSEQS2_GENERA_FILE, checkIfExists:true)
+
+	BAMDAM.out.lca
+	.map(it -> tuple(it[0], it[1], it[2], it[3],
+	params.MMSEQS2_MIN_DMG,
+	params.MMSEQS2_TOP_GENERA,
+	params.MMSEQS2_MAX_READS,
+	params.MMSEQS2_MIN_READS,
+	params.MMSEQS2_SPACED_KMER_MODE,
+	params.MMSEQS2_S,
+	params.MMSEQS2_MAX_EVALUE,
+	params.MMSEQS2_MIN_LENGTH,
+	params.MMSEQS2_MIN_SEQID,
+	params.MMSEQS2_MAX_SEQS,
+	params.MMSEQS2_MIN_QUERY_COV,
+	params.MMSEQS2_SPLIT_MEM_LIMIT,
+	params.MMSEQS2_AMBIG_FRAC,
+	params.MMSEQS2_DATABASE_NAME,
+	params.MMSEQS2_DB,
+	params.MMSEQS2_SEED,
+	params.MMSEQS2_MIN_BITS,
+	params.MMSEQS2_TAXADB_SQLITE
+	))
+	.combine(MMSEQS2_GENERA_FILE) //optional input
+	.set{ input_mmseq2 }
+	input_mmseq2.view()
 	
-	// MMSEQ2( input_mmseq2 )
+	MMSEQ2( input_mmseq2 )
 
 	// paired_reads
 	// .combine( FASTP.out ,by:0 )
