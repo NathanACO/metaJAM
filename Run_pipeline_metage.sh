@@ -761,7 +761,7 @@ KRAKEN2_MODULE="${KRAKEN2_MODULE}",\
 PDC_MODULE="${PDC_MODULE}",\
 GTDB_SRC="${GTDB_SRC}",\
 THREADS="${KRAKEN_SBATCH_CPUS}" \
-      "${SCRIPTS_DIR}/04_Kraken_gtdb2.sh" | awk '{print $4}'
+      "${SCRIPTS_DIR}/04_Kraken_gtdb.sh" | awk '{print $4}'
   )
   echo "[KRAKEN] batch -> ${JID_KRAKEN}"
 else
