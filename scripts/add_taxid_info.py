@@ -187,7 +187,7 @@ print("Recovery process of taxonomic informations done" )
 #Add taxonomic informations into the blast dataframe
 blast=blast.merge(pd.DataFrame({k: dict(v) for k, v in Taxid_dictionnary.items()}).T, left_on='Taxid', right_index=True,how='outer')
 #Remove NA values
-blast.fillna('NA', inplace=True)
+blast = blast.fillna('NA').astype(object)
 #Remove all spaces en replace them by _ - double check
 blast.columns = blast.columns.str.replace(' ', '_')
 blast=blast.replace(' ', '_', regex=True)
