@@ -6,11 +6,10 @@ Metagenomic Pipeline for ancient DNA analysis performed at the Centre for Palaeo
 
 This pipeline performs processing and analysis of metagenomic data, starting from paired-end fastq files or any intermediate files used in the pipeline if not the entire workflow is desired to run. 
 
-> [!NOTE]
-> Further developments will be included in metaJAM v1.2.1 (Release 03.02.2026):
-> - Conversion of the pipeline into Nextflow to ensure compatability across different HPC clusters
+> [!NOTE]:
+> The newest version of metaJAM in nextflow has been released, up to now, recent updates will be build on nextflow. Ancient version will remain accessible on the Github page.
+> Further developments will be included in metaJAM v1.2.2 in early March:
 > - Extra module to mask databases based on microbial content
-> And in metaJAM v1.2.2 in early March:
 > - Addition of leeHom as an alternative choice to fastp
 > - Choice of the mapping strategy by iteration or not
 
