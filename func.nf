@@ -405,7 +405,7 @@ process KRONATOOLS {
 process MMSEQ2 {
     conda 'envs/mmseq2.yml'
 
-    label 'small_memory'
+    // label 'small_memory' // for test
 
     // only rerun if it's out of memory issue
     errorStrategy { task ->
@@ -415,10 +415,10 @@ process MMSEQ2 {
     maxRetries 6
 
     // setting for NT database
-    //cpus 256
-    //memory 880.GB
-    //time 10.hour
-    //queue 'memory'
+    cpus 256
+    memory 880.GB
+    time 10.hour
+    queue 'memory'
 
     input:    
         tuple val(ID), path(bam), path(lca), path(lca_tsv),
@@ -612,13 +612,11 @@ process METRICS{
     done
 
 		
-
     # build header
-    bam_header_bamdam="bamdam_bam"
     count_bamdam=\$(count_bam "$bamdam_bam")
     
     # Write header
-    echo -e "sample\tcount_raw_fq1\tcount_raw_fq2\tcount_merged_fq\tcount_rm_low_complex_fq\tcount_k2_mic_unclas_fq\${bam_header}\${bam_header_bamdam}" > ${ID}.metrics
+    echo -e "sample\tcount_raw_fq1\tcount_raw_fq2\tcount_merged_fq\tcount_rm_low_complex_fq\tcount_k2_mic_unclas_fq\${bam_header}\tbamdam_bam" > ${ID}.metrics
     
     # Write values
     echo -e "${ID}\t\${count_raw_fq1}\t\${count_raw_fq2}\t\${count_merged_fq}\t\${count_rm_low_complex_fq}\t\${count_k2_mic_unclas_fq}\${bam_values}\t\${count_bamdam}" >> ${ID}.metrics
