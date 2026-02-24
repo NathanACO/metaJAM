@@ -157,14 +157,14 @@ workflow {
 	
 	MMSEQ2( input_mmseq2 )
 
-	// BAMDAM.out.lca.map{it -> tuple(it[0], it[1])}.set{bamdam_bam}
+	BAMDAM.out.lca.map{it -> tuple(it[0], it[1])}.set{bamdam_bam}
 
 	paired_reads
 	.combine( FASTP.out ,by:0 )
 	.combine( preprocessed_reads ,by:0 )
 	.combine( KRAKEN2.out.not_microbe ,by:0 )
 	.combine( BOWTIE2.out.groupTuple(), by:0 )
-	// .combine( bamdam_bam, by:0 )
+	.combine( bamdam_bam, by:0 )
 	.set{ input_metrics }
 	// input_metrics.view()
 

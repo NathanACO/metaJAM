@@ -407,13 +407,19 @@ process MMSEQ2 {
 
     label 'small_memory'
 
+    // only rerun if it's out of memory issue
+    errorStrategy { task ->
+        if (task.exitStatus >= 137 && task.exitStatus <= 141) return 'retry'
+        else return 'ignore'
+    }
+    maxRetries 6
+
     // setting for NT database
     //cpus 256
     //memory 880.GB
     //time 10.hour
     //queue 'memory'
 
-    
     input:    
         tuple val(ID), path(bam), path(lca), path(lca_tsv),
         val(MIN_DMG),
@@ -556,8 +562,8 @@ process METRICS{
         path(merged_fq),
         path(rm_low_complex_fq),
         path(k2_mic_unclas_fq),
-        path(mapped_bam)
-        // path(bamdam_bam)
+        path(mapped_bam),
+        path(bamdam_bam)
 
         // path(filterbam),
 
@@ -595,7 +601,7 @@ process METRICS{
 	bam_header=""
 	bam_values=""
 
-	for bam in *.bam; do
+	for bam in \$(ls *.bam | grep -v small); do
 		count=\$(count_bam "\$bam")
 
 		# build header
@@ -603,13 +609,19 @@ process METRICS{
     
              	# build values
                 bam_values="\${bam_values}\t\${count}"
-        done
+    done
+
+		
+
+    # build header
+    bam_header_bamdam="bamdam_bam"
+    count_bamdam=\$(count_bam "$bamdam_bam")
     
-        # Write header
-        echo -e "sample\tcount_raw_fq1\tcount_raw_fq2\tcount_merged_fq\tcount_rm_low_complex_fq\tcount_k2_mic_unclas_fq\${bam_header}" > ${ID}.metrics
+    # Write header
+    echo -e "sample\tcount_raw_fq1\tcount_raw_fq2\tcount_merged_fq\tcount_rm_low_complex_fq\tcount_k2_mic_unclas_fq\${bam_header}\${bam_header_bamdam}" > ${ID}.metrics
     
-        # Write values
-        echo -e "${ID}\t\${count_raw_fq1}\t\${count_raw_fq2}\t\${count_merged_fq}\t\${count_rm_low_complex_fq}\t\${count_k2_mic_unclas_fq}\${bam_values}" >> ${ID}.metrics
+    # Write values
+    echo -e "${ID}\t\${count_raw_fq1}\t\${count_raw_fq2}\t\${count_merged_fq}\t\${count_rm_low_complex_fq}\t\${count_k2_mic_unclas_fq}\${bam_values}\t\${count_bamdam}" >> ${ID}.metrics
     """
 }
 
