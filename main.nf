@@ -2,7 +2,7 @@
 nextflow.enable.dsl = 2
 
 // include the subworkflow
-include { FASTP; SGA; PRINSEQ; KRAKEN2; BOWTIE2; MERGE_BAM;  MASK_REGIONS; FILTERBAM; NGSLCA;  BAMDAM; MMSEQ2 ; KRONATOOLS } from './func.nf'
+include { FASTP; SGA; PRINSEQ; KRAKEN2; BOWTIE2; MERGE_BAM;  MASK_REGIONS; FILTERBAM; NGSLCA;  BAMDAM; MMSEQ2 ; KRONATOOLS; METRICS; CONCAT_METRICS; PLOTS } from './func.nf'
 
 workflow {
 	// input =================
@@ -62,18 +62,19 @@ workflow {
 
 	acc2taxid = file( params.ACC2TAXID ) 
 
+	//BOWTIE2.out.groupTuple().view()
+
 	//prioritize processing mapped_bam if specified than bowtie2 mapping results
-	if (params.MAPPED_BAM != "" ) {
+	if ( params.MAPPED_BAM == "" ) {
+		BOWTIE2.out.groupTuple().set { mapped_bam }
+	} else {
 		Channel.fromPath( params.MAPPED_BAM , checkIfExists: true)
 		.splitCsv( sep: "\t" )
 		.map { row -> [ row[0], file(row[1]) ] }
 		.groupTuple()
 		.set { mapped_bam }
-	} else {
-		BOWTIE2.out.groupTuple().set { mapped_bam }
 	}
-	// mapped_bam.view()
-
+	//mapped_bam.view()
 
 	//generate acc2taxid if not provided // to test
 	def acc2taxid_exists = acc2taxid.exists()
@@ -88,16 +89,15 @@ workflow {
 		.map { idx, idxs -> tuple(idx, idxs[0]) }
 		.set { mapping_indexes }
 
-		GET_ACC2TAXID( mapping_indexes )
 		GET_ACC2TAXID.out.collectFile(name: 'acc2taxid.txt', newLine: true)
 		.set{acc2taxid}
 	}
 
-	// MERGE_BAM( BOWTIE2.out.bam.groupTuple() )
+	// MERGE_BAM( BOWTIE2.out.groupTuple() )
 	MERGE_BAM( mapped_bam )
 	// MERGE_BAM.out.view()
 
-	MERGE_BAM.out.map { tuple(it[0], it[1], params.REGIONS_TO_MASK) } .view()
+	// MERGE_BAM.out.map { tuple(it[0], it[1], params.REGIONS_TO_MASK) } .view()
 
 	if (params.ENABLE_MASK_REGIONS == "enable") { 
 		MASK_REGIONS( MERGE_BAM.out.map { tuple(it[0], it[1], params.REGIONS_TO_MASK) }  )
@@ -112,10 +112,10 @@ workflow {
 	// bam.map { tuple(it[0], it[1], params.NAMES, params.NODES, params.ACC2TAXID )}.view()
 
 	if (params.ENABLE_NGSLCA == "enable") { NGSLCA( bam.map { tuple(it[0], it[1], params.NAMES, params.NODES, acc2taxid )} )}
-	// NGSLCA.out.view()
+	// NGSLCA.out.lca.view()
 
 	MERGE_BAM.out
-	.combine( NGSLCA.out ,by:0 )
+	.combine( NGSLCA.out.lca ,by:0 )
 	.map(it -> tuple(it[0], it[1], it[2],
 	params.BAMDAM_STRANDED,
 	params.BAMDAM_MINREADS,
@@ -153,44 +153,47 @@ workflow {
 	))
 	.combine(MMSEQS2_GENERA_FILE) //optional input
 	.set{ input_mmseq2 }
-	input_mmseq2.view()
+	//input_mmseq2.view()
 	
 	MMSEQ2( input_mmseq2 )
 
-	// paired_reads
-	// .combine( FASTP.out ,by:0 )
-	// .combine( preprocessed_reads ,by:0 )
-	// combine( KRAKEN2.out.not_microbe ,by:0 )
-	// combine( BOWTIE2.out.bam ,by:0 )
-	// .set{ input_metrics }
+	// BAMDAM.out.lca.map{it -> tuple(it[0], it[1])}.set{bamdam_bam}
+
+	paired_reads
+	.combine( FASTP.out ,by:0 )
+	.combine( preprocessed_reads ,by:0 )
+	.combine( KRAKEN2.out.not_microbe ,by:0 )
+	.combine( BOWTIE2.out.groupTuple(), by:0 )
+	// .combine( bamdam_bam, by:0 )
+	.set{ input_metrics }
 	// input_metrics.view()
 
-	// METRICS( input_metrics )
-	// CONCAT_METRICS( METRICS.out )
+	METRICS( input_metrics )
+	METRICS.out.collect().view()
+	CONCAT_METRICS( METRICS.out.collect() )
 
-	// CONCAT_METRICS.out.map(tuple{it[0], it[1], //???
-	// 	params.METRICS_TSV,
-    //     params.SAMPLES_FOR_PLOTS,
-    //     params.BAMDAM_DIR, //???----the scripts needs to change
-    //     params.METADATA_PATH,
-    //     params.MAP_LAST_DB_TAG,
-    //     params.PLOT_DIR,
-    //     params.MIN_READS,
-    //     params.PLOTS_BAMDAM_PLOT_MODE,
-    //     params.PLOTS_DAMAGE_THRESHOLD,
-    //     params.PLOTS_PLOT_LOW_DAMAGE_TAXA,
-    //     params.PLOTS_EXCLUDE_TAXA,
-    //     params.BAMDAM_TAXA_PER_PLOT,
-    //     params.PLOTS_LIST_TAXA_EVOLUTION_FILE,
-    //     params.OUT_ROOT, //mmseq_dir
-    //     params.MAP_LAST_DB_TAG,
-    //     params.LIST_TSV,
-    //     params.SITE_TAG,
-    //     params.BAMDAM_MINREADS,
-    //     params.BAMDAM_MAXDAMAGE})
-	// 	.set{ input_plots }
+	CONCAT_METRICS.out
+	.combine(BAMDAM.out.lca.map(it -> it[2]).collect())
+	.combine(MMSEQ2.out.evaluation.collect())
+	.map(it -> tuple(it[0], it[1], it[2],
+        params.SAMPLES_FOR_PLOTS,		
+        params.metadata,
+        params.MAP_LAST_DB_TAG,
+        params.PLOT_DIR,
+        params.MIN_READS,
+        params.PLOTS_BAMDAM_PLOT_MODE,
+        params.PLOTS_DAMAGE_THRESHOLD,
+        params.PLOTS_PLOT_LOW_DAMAGE_TAXA,
+        params.PLOTS_EXCLUDE_TAXA,
+        params.BAMDAM_TAXA_PER_PLOT,
+        params.PLOTS_LIST_TAXA_EVOLUTION_FILE,
+        params.MAP_LAST_DB_TAG,
+        params.BAMDAM_MINREADS,
+        params.BAMDAM_MAXDAMAGE
+	))
+	.set{ input_plots }
 
-	// PLOTS( input_plots )
+	 PLOTS( input_plots )
 	
 	}
 

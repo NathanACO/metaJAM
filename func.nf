@@ -154,7 +154,6 @@ process BOWTIE2 {
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
               val(idx), path(idxs)
-              //path(idx1), path(idx2),path(idx3), path(idx4),path(idx5), path(idx6) // unlimited number of DBs
 
 output:
     tuple val(ID), path("*.bam")
@@ -220,7 +219,7 @@ process MERGE_BAM {
             exit 1
         }
 
-        samtools sort -@ "${task.cpus}" -n   -o ${ID}_merged.sorted.bam   ${ID}.merged.bam
+        samtools sort -n -@ "${task.cpus}" -o ${ID}_merged.sorted.bam   ${ID}.merged.bam
     """
 }
 
@@ -286,7 +285,8 @@ process NGSLCA {
         tuple val(ID), path(bam), path(NAMES), path(NODES), path(ACC2TAX)
             
     output:
-        tuple val(ID), path("*.lca")
+        tuple val(ID), path("*.lca"), emit: lca
+	path("*.log")
 
     publishDir "${params.OUTPUT_Dir}/07_ngslca", mode: "copy"
         
@@ -441,7 +441,8 @@ process MMSEQ2 {
         path("*.mmseqs_queries.fa"),
         path("*.mmseqs_expected.tsv"),
         path("*.besthit.assigned.tsv"),
-        path("*.bamdam_mmseqs.evaluation.summary.tsv")
+        path("*.bamdam_mmseqs.evaluation.summary.tsv"), emit: evaluation
+        
 
 
     publishDir "${params.OUTPUT_Dir}/bamdam", mode: "copy"
@@ -546,18 +547,22 @@ process MMSEQ2 {
 }
 
 process METRICS{
+    label 'little_memory'
+    conda './envs/bowtie2.yml'
     input:    
         tuple val(ID), 
-        path(raw_fq), 
+        path(raw_fq1), 
+        path(raw_fq2), 
         path(merged_fq),
         path(rm_low_complex_fq),
         path(k2_mic_unclas_fq),
-        path(mapped_bam),
-        path(bamdam_bam)
+        path(mapped_bam)
+        // path(bamdam_bam)
+
         // path(filterbam),
-       
+
     output:
-        tuple val(ID), path("*.metrics")
+        path("*.metrics")
 
     script:
 
@@ -577,30 +582,43 @@ process METRICS{
         }
 
         count_bam () {
-        local b="\$1"
-        [[ -s "\$b" ]] || { echo "NA"; return; }
-        if have_samtools; then
-            # -F 260 = exclude unmapped (4) + secondary (256) → primary mapped alignments only
-            samtools view -c -F 260 "\$b" 2>/dev/null || echo "NA"
-        else
-            echo "NA"
-        fi
+        # -F 260 = exclude unmapped (4) + secondary (256) → primary mapped alignments only
+        samtools view -c -F 260 "\$1"
+        }
 
-        count_raw_fq=count_fastq(raw_fq)
-        count_merged_fq=count_fastq(merged_fq)
-        count_rm_low_complex_fq=count_fastq(rm_low_complex_fq)
-        count_k2_mic_unclas_fq=count_fastq(k2_mic_unclas_fq)
+        count_raw_fq1=\$(count_fastq $raw_fq1)
+        count_raw_fq2=\$(count_fastq $raw_fq2)
+        count_merged_fq=\$(count_fastq $merged_fq)
+        count_rm_low_complex_fq=\$(count_fastq $rm_low_complex_fq)
+        count_k2_mic_unclas_fq=\$(count_fastq $k2_mic_unclas_fq)
         #for different database, collect their name and read counts
-        count_mapped_bam=count_bam(mapped_bam)
-        count_bamdam_bam=count_bam(bamdam_bam)
-        # also make the output the same format as the original metrics as input for PLOTS
+	bam_header=""
+	bam_values=""
 
-        echo "$ID,\$count_raw_fq,\$count_merged_fq,\$count_rm_low_complex_fq,\$count_k2_mic_unclas_fq,\$count_mapped_bam,\$count_bamdam_bam" > $ID.metrics
+	for bam in *.bam; do
+		count=\$(count_bam "\$bam")
 
+		# build header
+		bam_header=\$(echo "\${bam_header}\t\${bam}" | sed "s/${ID}.//")
+    
+             	# build values
+                bam_values="\${bam_values}\t\${count}"
+        done
+    
+        # Write header
+        echo -e "sample\tcount_raw_fq1\tcount_raw_fq2\tcount_merged_fq\tcount_rm_low_complex_fq\tcount_k2_mic_unclas_fq\${bam_header}" > ${ID}.metrics
+    
+        # Write values
+        echo -e "${ID}\t\${count_raw_fq1}\t\${count_raw_fq2}\t\${count_merged_fq}\t\${count_rm_low_complex_fq}\t\${count_k2_mic_unclas_fq}\${bam_values}" >> ${ID}.metrics
     """
 }
 
 process CONCAT_METRICS {
+
+    cpus 2
+    memory 1.6.GB
+    time 20.m
+
     input: path(metrics)
 
     output: path("metrics")
@@ -610,10 +628,7 @@ process CONCAT_METRICS {
     script:
 
     """
-    echo 'sample\tDatabase_name\traw_reads\tafter_fastp\tafter_sga_preprocess\tafter_sga_filter\tafter_prinseq\tkraken_classified\tkraken_unclassified\tmapped_phylonorway\tmapped_mito\tmapped_plastid\tmapped_mbf\tmapped_all\tafter_filterBAM\tafter_bamdam' > metrics
-
-    cat *.metrics >> metrics
-
+	awk 'NF && !seen[\$0]++' *.metrics > metrics
 
     """
 
@@ -627,10 +642,10 @@ process PLOTS{
     publishDir "${params.OUTPUT_Dir}/12_plots", mode: "copy"
 
     input:    
-        tuple val(ID), 
-        path(METRICS_TSV),
-        path(SAMPLES_FOR_PLOTS),
-        path(BAMDAM_DIR), //???----the scripts needs to change
+        tuple path(METRICS_TSV),
+        path(BAMDAM_LCA), 
+        path(mmseq2_evaluation),
+        // path(SAMPLES_FOR_PLOTS),
         path(METADATA_PATH),
         path(MAP_LAST_DB_TAG),
         path(PLOT_DIR),
@@ -641,15 +656,13 @@ process PLOTS{
         val(PLOTS_EXCLUDE_TAXA),
         val(BAMDAM_TAXA_PER_PLOT),
         val(PLOTS_LIST_TAXA_EVOLUTION_FILE),
-        val(OUT_ROOT), //mmseq_dir
         val(MAP_LAST_DB_TAG),
-        path(LIST_TSV),
         val(SITE_TAG),
         val(BAMDAM_MINREADS),
         val(BAMDAM_MAXDAMAGE)
             
     output:
-        tuple val(ID), path("*.html"), path("*.xml")
+        tuple val(ID), path("*.html")
 
     publishDir "${params.OUTPUT_Dir}/plots", mode: "copy"
         
@@ -657,11 +670,10 @@ process PLOTS{
     """
         100_Plots.R \
         --metrics "${METRICS_TSV}" \
-        --samples "${SAMPLES_FOR_PLOTS}}" \
-        --bamdam_dir "${BAMDAM_DIR}" \
+        --bamdam_dir "./" \
         --metadata "${METADATA_PATH}" \
         --db_tag "${MAP_LAST_DB_TAG}" \
-        --outdir "${PLOT_DIR}" \
+        --outdir "./" \
         --min_reads "${MIN_READS}" \
         --bamdam_plot "${PLOTS_BAMDAM_PLOT_MODE}" \
         --damage_threshold "${PLOTS_DAMAGE_THRESHOLD}" \
@@ -669,12 +681,25 @@ process PLOTS{
         --exclude_taxa "${PLOTS_EXCLUDE_TAXA}" \
         --taxa_per_plot "${BAMDAM_TAXA_PER_PLOT}" \
         --taxa_trend_file "${PLOTS_LIST_TAXA_EVOLUTION_FILE}" \
-        --mmseqs_dir "${OUT_ROOT}/05_filtering/mmseq2"
+        --mmseqs_dir "./" 
         > "${MAP_LAST_DB_TAG}.R.out" 2>&1
 
-        bamdam krona --in_tsv_list "${LIST_TSV}" --out_xml ${SITE_TAG}_all.xml --minreads "${BAMDAM_MINREADS}" --maxdamage "${BAMDAM_MAXDAMAGE}"
+        # --samples "\${SAMPLES_FOR_PLOTS}"  #not used
+    
+    #plot for each site:  
+    sites=\$(awk -F'\t' 'NR==1{for(i=1;i<=NF;i++) if(\$i=="site") c=i; next} !a[\$c]++{print \$c}' "${METADATA_PATH}")
 
-        ktImportXML -o ${SITE_TAG}_all.html ${SITE_TAG}_all.xml
+    for site in \${sites}; do
+        samples=\$(awk -F'\t' -v site="\${site}" 'NR==1{for(i=1;i<=NF;i++){if(\$i=="sample")s=i; if(\$i=="site")c=i} next} (c>0 && s>0) && \$c==site && \$s!=""{print \$s}' "${METADATA_PATH}" | sort -u)
+        LIST_TSV="\${site}_all_tsv_list.txt"
+        : > "\${LIST_TSV}"
+        # Collect bamdam TSVs for each sample
+        for s in \${samples}; do
+            [[ -f "\${s}.tsv" ]] && echo "\${s}.tsv" >> "\${LIST_TSV}"
+        done
 
+        bamdam krona --in_tsv_list "\${LIST_TSV}" --out_xml "\${site}_all.xml" --minreads "${BAMDAM_MINREADS}" --maxdamage "${BAMDAM_MAXDAMAGE}"
+        ktImportXML -o "\${site}_all.html" "\${site}_all.xml"
+    done
     """
 }
