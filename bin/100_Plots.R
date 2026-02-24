@@ -1213,9 +1213,9 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
       other_frac_hits       = if_else(hits > 0, other / hits, 0),
       eval_class = case_when(
         n_queries == 0 ~ "Require to investigate blast for a specific WGS genera db",
-        hits_frac_total < 0.25 ~ "Require to investigate blast for a specific WGS genera db",
-        hits > 0 & same_genus_frac_hits >= 0.50 & same_genus_frac_total >= 0.25 ~ "Confident for genus",
-        hits > 0 & same_family_frac_total >= 0.25 & same_family_frac_hits >= (1/3) ~ "Confident for family but require investigation for genus",
+        hits_frac_total < 0.50 ~ "Require to investigate blast for a specific WGS genera db",
+        hits > 0 & same_genus_frac_hits >= 0.40 & same_genus_frac_total >= 0.15 ~ "Confident for genus",
+        hits > 0 & same_family_frac_hits >= (1/3) & same_family_frac_total >= 0.15 ~ "Confident for family but require investigation for genus",
         TRUE ~ "False assignation, potential db bias or contamination"
       )
     ) %>%
