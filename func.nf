@@ -405,19 +405,23 @@ process KRONATOOLS {
 process MMSEQ2 {
     conda 'envs/mmseq2.yml'
 
-    // label 'small_memory' // for test
+    //label 'small_memory' // for test
 
     // only rerun if it's out of memory issue
-    errorStrategy { task ->
-        if (task.exitStatus >= 137 && task.exitStatus <= 141) return 'retry'
-        else return 'ignore'
+    errorStrategy {
+    if( task.exitStatus == null || task.exitStatus in 137..140 || task.exitStatus == 143 ) {
+        // - represent external termination due to time limit
+        return task.attempt < 3 ? 'retry' : 'terminate'
     }
-    maxRetries 6
+    else {
+        return 'terminate'
+    }
+    }
 
     // setting for NT database
     cpus 256
-    memory 880.GB
-    time 10.hour
+    memory { 880.GB * task.attempt }
+    time { 10.hour * task.attempt }
     queue 'memory'
 
     input:    
@@ -518,7 +522,7 @@ process MMSEQ2 {
     # fi
 
     ## Bits filtering ##
-    awk -F'\t' "NR==1 || \$12 > ${MIN_BITS}" "${DATABASE_NAME}.resultDB.m8" > "${DATABASE_NAME}.resultDB_bits.m8"
+    awk -F'\t' 'NR==1 || \$12 > ${MIN_BITS}' "${DATABASE_NAME}.resultDB.m8" > "${DATABASE_NAME}.resultDB_bits.m8"
 
     # -----------------------------------------------------------------------------
     # 3) Add taxonomic info to MMseqs2 m8 (optional; requires TAXADB)

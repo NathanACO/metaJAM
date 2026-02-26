@@ -193,7 +193,7 @@ workflow {
 	))
 	.set{ input_plots }
 
-	 PLOTS( input_plots )
+	PLOTS( input_plots )
 	
 	}
 
