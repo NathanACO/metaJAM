@@ -30,7 +30,7 @@ workflow {
 	if (params.ENABLE_PREPROCESS == "enable") {
 		if (params.ENABLE_FASTP == "enable") { FASTP( input ) }
 
-    	if (params.ENABLE_PRINSEQ == "enable") {  
+    	if (params.ENABLE_SGA == "enable") {  
 			SGA(FASTP.out .map { tuple(it[0], it[1], params.SGA_DUST_THRESHOLD) })
 			// SGA.out.rm_low_complexity.view()
 			 }
