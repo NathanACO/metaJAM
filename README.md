@@ -18,29 +18,6 @@ This pipeline performs processing and analysis of metagenomic data, starting fro
 ## Overview of the pipeline
 ![alt text](https://github.com/NathanACO/metaJAM/blob/main/metaJAM_diagram.png)
 
-## How to launch it:
-`nextflow run main.nf -profile conda`\
-if you want to resume, add also `-resume`, and `--with-trace` for output a trace*.txt reporting memory and time for each process.
-
-> [!TIP]
-> You can run it with the Test samples present in the test folder of this github.
-
-## Required program
-nextflow (developed in v25.10.3)\
-conda
-taxadb #use to download a file for setup
-
-run the script once before running anything
-`
-mkdir assets
-touch assets/NO_FILE
-cd assets
-taxadb download -o taxadb
-taxadb create -i taxadb --dbname taxadb.sqlite
-cd ../
-`
-
-
 ## Input files specified in the config `nextflow.config` file
 ### 1. If running the pipeline from scratch
 Path of the raw sequencing samples to be processed: `FASTQ='/cfs/klemming/projects/snic/snic2022-6-144/CHENYU/metaJAM/nf_metaJAM/test/*_{R1,R2,1,2,R1_001,R2_001}*.{fastq,fq}.gz'`\
@@ -107,6 +84,28 @@ To be refine based on samples size and database using
 > [!TIP]
 > We advise to set up at least 650G and 256CPUs for the Kraken step, and to allow at least 20 hours of running time for massive fastq.gz (>60M reads)\
 > For smaller datasets (around 10-20M), 15h for 3-4 samples seems a coherent value, depending on your cluster queueing system.
+
+## Required program
+nextflow (developed in v25.10.3)\
+conda\
+taxadb #use to download a file for setup
+
+run the script once before running anything
+```
+mkdir assets
+touch assets/NO_FILE
+cd assets
+taxadb download -o taxadb 
+taxadb create -i taxadb --dbname taxadb.sqlite 
+cd ../ 
+```
+
+## How to launch it:
+`nextflow run main.nf -profile conda`\
+if you want to resume, add also `-resume`, and `--with-trace` for output a trace*.txt reporting memory and time for each process.
+
+> [!TIP]
+> You can run it with the Test samples present in the test folder of this github.
 
 ## Plot output
 Different plots are created by metaJAM and required a metadata file (see in test for metadata format and content)[In development].\
