@@ -102,7 +102,9 @@ workflow {
 	if (params.ENABLE_MASK_REGIONS == "enable") { 
 		MASK_REGIONS( MERGE_BAM.out.map { tuple(it[0], it[1], params.REGIONS_TO_MASK) }  )
 		MASK_REGIONS.out.set{ bam }
-		}
+	} else {
+		MERGE_BAM.out.set{ bam }
+	}
 	
 	// if (params.ENABLE_FILTERBAM == "enable") { 
 	// 	FILTERBAM( input )
