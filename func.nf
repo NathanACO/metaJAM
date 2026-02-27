@@ -116,7 +116,7 @@ process PRINSEQ {
 }
 
 process KRAKEN2 {
-    label 'small_memory' // for test
+    // label 'small_memory' // for test
     conda 'bioconda::kraken2'
 
     publishDir "${params.OUTPUT_Dir}/03_kraken2_filter", mode: "copy" 
@@ -149,8 +149,8 @@ process KRAKEN2 {
 
 
 process BOWTIE2 {
-    label 'small_memory' // for test
-    conda './envs/bowtie2.yml' // to check
+    // label 'small_memory' // for test
+    conda './envs/bowtie2.yml'
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
               val(idx), path(idxs)
@@ -307,14 +307,11 @@ process NGSLCA {
 process BAMDAM {
     conda './envs/bamdam.yml'
 
+    label 'little_memory'
+
     publishDir "${params.OUTPUT_Dir}/08_bamdam", mode: "copy"
 
-    cpus { 25 * task.attempt }
-    memory { 20.GB * task.attempt }
-    time { 2.hour }
 
-    errorStrategy { task.attempt <= 3 ? 'retry' : 'ignore' } // in case there is no reads
-    maxRetries 3
 
     input:    
         tuple val(ID), path(bam), path(lca), 
@@ -404,25 +401,6 @@ process KRONATOOLS {
 
 process MMSEQ2 {
     conda 'envs/mmseq2.yml'
-
-    //label 'small_memory' // for test
-
-    // only rerun if it's out of memory issue
-    errorStrategy {
-    if( task.exitStatus == null || task.exitStatus in 137..140 || task.exitStatus == 143 ) {
-        // - represent external termination due to time limit
-        return task.attempt < 3 ? 'retry' : 'terminate'
-    }
-    else {
-        return 'terminate'
-    }
-    }
-
-    // setting for NT database
-    cpus 256
-    memory { 880.GB * task.attempt }
-    time { 10.hour * task.attempt }
-    queue 'memory'
 
     input:    
         tuple val(ID), path(bam), path(lca), path(lca_tsv),
@@ -556,7 +534,7 @@ process MMSEQ2 {
 
 }
 
-process METRICS{
+process METRICS {
     label 'little_memory'
     conda './envs/bowtie2.yml'
     input:    
@@ -652,6 +630,8 @@ process CONCAT_METRICS {
 
 process PLOTS{
     conda './envs/plots.yml'
+
+    label 'little_memory'
 
     publishDir "${params.OUTPUT_Dir}/12_plots", mode: "copy"
 
