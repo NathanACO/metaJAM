@@ -95,6 +95,9 @@ run the script once before running anything
 mkdir assets
 touch assets/NO_FILE
 cd assets
+python -m venv taxadb
+source taxadb/bin/activate
+pip3 install taxadb
 taxadb download -o taxadb 
 taxadb create -i taxadb --dbname taxadb.sqlite 
 cd ../ 
