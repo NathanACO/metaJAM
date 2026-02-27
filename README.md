@@ -85,6 +85,11 @@ To be refine based on samples size and database using
 > We advise to set up at least 650G and 256CPUs for the Kraken step, and to allow at least 20 hours of running time for massive fastq.gz (>60M reads)\
 > For smaller datasets (around 10-20M), 15h for 3-4 samples seems a coherent value, depending on your cluster queueing system.
 
+Apart from the memory and time for each process, you also need to change the project number if you are using slurm task system in HPC
+```
+params {
+    project                    = "naiss2025-xx-xxx" // for example for Naiss project allocation
+```
 ## Required program
 nextflow (developed in v25.10.3)\
 conda\
