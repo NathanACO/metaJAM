@@ -6,9 +6,33 @@ include { FASTP; SGA; PRINSEQ; KRAKEN2; BOWTIE2; MERGE_BAM;  MASK_REGIONS; FILTE
 
 workflow {
 	// input =================
-	Channel.fromFilePairs(params.FASTQ)
-	.map { sample_id, reads -> tuple(sample_id, reads[0], reads[1])}
-	.set { paired_reads }
+
+	// allows to read fastq from a list of path
+	paired_reads1 = Channel
+	.fromPath(params.FASTQ_list_path)
+	.splitText()
+	.map { it.trim() }
+	.filter { it }
+	.map { f ->
+		def id = f.tokenize('/')[-1]
+						.replaceAll(/(_R?1(_001)?|_1)\.f(ast)?q\.gz$/, '')
+						.replaceAll(/(_R?2(_002)?|_1)\.f(ast)?q\.gz$/, '')
+		tuple(id, file(f))
+	}
+	.groupTuple()
+	.map { id, files ->
+		def r1 = files.find { it.name =~ /(_R?1(_001)?|_1)\.f(ast)?q\.gz$/ }
+		def r2 = files.find { it.name =~ /(_R?2(_001)?|_2)\.f(ast)?q\.gz$/ }
+		tuple(id, r1, r2)
+	}
+
+	// allows to read fastq from direct path
+	paired_reads2 = Channel
+		.fromFilePairs(params.FASTQ_direct_path, checkIfExists: true)
+		.map { id, reads -> tuple(id, reads[0], reads[1]) }
+
+	// use both ways of specified fastq and remove duplicate
+	paired_reads1.concat(paired_reads2).unique().view()
 
 	Channel.fromPath( params.BOWTIE2_MAPPING_DBs )
 	.splitText { it.strip( ) }
