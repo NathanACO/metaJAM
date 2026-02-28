@@ -32,7 +32,10 @@ workflow {
 		.map { id, reads -> tuple(id, reads[0], reads[1]) }
 
 	// use both ways of specified fastq and remove duplicate
-	paired_reads1.concat(paired_reads2).unique().view()
+	paired_reads1.concat(paired_reads2).unique()
+	.set{paired_reads}
+	
+	// paired_reads.view()
 
 	Channel.fromPath( params.BOWTIE2_MAPPING_DBs )
 	.splitText { it.strip( ) }
