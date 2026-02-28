@@ -20,9 +20,10 @@ This pipeline performs processing and analysis of metagenomic data, starting fro
 
 ## Input files specified in the config `nextflow.config` file
 ### 1. If running the pipeline from scratch
-Path of the raw sequencing samples to be processed: `FASTQ='/cfs/klemming/projects/snic/snic2022-6-144/CHENYU/metaJAM/nf_metaJAM/test/*_{R1,R2,1,2,R1_001,R2_001}*.{fastq,fq}.gz'`\
-Give absolute path to the overall output directory: `OUTPUT_Dir="\path\to"`. It will creates different folders for the different steps of the pipeline in side your given `OUTPUT_Dir`, where the files will be stored:
-- 00_Samples_prefix -> Containing files with list of processed samples at each step 
+Path of the raw sequencing samples to be processed: 
+`FASTQ_direct_path='/path/to/*_{R1,R2,1,2,R1_001,R2_001}*.{fastq,fq}.gz'` OR/AND `FASTQ_list_path="/path/to/List_fastq.txt"`. Please leave the other as "" when you only use one format. You can also use both formats, and the two sets of fastqs will all be processed.
+
+Give absolute path to the overall output directory: `OUTPUT_Dir="\path\to"`. It will creates different folders for the different steps of the pipeline inside your given `OUTPUT_Dir`, where the outputs of each step will be stored correspondingly:
 - 01_fastp
 - 02_sga (or 02_prinseq)
 - 03_kraken2_filter
