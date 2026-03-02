@@ -1,0 +1,10 @@
+name: mmseqs2_py38
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.9
+  - mmseqs2
+  - pip
+  - pip:
+      - dataclasses; python_version < "3.7"

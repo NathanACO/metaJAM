@@ -1,0 +1,56 @@
+name: ngsLCA
+channels:
+  - anaconda
+  - defaults
+  - bioconda
+  - conda-forge
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
+channel_priority: flexible
+dependencies:
+  - _libgcc_mutex=0.1=conda_forge
+  - _openmp_mutex=4.5=2_gnu
+  - bamtools=2.5.2=hdcf5f25_5
+  - bowtie2=2.5.4=h7071971_4
+  - bzip2=1.0.8=hda65f42_8
+  - c-ares=1.34.5=hb9d3cd8_0
+  - ca-certificates=2025.8.3=hbd8a1cb_0
+  - fastp=1.0.1=heae3180_0
+  - htslib=1.17=h6bc39ce_1
+  - isa-l=2.31.1=hb9d3cd8_1
+  - keyutils=1.6.3=hb9d3cd8_0
+  - krb5=1.20.1=hf9c8cef_0
+  - ld_impl_linux-64=2.44=ha97dd6f_2
+  - libcurl=7.87.0=h6312ad2_0
+  - libdeflate=1.24=h86f0d12_0
+  - libedit=3.1.20250104=pl5321h7949ede_0
+  - libev=4.33=hd590300_2
+  - libffi=3.3=h58526e2_2
+  - libgcc=15.1.0=h767d61c_5
+  - libgcc-ng=15.1.0=h69a702a_5
+  - libgomp=15.1.0=h767d61c_5
+  - libnghttp2=1.51.0=hdcd2b5c_0
+  - libsqlite=3.46.0=hde9e2c9_0
+  - libssh2=1.10.0=haa6b8db_3
+  - libstdcxx=15.1.0=h8f9b012_5
+  - libstdcxx-ng=15.1.0=h4852527_5
+  - libxcrypt=4.4.36=hd590300_1
+  - libzlib=1.2.13=h4ab18f5_6
+  - ncurses=6.5=h2d0b736_3
+  - ngslca=1.0.5=hce60e53_2
+  - openssl=1.1.1w=hd590300_0
+  - perl=5.32.1=7_hd590300_perl5
+  - pip=25.2=pyh8b19718_0
+  - python=3.9.0=hffdb5ce_5_cpython
+  - readline=8.2=h8c095d6_2
+  - samtools=1.18=hd87286a_0
+  - setuptools=80.9.0=pyhff2d567_0
+  - sga=0.10.15=hb0b4c81_9
+  - sparsehash=2.0.4=hcb278e6_1
+  - sqlite=3.46.0=h6d4b2fc_0
+  - tk=8.6.13=noxft_h4845f30_101
+  - tzdata=2025b=h78e105d_0
+  - wheel=0.45.1=pyhd8ed1ab_1
+  - xz=5.2.6=h166bdaf_0
+  - zlib=1.2.13=h4ab18f5_6
+  - zstd=1.5.6=ha6fb4c9_0
