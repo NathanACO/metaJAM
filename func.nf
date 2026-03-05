@@ -311,8 +311,6 @@ process BAMDAM {
 
     publishDir "${params.OUTPUT_Dir}/08_bamdam", mode: "copy"
 
-
-
     input:    
         tuple val(ID), path(bam), path(lca), 
         val(STRANDED), 
@@ -324,8 +322,6 @@ process BAMDAM {
         tuple val(ID), path("*.small.bam"), path("*.small.lca"), path("*.tsv"), emit: lca
         path("*.subs.txt")
         tuple val(ID), path("*.xml"), emit: xml
-        
-    publishDir "${params.OUTPUT_Dir}/bamdam", mode: "copy"
 
     script:
     """
@@ -570,8 +566,10 @@ process METRICS {
         }
 
         count_bam () {
+        local b="\$1"
+        [[ -s "\$b" ]] || { echo "NA"; return; }
         # -F 260 = exclude unmapped (4) + secondary (256) → primary mapped alignments only
-        samtools view -c -F 260 "\$1"
+        samtools view -c -F 260 "\$b"
         }
 
         count_raw_fq1=\$(count_fastq $raw_fq1)

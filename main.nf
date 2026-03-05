@@ -8,61 +8,73 @@ workflow {
 	// input =================
 
 	// allows to read fastq from a list of path
-	paired_reads1 = Channel
-	.fromPath(params.FASTQ_list_path)
-	.splitText()
-	.map { it.trim() }
-	.filter { it }
-	.map { f ->
-		def id = f.tokenize('/')[-1]
-						.replaceAll(/(_R?1(_001)?|_1)\.f(ast)?q\.gz$/, '')
-						.replaceAll(/(_R?2(_002)?|_1)\.f(ast)?q\.gz$/, '')
-		tuple(id, file(f))
+
+	if (params.ENABLE_PREPROCESS=="enable" && (params.FASTQ_list_path != "" || params.FASTQ_direct_path != "")) {	
+		paired_reads1 = Channel
+		.fromPath(params.FASTQ_list_path)
+		.splitText()
+		.map { it.trim() }
+		.filter { it }
+		.map { f ->
+			def id = f.tokenize('/')[-1]
+							.replaceAll(/(_R?1(_001)?|_1)\.f(ast)?q\.gz$/, '')
+							.replaceAll(/(_R?2(_002)?|_1)\.f(ast)?q\.gz$/, '')
+			tuple(id, file(f))
+		}
+		.groupTuple()
+		.map{it -> it.flatten()}
+
+		// allows to read fastq from direct path
+		paired_reads2 = Channel
+			.fromFilePairs(params.FASTQ_direct_path, checkIfExists: true)
+			.map { id, reads -> tuple(id, reads[0], reads[1]) }
+
+		// use both ways of specified fastq and remove duplicate
+		paired_reads1.concat(paired_reads2).unique()
+		.set{paired_reads}
+		// paired_reads.view()
+	} else {
+		paired_reads = Channel.empty()
 	}
-	.groupTuple()
-	.map { id, files ->
-		def r1 = files.find { it.name =~ /(_R?1(_001)?|_1)\.f(ast)?q\.gz$/ }
-		def r2 = files.find { it.name =~ /(_R?2(_001)?|_2)\.f(ast)?q\.gz$/ }
-		tuple(id, r1, r2)
+
+	if (params.ENABLE_MAPPING=="enable" && params.BOWTIE2_MAPPING_DBs != "" ) {
+		Channel.fromPath( params.BOWTIE2_MAPPING_DBs )
+		.splitText { it.strip( ) }
+		.map { it -> 
+		def name = it.tokenize('/')[-1]   // get basename
+		tuple(name, file("${it}*bt2*"))}
+		.groupTuple()
+		.map { idx, idxs -> tuple(idx, idxs[0]) }
+		.set { mapping_indexes }
+		mapping_indexes.view()
+	} else {
+		mapping_indexes = Channel.empty()
 	}
-
-	// allows to read fastq from direct path
-	paired_reads2 = Channel
-		.fromFilePairs(params.FASTQ_direct_path, checkIfExists: true)
-		.map { id, reads -> tuple(id, reads[0], reads[1]) }
-
-	// use both ways of specified fastq and remove duplicate
-	paired_reads1.concat(paired_reads2).unique()
-	.set{paired_reads}
-	
-	// paired_reads.view()
-
-	Channel.fromPath( params.BOWTIE2_MAPPING_DBs )
-	.splitText { it.strip( ) }
-	.map { it -> 
-    def name = it.tokenize('/')[-1]   // get basename
-    tuple(name, file("${it}*bt2*"))}
-	.groupTuple()
-	.map { idx, idxs -> tuple(idx, idxs[0]) }
-	.set { mapping_indexes }
-	// mapping_indexes.view()
 
 	def acc2taxid = file(params.ACC2TAXID) 
 	// def acc2taxid_exists = acc2taxid.exists()
 
 	//add check if file exist or empty
 
-	input = paired_reads.map { tuple(it[0], it[1], it[2], params.FASTP_OVERLAP_LEN_REQUIRE, params.FASTP_MIN_LENGTH) }
+	input_fastq = paired_reads.map { tuple(it[0], it[1], it[2], params.FASTP_OVERLAP_LEN_REQUIRE, params.FASTP_MIN_LENGTH) }
 
-	if (params.ENABLE_PREPROCESS == "enable") {
-		if (params.ENABLE_FASTP == "enable") { FASTP( input ) }
+	preprocessed_reads = Channel.empty() // for nextflow evaluation
+	fastp_ch = Channel.empty()
+	// Channel preprocessed_reads
+	if (params.ENABLE_PREPROCESS == "enable" ) {
+		// if (params.ENABLE_FASTP == "enable") { FASTP( input ) }
+
+		// def fastp_ch = (params.ENABLE_FASTP == "enable" && params.ENABLE_PREPROCESS == "enable") ? FASTP(input_fastq).out : Channel.empty()
+		if (params.ENABLE_PREPROCESS == "enable" && params.ENABLE_FASTP == "enable") {
+			FASTP(input_fastq).out.set{fastp_ch}
+		}
 
     	if (params.ENABLE_SGA == "enable") {  
-			SGA(FASTP.out .map { tuple(it[0], it[1], params.SGA_DUST_THRESHOLD) })
+			SGA(fastp_ch .map { tuple(it[0], it[1], params.SGA_DUST_THRESHOLD) })
 			// SGA.out.rm_low_complexity.view()
 			 }
 		if (params.ENABLE_PRINSEQ == "enable") {  
-			PRINSEQ(FASTP.out .map { tuple(it[0], it[1], params.PRINSEQ_COMPLEXITY_METHOD, params.PRINSEQ_COMPLEXITY_THRESHOLD, params.PRINSEQ_MIN_LEN, params.PRINSEQ_DEREP)}) 
+			PRINSEQ(fastp_ch .map { tuple(it[0], it[1], params.PRINSEQ_COMPLEXITY_METHOD, params.PRINSEQ_COMPLEXITY_THRESHOLD, params.PRINSEQ_MIN_LEN, params.PRINSEQ_DEREP)}) 
 			// PRINSEQ.out.rm_low_complexity.view()
 			}
 		if (params.ENABLE_LOW_COMPLEXITY_FILTER=="SGA"){
@@ -70,38 +82,66 @@ workflow {
 		} else if (params.ENABLE_LOW_COMPLEXITY_FILTER=="PRINSEQ") {
 			PRINSEQ.out.rm_low_complexity.set { preprocessed_reads }
 		}
+	} else if (params.ENABLE_PREPROCESS=="disable" && params.OVERRIDE_LIST_FASTP != "") {
+		// to test
+		preprocessed_reads = Channel
+			.fromPath(params.OVERRIDE_LIST_FASTP)
+			.splitText()
+			.map { it.trim() }
+			.filter { it }
+			.map { f ->
+				def fq   = file(f)
+				def id   = fq.baseName
+					.replaceAll(/(_R?[12](_001)?|_[12])\.f(ast)?q(\.gz)?$/, '')
+				tuple(id, fq)
+			}
 	}
 
 	// preprocessed_reads.view()
 
-	if (params.ENABLE_KRAKEN_GTDB == "enable") { KRAKEN2( preprocessed_reads.map { tuple(it[0], it[1], params.KRAKEN2_FILTER_DATABASE) }) }
-	// KRAKEN2.out.not_microbe.view()
+	kraken_out = Channel.empty()
+	if (params.ENABLE_KRAKEN_GTDB == "enable") { 
+			KRAKEN2( preprocessed_reads.map { it -> tuple(it[0], it[1], params.KRAKEN2_FILTER_DATABASE) } )
+			KRAKEN2.out.not_microbe
+			.set { kraken_out }	
+	} else if (params.ENABLE_KRAKEN_GTDB=="disable" && params.OVERRIDE_LIST_KRAKEN != "") {
+	// } else {
 
-	KRAKEN2.out.not_microbe
-	.map { it -> tuple(it[0], it[1], params.BOWTIE2_N_ALLOW_MULTIMAPPER) }
-	.combine( mapping_indexes ) 
-	.set { input_mapping }
-	
-	// input_mapping.view()
+		kraken_out = Channel
+			.fromPath(params.OVERRIDE_LIST_KRAKEN)
+			.splitText()
+			.map { it.trim() }
+			.filter { it }
+			.map { f ->
+				def fq   = file(f)
+				def id   = fq.baseName
+					.replaceAll(/(_R?[12](_001)?|_[12])\.f(ast)?q(\.gz)?$/, '')
+				tuple(id, fq)
+			}
+	}
+	// kraken_out.view()
+	bowtie2_out = Channel.empty()
+	if (params.ENABLE_MAPPING == "enable") { 
+			kraken_out
+			.map { it -> tuple(it[0], it[1], params.BOWTIE2_N_ALLOW_MULTIMAPPER) }
+			.combine( mapping_indexes )
+			.set{input_bowtie2}
+			// input_bowtie2.view()
+			BOWTIE2( input_bowtie2 )
 
-	if (params.ENABLE_MAPPING == "enable") { BOWTIE2( input_mapping )}
-	// BOWTIE2.out.groupTuple().view() //group by sample ID
+			BOWTIE2.out.set { bowtie2_out }
+	} else if (params.ENABLE_MAPPING=="disable" && params.OVERRIDE_LIST_BAM != "") {
+		bowtie2_out = Channel
+		.fromPath(params.OVERRIDE_LIST_BAM)
+		.splitCsv(header: false, sep: '\t', strip: true)
+		.map { row -> tuple( row[0], file(row[1], checkIfExists: true))}
+	}
+
+	bowtie2_out.groupTuple().set{mapped_bam}
+	// mapped_bam.view()
 
 	acc2taxid = file( params.ACC2TAXID ) 
-
-	//BOWTIE2.out.groupTuple().view()
-
-	//prioritize processing mapped_bam if specified than bowtie2 mapping results
-	if ( params.MAPPED_BAM == "" ) {
-		BOWTIE2.out.groupTuple().set { mapped_bam }
-	} else {
-		Channel.fromPath( params.MAPPED_BAM , checkIfExists: true)
-		.splitCsv( sep: "\t" )
-		.map { row -> [ row[0], file(row[1]) ] }
-		.groupTuple()
-		.set { mapped_bam }
-	}
-	//mapped_bam.view()
+	
 
 	//generate acc2taxid if not provided // to test
 	def acc2taxid_exists = acc2taxid.exists()
@@ -120,7 +160,6 @@ workflow {
 		.set{acc2taxid}
 	}
 
-	// MERGE_BAM( BOWTIE2.out.groupTuple() )
 	MERGE_BAM( mapped_bam )
 	// MERGE_BAM.out.view()
 
@@ -153,76 +192,86 @@ workflow {
 	.set{ input_bamdam }
 
 	//input_bamdam.view()
-	BAMDAM( input_bamdam )
+	if (params.ENABLE_BAMDAM == "enable") {
+		BAMDAM( input_bamdam )
+			
+		if (params.ENABLE_MMSEQS2 == "enable") {
+			MMSEQS2_GENERA_FILE = Channel.fromPath(params.MMSEQS2_GENERA_FILE, checkIfExists:true)
 
-	KRONATOOLS( BAMDAM.out.xml )
+			BAMDAM.out.lca
+			.map(it -> tuple(it[0], it[1], it[2], it[3],
+			params.MMSEQS2_MIN_DMG,
+			params.MMSEQS2_TOP_GENERA,
+			params.MMSEQS2_MAX_READS,
+			params.MMSEQS2_MIN_READS,
+			params.MMSEQS2_SPACED_KMER_MODE,
+			params.MMSEQS2_S,
+			params.MMSEQS2_MAX_EVALUE,
+			params.MMSEQS2_MIN_LENGTH,
+			params.MMSEQS2_MIN_SEQID,
+			params.MMSEQS2_MAX_SEQS,
+			params.MMSEQS2_MIN_QUERY_COV,
+			params.MMSEQS2_SPLIT_MEM_LIMIT,
+			params.MMSEQS2_AMBIG_FRAC,
+			params.MMSEQS2_DATABASE_NAME,
+			params.MMSEQS2_DB,
+			params.MMSEQS2_SEED,
+			params.MMSEQS2_MIN_BITS,
+			params.MMSEQS2_TAXADB_SQLITE
+			))
+			.combine(MMSEQS2_GENERA_FILE) //optional input
+			.set{ input_mmseq2 }
+			//input_mmseq2.view()
+			
+			MMSEQ2( input_mmseq2 )
+			MMSEQ2.out.evaluation.collect().set{mmseq2_evaluation}
+		} else {
+			mmseq2_evaluation = Channel.empty()
+		}
 
-	MMSEQS2_GENERA_FILE = Channel.fromPath(params.MMSEQS2_GENERA_FILE, checkIfExists:true)
+		if (params.ENABLE_METRICS_PLOT == "enable") {
 
-	BAMDAM.out.lca
-	.map(it -> tuple(it[0], it[1], it[2], it[3],
-	params.MMSEQS2_MIN_DMG,
-	params.MMSEQS2_TOP_GENERA,
-	params.MMSEQS2_MAX_READS,
-	params.MMSEQS2_MIN_READS,
-	params.MMSEQS2_SPACED_KMER_MODE,
-	params.MMSEQS2_S,
-	params.MMSEQS2_MAX_EVALUE,
-	params.MMSEQS2_MIN_LENGTH,
-	params.MMSEQS2_MIN_SEQID,
-	params.MMSEQS2_MAX_SEQS,
-	params.MMSEQS2_MIN_QUERY_COV,
-	params.MMSEQS2_SPLIT_MEM_LIMIT,
-	params.MMSEQS2_AMBIG_FRAC,
-	params.MMSEQS2_DATABASE_NAME,
-	params.MMSEQS2_DB,
-	params.MMSEQS2_SEED,
-	params.MMSEQS2_MIN_BITS,
-	params.MMSEQS2_TAXADB_SQLITE
-	))
-	.combine(MMSEQS2_GENERA_FILE) //optional input
-	.set{ input_mmseq2 }
-	//input_mmseq2.view()
-	
-	MMSEQ2( input_mmseq2 )
+			KRONATOOLS( BAMDAM.out.xml )
 
-	BAMDAM.out.lca.map{it -> tuple(it[0], it[1])}.set{bamdam_bam}
+			BAMDAM.out.lca.map{it -> tuple(it[0], it[1])}.set{bamdam_bam}
 
-	paired_reads
-	.combine( FASTP.out ,by:0 )
-	.combine( preprocessed_reads ,by:0 )
-	.combine( KRAKEN2.out.not_microbe ,by:0 )
-	.combine( BOWTIE2.out.groupTuple(), by:0 )
-	.combine( bamdam_bam, by:0 )
-	.set{ input_metrics }
-	// input_metrics.view()
+			paired_reads
+			.combine( fastp_ch ,by:0 )
+			.combine( preprocessed_reads ,by:0 )
+			.combine( kraken_out, by:0 )
+			.combine( mapped_bam, by:0 )
+			.combine( bamdam_bam, by:0 )
+			.set{ input_metrics }
+			// input_metrics.view()
 
-	METRICS( input_metrics )
-	METRICS.out.collect().view()
-	CONCAT_METRICS( METRICS.out.collect() )
+			METRICS( input_metrics )
+			METRICS.out.collect().view()
+			CONCAT_METRICS( METRICS.out.collect() )
 
-	CONCAT_METRICS.out
-	.combine(BAMDAM.out.lca.map(it -> it[2]).collect())
-	.combine(MMSEQ2.out.evaluation.collect())
-	.map(it -> tuple(it[0], it[1], it[2],
-        params.SAMPLES_FOR_PLOTS,		
-        params.metadata,
-        params.MAP_LAST_DB_TAG,
-        params.PLOT_DIR,
-        params.MIN_READS,
-        params.PLOTS_BAMDAM_PLOT_MODE,
-        params.PLOTS_DAMAGE_THRESHOLD,
-        params.PLOTS_PLOT_LOW_DAMAGE_TAXA,
-        params.PLOTS_EXCLUDE_TAXA,
-        params.BAMDAM_TAXA_PER_PLOT,
-        params.PLOTS_LIST_TAXA_EVOLUTION_FILE,
-        params.MAP_LAST_DB_TAG,
-        params.BAMDAM_MINREADS,
-        params.BAMDAM_MAXDAMAGE
-	))
-	.set{ input_plots }
+			CONCAT_METRICS.out
+			.combine(BAMDAM.out.lca.map(it -> it[2]).collect())
+			.combine(mmseq2_evaluation)
+			.map(it -> tuple(it[0], it[1], it[2],
+				params.SAMPLES_FOR_PLOTS,		
+				params.metadata,
+				params.MAP_LAST_DB_TAG,
+				params.PLOT_DIR,
+				params.MIN_READS,
+				params.PLOTS_BAMDAM_PLOT_MODE,
+				params.PLOTS_DAMAGE_THRESHOLD,
+				params.PLOTS_PLOT_LOW_DAMAGE_TAXA,
+				params.PLOTS_EXCLUDE_TAXA,
+				params.BAMDAM_TAXA_PER_PLOT,
+				params.PLOTS_LIST_TAXA_EVOLUTION_FILE,
+				params.MAP_LAST_DB_TAG,
+				params.BAMDAM_MINREADS,
+				params.BAMDAM_MAXDAMAGE
+			))
+			.set{ input_plots }
 
-	PLOTS( input_plots )
-	
+			PLOTS( input_plots )
+		}
 	}
+	}
+
 
