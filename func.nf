@@ -220,6 +220,8 @@ process MERGE_BAM {
         }
 
         samtools sort -n -@ "${task.cpus}" -o ${ID}_merged.sorted.bam   ${ID}.merged.bam
+
+        samtools quickcheck "${ID}_merged.sorted.bam" || { echo "Failed at merging bams of $ID"; exit 1; }
     """
 }
 
@@ -240,6 +242,7 @@ process MASK_REGIONS {
     script:
     """
         samtools view -b -h -L "$bed" -U "\$(basename $bam .bam).mic_masked.bam" -o /dev/null "$bam" 
+        samtools quickcheck "\$(basename "$bam" .bam).mic_masked.bam" || { echo "Failed at masking $bam"; exit 1; }
     """
 }
 
@@ -320,8 +323,8 @@ process BAMDAM {
             
     output:
         tuple val(ID), path("*.small.bam"), path("*.small.lca"), path("*.tsv"), emit: lca
-        path("*.subs.txt")
         tuple val(ID), path("*.xml"), emit: xml
+        tuple path("*.subs.txt"), path("*.png") // damage metircs and plots
 
     script:
     """
@@ -426,8 +429,6 @@ process MMSEQ2 {
         path("*.mmseqs_expected.tsv"),
         path("*.besthit.assigned.tsv"),
         path("*.bamdam_mmseqs.evaluation.summary.tsv"), emit: evaluation
-        
-
 
     publishDir "${params.OUTPUT_Dir}/bamdam", mode: "copy"
 
