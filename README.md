@@ -108,6 +108,7 @@ MMSeqs2 database
 `PLOTS_EXCLUDE_TAXA` # e.g., "Homo;Zea;Canis;Veronica" in the format of comma / semicolon / space separated (exact taxon name matches)
 `PLOTS_KRONA`=1                   # Plots the bamdam results for all samples in metadata if enable. 1=enable, 0=disable
 `PLOTS_LIST_TAXA_EVOLUTION_FILE` # Give a list of taxa with one taxa per line, to produce plot of abundance of each taxa as a line representation
+`PLOTS_TAXA_PER_PLOT`=50       # Number of taxa passing the filters to plot per graph
 
 ### 5. SBATCH task parameter for memory and time assigned to the processing using tools
 To be refine based on samples size and database using
