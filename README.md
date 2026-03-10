@@ -73,7 +73,7 @@ MMSeqs2 database
 `PRINSEQ_COMPLEXITY_THRESHOLD`    -lc_threshold               (default=4)   \
 `PRINSEQ_MIN_LEN`    -min_len                    (default=35)  \
 `PRINSEQ_DEREP`    -derep                      (default=1)    \
-4)*Bowtie2*
+4) *Bowtie2*
 `BOWTIE2_N_ALLOW_MULTIMAPPER`    -k                          (default=1000)    
 5) *bamdam*\
 `BAMDAM_STRANDED`    --stranded                  (default=ds)        
