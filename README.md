@@ -103,11 +103,11 @@ MMSeqs2 database
 7) *Plots*\
 `PLOTS_BAMDAM_MIN_READS` (default=50)    - Minimum reads per sample to include in bamdam plots\
 `PLOTS_BAMDAM_PLOT_MODE` (default=both)  - Chose which plots to produce: heatmap, bubble or both\
-`PLOTS_DAMAGE_THRESHOLD` (default=3.5)   - Minimum percentage of damage for plotting
-`PLOTS_PLOT_LOW_DAMAGE_TAXA` (default=0)    # 1 = keep low-damage taxa (default); 0 = drop taxa whose max damage across samples is < PLOTS_DAMAGE_THRESHOLD
-`PLOTS_EXCLUDE_TAXA` # e.g., "Homo;Zea;Canis;Veronica" in the format of comma / semicolon / space separated (exact taxon name matches)
-`PLOTS_KRONA`=1                   # Plots the bamdam results for all samples in metadata if enable. 1=enable, 0=disable
-`PLOTS_LIST_TAXA_EVOLUTION_FILE` # Give a list of taxa with one taxa per line, to produce plot of abundance of each taxa as a line representation
+`PLOTS_DAMAGE_THRESHOLD` (default=3.5)   - Minimum percentage of damage for plotting\
+`PLOTS_PLOT_LOW_DAMAGE_TAXA` (default=0)    # 1 = keep low-damage taxa (default); 0 = drop taxa whose max damage across samples is < PLOTS_DAMAGE_THRESHOLD\
+`PLOTS_EXCLUDE_TAXA` # e.g., "Homo;Zea;Canis;Veronica" in the format of comma / semicolon / space separated (exact taxon name matches)\
+`PLOTS_KRONA`=1                   # Plots the bamdam results for all samples in metadata if enable. 1=enable, 0=disable\
+`PLOTS_LIST_TAXA_EVOLUTION_FILE` # Give a list of taxa with one taxa per line, to produce plot of abundance of each taxa as a line representation\
 `PLOTS_TAXA_PER_PLOT`=50       # Number of taxa passing the filters to plot per graph
 
 ### 5. SBATCH task parameter for memory and time assigned to the processing using tools
