@@ -41,34 +41,33 @@ File containing a list of samples with absolute path to be processed (OVERRIDE_L
 ### 2. Path to databases
 `BOWTIE2_MAPPING_DBs="/path/to/list" `: each line as the bowtie2 mapping index header (e.g., '/path/to/header' where the header refers to header.*.bt2*)
 
-Kraken2 database (e.g., GTDB database)\
-`KRAKEN2_FILTER_DATABASE="/path/to/kraken2_db" `: pathto the directory containing kraken2 indexes (*.k2d)\
+`KRAKEN2_FILTER_DATABASE="/path/to/kraken2_db" `: path to Kraken2 database (e.g., GTDB database), the directory containing kraken2 indexes (*.k2d)\
 
-NCBI taxonomy files
+
 ```
 NAMES="assets/names.dmp"
 NODES="assets/nodes.dmp"
 ACC2TAXID="/path/to/acc2taxid.txt" #each line in the format: contig[tab]contig[tab]NCBI_taxonomy_ID
 ```
-    
+NCBI taxonomy files (names.dmp and nodes.dmp downloaded in the assets/ dir in the preparation script given in this tutorial)
 
-MMSeqs2 database\
+
 `MMSEQS2_DB="/sw/data/MMseqs2_data/latest/rackham/NT"`\
 `MMSEQS2_TAXADB_SQLITE="assets/taxadb_nucl.sqlite"`\
+MMSeqs2 database
 
-Path to metadata\
-`METADATA_PATH="test/metadata.txt"`\
+`METADATA_PATH="test/metadata.txt"`
 - format with the header line:
-        sample[tab]age_ka[tab]depth_cm[tab]sample_type[tab]layer[tab]notes[tab]site \
+        sample[tab]age_ka[tab]depth_cm[tab]sample_type[tab]layer[tab]notes[tab]site
 - example:test/metadata.txt
 
 ### 3. Tools activation with "enable" or "disable"
 ### 4. Parameters to precise for specific tools
 1) *fastp*\
 `FASTP_OVERLAP_LEN_REQUIRE`    -overlap_len_require        (default=20)    \
-`FASTP_MIN_LENGTH`    -l                          (default=30)    \
+`FASTP_MIN_LENGTH`    -l                          (default=30)    
 2) *SGA*\
-`SGA_DUST_THRESHOLD`    --dust-threshold            (default=4)    \
+`SGA_DUST_THRESHOLD`    --dust-threshold            (default=4)    
 3) *PRINSEQ*\
 `PRINSEQ_COMPLEXITY_METHOD`    -lc_method                  (default=dust)  \
 `PRINSEQ_COMPLEXITY_THRESHOLD`    -lc_threshold               (default=4)   \
