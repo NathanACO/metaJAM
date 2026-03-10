@@ -39,6 +39,25 @@ Give absolute path to the overall output directory: `OUTPUT_Dir="\path\to"`. It 
 File containing a list of samples with absolute path to be processed (OVERRIDE_LIST_*) [In development]
 
 ### 2. Path to databases
+BOWTIE2_MAPPING_DBs="/path/to/list" // each line as the bowtie2 mapping index header (e.g., '/path/to/header' where the header refers to header.*.bt2*)
+
+// Kraken2 (e.g., GTDB database)
+KRAKEN2_FILTER_DATABASE="/path/to/kraken2_db" #to the directory containing kraken2 indexes (*.k2d)
+
+// NCBI taxonomy files
+NAMES="assets/names.dmp"
+NODES="assets/nodes.dmp"
+ACC2TAXID="/path/to/acc2taxid.txt" #each line in the format: contig[tab]contig[tab]NCBI_taxonomy_ID
+
+// MMSeqs2 database
+MMSEQS2_DB="/sw/data/MMseqs2_data/latest/rackham/NT"
+//MMSEQS2_DB="/sw/data/MMseqs2_data/latest/rackham/CDD"
+MMSEQS2_TAXADB_SQLITE="/cfs/klemming/projects/supr/sediment_paleogenomics/tools/metaJAM/taxadb_nucl.sqlite"
+
+//////// Path to metadata (???)
+METADATA_PATH="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/metadata.txt"
+
+
 ### 3. Tools activation with "enable" or "disable"
 ### 4. Parameters to precise for specific tools
 1) *fastp*\
@@ -109,11 +128,15 @@ run the script once before running anything
 mkdir assets
 touch assets/NO_FILE
 cd assets
+#prepare NCBI taxonomy information: names.dmp and nodes.dmp
+curl -O https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz
+tar -xzf taxdump.tar.gz names.dmp nodes.dmp
+#prepare MMseq2 taxonomy database
 python -m venv taxadb
 source taxadb/bin/activate
 pip3 install taxadb
-taxadb download -o taxadb 
-taxadb create -i taxadb --dbname taxadb.sqlite 
+taxadb download -o taxadb -t full
+taxadb create -i taxadb --dbname taxadb.sqlite --fast
 cd ../ 
 ```
 
