@@ -371,7 +371,7 @@ process BAMDAM {
         || echo "Warning: bamdam failed for taxid \$taxid (continuing)"
         done < <(
         awk '{for(i=2;i<=NF;i++){n=split(\$i,a,":");if(n>=3 && a[3]=="genus"){id=a[1];counts[id]++;name[id]=a[2];break}}}
-        END{for(id in counts)printf "%d\t%s\t%s\n",counts[id],id,name[id]}' \
+        END{for(id in counts)printf "%d\t%s\t%s\\n",counts[id],id,name[id]}' \
         "${ID}.small.lca" \
         | sort -nrk1,1 \
         | head -n "$TOP_GENUS"
@@ -579,8 +579,8 @@ process METRICS {
         count_rm_low_complex_fq=\$(count_fastq $rm_low_complex_fq)
         count_k2_mic_unclas_fq=\$(count_fastq $k2_mic_unclas_fq)
         #for different database, collect their name and read counts
-	bam_header=""
-	bam_values=""
+        bam_header=""
+        bam_values=""
 
 	for bam in \$(ls *.bam | grep -v small); do
 		count=\$(count_bam "\$bam")
@@ -647,7 +647,7 @@ process PLOTS{
         val(PLOTS_DAMAGE_THRESHOLD),
         val(PLOTS_PLOT_LOW_DAMAGE_TAXA),
         val(PLOTS_EXCLUDE_TAXA),
-        val(BAMDAM_TAXA_PER_PLOT),
+        val(PLOTS_TAXA_PER_PLOT),
         val(PLOTS_LIST_TAXA_EVOLUTION_FILE),
         val(MAP_LAST_DB_TAG),
         val(SITE_TAG),
@@ -672,7 +672,7 @@ process PLOTS{
         --damage_threshold "${PLOTS_DAMAGE_THRESHOLD}" \
         --plot_low_damage_taxa "${PLOTS_PLOT_LOW_DAMAGE_TAXA}" \
         --exclude_taxa "${PLOTS_EXCLUDE_TAXA}" \
-        --taxa_per_plot "${BAMDAM_TAXA_PER_PLOT}" \
+        --taxa_per_plot "${PLOTS_TAXA_PER_PLOT}" \
         --taxa_trend_file "${PLOTS_LIST_TAXA_EVOLUTION_FILE}" \
         --mmseqs_dir "./" 
         > "${MAP_LAST_DB_TAG}.R.out" 2>&1
