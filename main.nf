@@ -174,8 +174,14 @@ workflow {
 		} else {
 			Channel.fromPath( params.REGIONS_TO_MASK ).set{regions_to_mask}
 		}
+		// regions_to_mask.view()
 
-		MASK_REGIONS( MERGE_BAM.out.map { tuple(it[0], it[1], regions_to_mask) }  )
+		MERGE_BAM.out
+		.combine(regions_to_mask)
+		.set{ input_mask }
+		//input_mask.view()
+
+		MASK_REGIONS( input_mask )
 		MASK_REGIONS.out.set{ bam }
 
 	} else {
