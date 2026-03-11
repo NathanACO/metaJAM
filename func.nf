@@ -319,7 +319,10 @@ process BAMDAM {
         val(STRANDED), 
         val(MINREADS), 
         val(MAXDAMAGE), 
-        val(TOP_GENUS)
+        val(TOP_GENUS),
+        val(MINCOUNT),
+        val(MINSIM),
+        val(MODE)
             
     output:
         tuple val(ID), path("*.small.bam"), path("*.small.lca"), path("*.tsv"), emit: lca
@@ -335,7 +338,9 @@ process BAMDAM {
         --out_bam "${ID}.small.bam" \
         --out_lca "${ID}.small.lca" \
         --stranded "${STRANDED}" \
-        --show_progress
+        --show_progress \
+        --mincount ${MINCOUNT} \
+        --minsim ${MINSIM}
 
     if [ ! -s "${ID}.small.lca" ]; then
         echo "bamdam shrink failed"
@@ -354,6 +359,7 @@ process BAMDAM {
         --out_tsv "${ID}.tsv" \
         --out_subs "${ID}.subs.txt" \
         --stranded "${STRANDED}" \
+        --mode ${MODE} \
         --show_progress
 
         # krona + HTML (per-sample)
@@ -440,7 +446,7 @@ process MMSEQ2 {
     # -----------------------------------------------------------------------------
     # 1) Build combined FASTA + expected map from LCA (top10 genus / kingdom)
     # -----------------------------------------------------------------------------
-    filter_lca_top10_subset_reads.py \
+    python3 filter_lca_top10_subset_reads.py \
     --lca "${lca}" \
     --bamdam-tsv "${lca_tsv}" \
     --min-dmg "${MIN_DMG}" --top-genera "${TOP_GENERA}" \
@@ -502,7 +508,7 @@ process MMSEQ2 {
     # -----------------------------------------------------------------------------
     # 3) Add taxonomic info to MMseqs2 m8 (optional; requires TAXADB)
     # -----------------------------------------------------------------------------
-    add_taxid_info.py \
+    python3 add_taxid_info.py \
         -blst Mmseqs2 \
         -b "${DATABASE_NAME}.resultDB_bits.m8" \
         -d "${TAXADB_SQLITE}" \
@@ -518,12 +524,12 @@ process MMSEQ2 {
     # -----------------------------------------------------------------------------
     # Post-processing: pick one best hit per query + compare taxonomy vs expected
     # -----------------------------------------------------------------------------
-    mmseqs_pick_besthit_with_ambiguity.py \
+    python3 mmseqs_pick_besthit_with_ambiguity.py \
     --m8 "${ID}.${DATABASE_NAME}.resultDB_bits_nucl_taxid.m8" \
     --ambig-frac "${AMBIG_FRAC}" \
     --out "${ID}.${DATABASE_NAME}.besthit.assigned.tsv"
 
-    postprocess_mmseqs_taxonomy_compare.py \
+    python3 postprocess_mmseqs_taxonomy_compare.py \
     --expected-map "${ID}.mmseqs_expected.tsv" \
     --assigned "${ID}.${DATABASE_NAME}.besthit.assigned.tsv" \
     --out-summary "${ID}.${DATABASE_NAME}.bamdam_mmseqs.evaluation.summary.tsv"
