@@ -446,7 +446,7 @@ process MMSEQ2 {
     # -----------------------------------------------------------------------------
     # 1) Build combined FASTA + expected map from LCA (top10 genus / kingdom)
     # -----------------------------------------------------------------------------
-    python3 filter_lca_top10_subset_reads.py \
+    filter_lca_top10_subset_reads.py \
     --lca "${lca}" \
     --bamdam-tsv "${lca_tsv}" \
     --min-dmg "${MIN_DMG}" --top-genera "${TOP_GENERA}" \
@@ -508,7 +508,7 @@ process MMSEQ2 {
     # -----------------------------------------------------------------------------
     # 3) Add taxonomic info to MMseqs2 m8 (optional; requires TAXADB)
     # -----------------------------------------------------------------------------
-    python3 add_taxid_info.py \
+    add_taxid_info.py \
         -blst Mmseqs2 \
         -b "${DATABASE_NAME}.resultDB_bits.m8" \
         -d "${TAXADB_SQLITE}" \
@@ -524,12 +524,12 @@ process MMSEQ2 {
     # -----------------------------------------------------------------------------
     # Post-processing: pick one best hit per query + compare taxonomy vs expected
     # -----------------------------------------------------------------------------
-    python3 mmseqs_pick_besthit_with_ambiguity.py \
+    mmseqs_pick_besthit_with_ambiguity.py \
     --m8 "${ID}.${DATABASE_NAME}.resultDB_bits_nucl_taxid.m8" \
     --ambig-frac "${AMBIG_FRAC}" \
     --out "${ID}.${DATABASE_NAME}.besthit.assigned.tsv"
 
-    python3 postprocess_mmseqs_taxonomy_compare.py \
+    postprocess_mmseqs_taxonomy_compare.py \
     --expected-map "${ID}.mmseqs_expected.tsv" \
     --assigned "${ID}.${DATABASE_NAME}.besthit.assigned.tsv" \
     --out-summary "${ID}.${DATABASE_NAME}.bamdam_mmseqs.evaluation.summary.tsv"
