@@ -744,7 +744,7 @@ if [[ ${ENABLE_KRAKEN_GTDB:-1} -eq 1 ]]; then
 
   sbatch_opts KRAKEN
   mkdir -p "${OUT_ROOT}/03_kraken_gtdb"
-  require_file "${SCRIPTS_DIR}/04_Kraken_gtdb2.sh"
+  require_file "${SCRIPTS_DIR}/04_Kraken_gtdb.sh"
 
   JID_KRAKEN=$(
     sbatch "${deps[@]}" "${SBATCH_BUILT_OPTS[@]}" \
