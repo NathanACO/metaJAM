@@ -116,7 +116,6 @@ process PRINSEQ {
 }
 
 process KRAKEN2 {
-    // label 'small_memory' // for test
     conda 'bioconda::kraken2'
 
     publishDir "${params.OUTPUT_Dir}/03_kraken2_filter", mode: "copy" 

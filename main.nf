@@ -8,9 +8,17 @@ include { MASK_MICROBIAL_LIKE_REGION } from './MCWorkflow/main.nf'
 workflow {
 	// input =================
 
-	// allows to read fastq from a list of path
+	
+	ch_sample_ids = Channel
+    .fromPath(params.metadata)
+    .splitCsv(header: true, sep: '\t', strip: true)
+    .map { row -> row.sample }
+    .unique()
 
-	if (params.ENABLE_PREPROCESS=="enable" && (params.FASTQ_list_path != "" || params.FASTQ_direct_path != "")) {
+	ch_sample_ids.view()
+
+	if (params.ENABLE_PREPROCESS=="enable") {
+		// allows to read fastq from a list of path
 		if (params.FASTQ_list_path != ""){
 			paired_reads1 = Channel
 			.fromPath(params.FASTQ_list_path)
@@ -21,6 +29,7 @@ workflow {
 				def id = f.tokenize('/')[-1]
 								.replaceAll(/(_R?1(_001)?|_1)\.f(ast)?q\.gz$/, '')
 								.replaceAll(/(_R?2(_002)?|_1)\.f(ast)?q\.gz$/, '')
+								.replaceAll(params.suffix_OVERRIDE_LIST, '')
 				tuple(id, file(f, checkIfExists: true))
 			}
 			.groupTuple()
@@ -32,7 +41,9 @@ workflow {
 		if (params.FASTQ_direct_path != ""){
 			paired_reads2 = Channel
 				.fromFilePairs(params.FASTQ_direct_path)
-				.map { id, reads -> tuple(id, reads[0], reads[1]) }
+				.map { id, reads -> 
+				tuple(id.replaceAll(params.suffix_OVERRIDE_LIST, ''), reads[0], reads[1]) 
+				}
 		} else {
 			paired_reads2 = Channel.empty()
 		}
@@ -42,10 +53,11 @@ workflow {
 		.set{paired_reads}
 		paired_reads.view()
 	} else {
-		paired_reads = Channel.empty()
+		paired_reads = ch_sample_ids.map { id -> [id, []] }
 	}
+	paired_reads.view()
 
-	if (params.ENABLE_MAPPING=="enable" && params.BOWTIE2_MAPPING_DBs != "" ) {
+	if (params.ENABLE_MAPPING=="enable") {
 		Channel.fromPath( params.BOWTIE2_MAPPING_DBs )
 		.splitText { it.strip( ) }
 		.map { it -> 
@@ -56,13 +68,13 @@ workflow {
 		.set { mapping_indexes }
 		// mapping_indexes.view()
 	} else {
-		mapping_indexes = Channel.empty()
+		mapping_indexes = Channel.empty() //?
 	}
 
 	input_fastq = paired_reads.map { tuple(it[0], it[1], it[2], params.FASTP_OVERLAP_LEN_REQUIRE, params.FASTP_MIN_LENGTH) }
 
-	preprocessed_reads = Channel.empty() // for nextflow evaluation
-	fastp_ch = Channel.empty()
+	preprocessed_reads = ch_sample_ids.map { id -> [id, []] } // for nextflow evaluation
+	fastp_ch = ch_sample_ids.map { id -> [id, []] }
 	// Channel preprocessed_reads
 	if (params.ENABLE_PREPROCESS == "enable" ) {
 		// if (params.ENABLE_FASTP == "enable") { FASTP( input ) }
@@ -70,7 +82,7 @@ workflow {
 		if ( params.ENABLE_FASTP == "enable" ) {
 			FASTP(input_fastq)
 			FASTP.out.set{fastp_ch}
-		} else if (params.ENABLE_FASTP == "disable" && params.OVERRIDE_LIST_FASTP != "") {
+		} else if (params.ENABLE_FASTP != "enable" && params.OVERRIDE_LIST_FASTP != "") {
 			Channel.fromPath(params.OVERRIDE_LIST_FASTP)
 			.splitText()
 			.map { it.trim() }
@@ -79,6 +91,7 @@ workflow {
 				def fq   = file(f)
 				def id   = fq.baseName
 					.replaceAll(/(_R?[12](_001)?|_[12])\.f(ast)?q(\.gz)?$/, '')
+					.replaceAll(params.suffix_OVERRIDE_LIST, '')
 				tuple(id, fq) }
 			.set{fastp_ch}
 		} else {
@@ -100,7 +113,7 @@ workflow {
 		} else if (params.ENABLE_LOW_COMPLEXITY_FILTER=="PRINSEQ") {
 			PRINSEQ.out.rm_low_complexity.set { preprocessed_reads }
 		}
-	} else if ((params.ENABLE_PREPROCESS=="disable" || (params.ENABLE_SGA == "disable" && params.ENABLE_PRINSEQ == "disable")) && params.OVERRIDE_PREPROCESSED != "") {
+	} else if ((params.ENABLE_PREPROCESS=="disable" || (params.ENABLE_SGA != "enable" && params.ENABLE_PRINSEQ != "enable"))) {
 		// to test
 		preprocessed_reads = Channel
 			.fromPath(params.OVERRIDE_PREPROCESSED)
@@ -111,13 +124,13 @@ workflow {
 				def fq   = file(f)
 				def id   = fq.baseName
 					.replaceAll(/(_R?[12](_001)?|_[12])\.f(ast)?q(\.gz)?$/, '')
+					.replaceAll(params.suffix_OVERRIDE_LIST, '')
 				tuple(id, fq)
 			}
 	}
-
 	// preprocessed_reads.view()
 
-	kraken_out = Channel.empty()
+	kraken_out = ch_sample_ids.map { id -> [id, []] }
 	if (params.ENABLE_KRAKEN_GTDB == "enable") { 
 			KRAKEN2( preprocessed_reads.map { it -> tuple(it[0], it[1], params.KRAKEN2_FILTER_DATABASE) } )
 			KRAKEN2.out.not_microbe
@@ -138,7 +151,7 @@ workflow {
 			}
 	}
 	// kraken_out.view()
-	bowtie2_out = Channel.empty()
+	bowtie2_out = ch_sample_ids.map { id -> [id, []] }
 	if (params.ENABLE_MAPPING == "enable") { 
 			kraken_out
 			.map { it -> tuple(it[0], it[1], params.BOWTIE2_N_ALLOW_MULTIMAPPER) }
@@ -217,7 +230,7 @@ workflow {
 
 		NGSLCA( bam.map { tuple(it[0], it[1], params.NAMES, params.NODES, acc2taxid )} )
 		NGSLCA.out.lca.set{lca}
-	} else if (params.ENABLE_NGSLCA == "disable" && params.OVERRIDE_LIST_NGSLCA != "") {
+	} else if (params.ENABLE_NGSLCA != "enable" && params.OVERRIDE_LIST_NGSLCA != "") {
 		Channel.fromPath(params.OVERRIDE_LIST_NGSLCA)
 		.splitCsv(header: false, sep: '\t', strip: true)
 		.map { row -> tuple( row[0], file(row[1]))}
@@ -247,7 +260,7 @@ workflow {
 		BAMDAM.out.xml.set{bamdam_xml}
 		// bamdam_bam_lca.view()
 			
-	} else if (params.ENABLE_BAMDAM == "disable" && params.OVERRIDE_LIST_BAMDAM != "") {
+	} else if (params.ENABLE_BAMDAM != "enable" && params.OVERRIDE_LIST_BAMDAM != "") {
 		Channel
 		.fromPath(params.OVERRIDE_LIST_BAMDAM)
 		.splitCsv(header: false, sep: '\t', strip: true)
@@ -289,11 +302,12 @@ workflow {
 		MMSEQ2( input_mmseq2 )
 		MMSEQ2.out.evaluation.collect().set{mmseq2_evaluation}
 	} else {
-		mmseq2_evaluation = Channel.empty()
+		mmseq2_evaluation = ch_sample_ids.map { id -> [id, []] }
 	}
+	//mmseq2_evaluation.view()
 
 	if (params.ENABLE_KRONATOOLS == "enable") { 
-		if (params.ENABLE_BAMDAM == "disable" && params.OVERRIDE_LIST_BAMDAM_XML != "") {
+		if (params.ENABLE_BAMDAM != "enable" && params.OVERRIDE_LIST_BAMDAM_XML != "") {
 			
 			Channel.fromPath(params.OVERRIDE_LIST_BAMDAM_XML)
 			.splitCsv(header: false, sep: '\t', strip: true)
@@ -305,44 +319,78 @@ workflow {
 
 	if (params.ENABLE_METRICS == "enable") {
 
-		paired_reads
-		.combine( fastp_ch ,by:0 )
-		.combine( preprocessed_reads ,by:0 )
-		.combine( kraken_out, by:0 )
-		.combine( mapped_bam, by:0 )
-		.combine( bamdam_bam_lca.map{it -> tuple(it[0], it[1])}, by:0 )
-		.set{ input_metrics }
-		input_metrics.view()
+		// paired_reads.view { "DEBUG paired_reads: $it" }
+		// fastp_ch.view { "DEBUG fastp_ch: $it" }
+		preprocessed_reads.view { "DEBUG preprocessed_reads: $it" }
+		// kraken_out.view { "DEBUG kraken_out: $it" }
+		// mapped_bam.view { "DEBUG mapped_bam: $it" }
+		// bamdam_bam_lca.map{it -> tuple(it[0], it[1])}.view { "DEBUG bamdam ext: $it" }
+		// bamdam_bam_lca.view { "DEBUG bamdam: $it" }
 
-		METRICS( input_metrics )
-		METRICS.out.collect().view()
-		CONCAT_METRICS( METRICS.out.collect() )
+		// paired_reads
+		// .combine( fastp_ch ,by:0 )
+		// .combine( preprocessed_reads ,by:0 )
+		// .combine( kraken_out, by:0 )
+
+		// .combine( mapped_bam, by:0 )
+		// .combine( bamdam_bam_lca.map{it -> tuple(it[0], it[1])}, by:0 )
+		// .set{ input_metrics }
+		// input_metrics.view{ "DEBUG input_metrics: $it" }
+
+		//version2------------------
+		// input_metrics = Channel
+		// .join(
+		// 	paired_reads.map        { tuple(it[0], [paired_reads: it]) },
+		// 	fastp_ch.map            { tuple(it[0], [fastp: it]) },
+		// 	preprocessed_reads.map  { tuple(it[0], [preprocessed: it]) },
+		// 	kraken_out.map          { tuple(it[0], [kraken: it]) },
+		// 	mapped_bam.map          { tuple(it[0], [mapped: it]) },
+		// 	bamdam_bam_lca.map      { tuple(it[0], [bamdam: tuple(it[0], it[1])]) }
+		// )
+		// .groupTuple()
+		// .map { id, maps ->
+		// 	def merged = maps.collectEntries()
+		// 	tuple(
+		// 		id,
+		// 		merged.paired_reads,
+		// 		merged.fastp,
+		// 		merged.preprocessed,
+		// 		merged.kraken,
+		// 		merged.mapped,
+		// 		merged.bamdam
+		// 	)
+		// }
+
+	// 	input_metrics.view { "DEBUG input_metrics: $it" }
+
+
+	// 	METRICS( input_metrics )
+	// 	// METRICS.out.collect().view()
+	// 	CONCAT_METRICS( METRICS.out.collect() )
+	// }
+
+	// if (params.ENABLE_PLOTS == "enable") {
+	// 	CONCAT_METRICS.out
+	// 	.combine(bamdam_bam_lca.map(it -> it[2]).collect())
+	// 	.combine(mmseq2_evaluation)
+	// 	.map(it -> tuple(it[0], it[1], it[2],
+	// 		params.SAMPLES_FOR_PLOTS,		
+	// 		params.metadata,
+	// 		params.MAP_LAST_DB_TAG,
+	// 		params.PLOT_DIR,
+	// 		params.MIN_READS,
+	// 		params.PLOTS_BAMDAM_PLOT_MODE,
+	// 		params.PLOTS_DAMAGE_THRESHOLD,
+	// 		params.PLOTS_PLOT_LOW_DAMAGE_TAXA,
+	// 		params.PLOTS_EXCLUDE_TAXA,
+	// 		params.BAMDAM_TAXA_PER_PLOT,
+	// 		params.PLOTS_LIST_TAXA_EVOLUTION_FILE,
+	// 		params.MAP_LAST_DB_TAG,
+	// 		params.BAMDAM_MINREADS,
+	// 		params.BAMDAM_MAXDAMAGE
+	// 	))
+	// 	.set{ input_plots }
+
+	// 	PLOTS( input_plots )
 	}
-
-	if (params.ENABLE_PLOTS == "enable") {
-		CONCAT_METRICS.out
-		.combine(bamdam_bam_lca.map(it -> it[2]).collect())
-		.combine(mmseq2_evaluation)
-		.map(it -> tuple(it[0], it[1], it[2],
-			params.SAMPLES_FOR_PLOTS,		
-			params.metadata,
-			params.MAP_LAST_DB_TAG,
-			params.PLOT_DIR,
-			params.MIN_READS,
-			params.PLOTS_BAMDAM_PLOT_MODE,
-			params.PLOTS_DAMAGE_THRESHOLD,
-			params.PLOTS_PLOT_LOW_DAMAGE_TAXA,
-			params.PLOTS_EXCLUDE_TAXA,
-			params.BAMDAM_TAXA_PER_PLOT,
-			params.PLOTS_LIST_TAXA_EVOLUTION_FILE,
-			params.MAP_LAST_DB_TAG,
-			params.BAMDAM_MINREADS,
-			params.BAMDAM_MAXDAMAGE
-		))
-		.set{ input_plots }
-
-		PLOTS( input_plots )
-	}
-		
-	
 }
