@@ -429,11 +429,10 @@ process MMSEQ2 {
         path(GENERA_FILE)
 
     output:
-        tuple val(ID),
-        path("*.mmseqs_queries.fa"),
-        path("*.mmseqs_expected.tsv"),
-        path("*.besthit.assigned.tsv"),
-        path("*.bamdam_mmseqs.evaluation.summary.tsv"), emit: evaluation
+        path("*.mmseqs_queries.fa")
+        path("*.mmseqs_expected.tsv")
+        path("*.besthit.assigned.tsv")
+        tuple val(ID), path("*.bamdam_mmseqs.evaluation.summary.tsv"), emit: evaluation
 
     publishDir "${params.OUTPUT_Dir}/bamdam", mode: "copy"
 
@@ -541,13 +540,13 @@ process METRICS {
     conda './envs/bowtie2.yml'
     input:    
         tuple val(ID), 
-        path(raw_fq1), 
-        path(raw_fq2), 
-        path(merged_fq),
-        path(rm_low_complex_fq),
-        path(k2_mic_unclas_fq),
-        path(mapped_bam),
-        path(bamdam_bam)
+            path(raw_fq1), 
+            path(raw_fq2), 
+            path(merged_fq),
+            path(rm_low_complex_fq),
+            path(k2_mic_unclas_fq),
+            path(mapped_bam),
+            path(bamdam_bam)
 
         // path(filterbam),
 
@@ -563,6 +562,12 @@ process METRICS {
     """
         count_fastq () {
         local f="\$1"
+
+        if [ "\$f" == "NO_FILE" ]; then
+            echo "NA"
+            return 0
+        fi
+
         [[ -s "\$f" ]] || { echo "NA"; return; }
         if gzip -t "\$f" >/dev/null 2>&1; then
             gzip -cd "\$f" 2>/dev/null | awk 'END{print (NR?NR/4:"NA")}'
@@ -573,6 +578,12 @@ process METRICS {
 
         count_bam () {
         local b="\$1"
+
+        if [ "\$b" == "NO_FILE" ]; then
+            echo "NA"
+            return 0
+        fi
+
         [[ -s "\$b" ]] || { echo "NA"; return; }
         # -F 260 = exclude unmapped (4) + secondary (256) → primary mapped alignments only
         samtools view -c -F 260 "\$b"
