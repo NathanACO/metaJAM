@@ -654,24 +654,22 @@ process PLOTS{
         tuple path(METRICS_TSV),
         path(BAMDAM_LCA), 
         path(mmseq2_evaluation),
-        // path(SAMPLES_FOR_PLOTS),
         path(METADATA_PATH),
-        path(MAP_LAST_DB_TAG),
-        path(PLOT_DIR),
         val(MIN_READS),
-        val(PLOTS_BAMDAM_PLOT_MODE),
+        val(PLOTS_MODE),
         val(PLOTS_DAMAGE_THRESHOLD),
         val(PLOTS_PLOT_LOW_DAMAGE_TAXA),
         val(PLOTS_EXCLUDE_TAXA),
         val(PLOTS_TAXA_PER_PLOT),
         val(PLOTS_LIST_TAXA_EVOLUTION_FILE),
         val(MAP_LAST_DB_TAG),
-        val(SITE_TAG),
         val(BAMDAM_MINREADS),
         val(BAMDAM_MAXDAMAGE)
+        //val(SITE_TAG), //?
+        // path(SAMPLES_FOR_PLOTS),
             
     output:
-        tuple val(ID), path("*.html")
+        path("*.pdf")
 
     publishDir "${params.OUTPUT_Dir}/plots", mode: "copy"
         
@@ -684,7 +682,7 @@ process PLOTS{
         --db_tag "${MAP_LAST_DB_TAG}" \
         --outdir "./" \
         --min_reads "${MIN_READS}" \
-        --bamdam_plot "${PLOTS_BAMDAM_PLOT_MODE}" \
+        --bamdam_plot "${PLOTS_MODE}" \
         --damage_threshold "${PLOTS_DAMAGE_THRESHOLD}" \
         --plot_low_damage_taxa "${PLOTS_PLOT_LOW_DAMAGE_TAXA}" \
         --exclude_taxa "${PLOTS_EXCLUDE_TAXA}" \
@@ -692,9 +690,26 @@ process PLOTS{
         --taxa_trend_file "${PLOTS_LIST_TAXA_EVOLUTION_FILE}" \
         --mmseqs_dir "./" 
         > "${MAP_LAST_DB_TAG}.R.out" 2>&1
+    """
+}
 
-        # --samples "\${SAMPLES_FOR_PLOTS}"  #not used
-    
+process PLOTS_KRONA_BY_SITE{
+    conda './envs/bamdam_kronatools.yml'
+
+    label 'little_memory'
+
+    publishDir "${params.OUTPUT_Dir}/12_plots", mode: "copy"
+
+    input:
+        path(tsv)
+        path(METADATA_PATH)
+        val(BAMDAM_MINREADS)
+        val(BAMDAM_MAXDAMAGE)
+            
+    output: path("*.html")
+        
+    script:
+    """
     #plot for each site:  
     sites=\$(awk -F'\t' 'NR==1{for(i=1;i<=NF;i++) if(\$i=="site") c=i; next} !a[\$c]++{print \$c}' "${METADATA_PATH}")
 
@@ -710,5 +725,5 @@ process PLOTS{
         bamdam krona --in_tsv_list "\${LIST_TSV}" --out_xml "\${site}_all.xml" --minreads "${BAMDAM_MINREADS}" --maxdamage "${BAMDAM_MAXDAMAGE}"
         ktImportXML -o "\${site}_all.html" "\${site}_all.xml"
     done
-    """
+        """
 }

@@ -2,7 +2,7 @@
 nextflow.enable.dsl = 2
 
 // include the subworkflow
-include { FASTP; SGA; PRINSEQ; KRAKEN2; BOWTIE2; MERGE_BAM;  MASK_REGIONS; FILTERBAM; NGSLCA;  BAMDAM; MMSEQ2 ; KRONATOOLS; METRICS; CONCAT_METRICS; PLOTS } from './func.nf'
+include { FASTP; SGA; PRINSEQ; KRAKEN2; BOWTIE2; MERGE_BAM;  MASK_REGIONS; FILTERBAM; NGSLCA;  BAMDAM; MMSEQ2 ; KRONATOOLS; METRICS; CONCAT_METRICS; PLOTS; PLOTS_KRONA_BY_SITE} from './func.nf'
 include { MASK_MICROBIAL_LIKE_REGION } from './MCWorkflow/main.nf'
 
 def validate_pipeline() {
@@ -389,12 +389,9 @@ workflow {
 		.combine(bamdam_bam_lca.map(it -> it[2]).collect())
 		.combine(mmseq2_evaluation.collect())
 		.map(it -> tuple(it[0], it[1], it[2],
-			params.SAMPLES_FOR_PLOTS,		
 			params.metadata,
-			params.MAP_LAST_DB_TAG,
-			params.PLOT_DIR,
 			params.PLOTS_MIN_READS,
-			params.PLOTS_BAMDAM_PLOT_MODE,
+			params.PLOTS_MODE,
 			params.PLOTS_DAMAGE_THRESHOLD,
 			params.PLOTS_PLOT_LOW_DAMAGE_TAXA,
 			params.PLOTS_EXCLUDE_TAXA,
@@ -403,9 +400,19 @@ workflow {
 			params.MAP_LAST_DB_TAG,
 			params.BAMDAM_MINREADS,
 			params.BAMDAM_MAXDAMAGE
-		))
+		)) // params.SAMPLES_FOR_PLOTS,		
 		.set{ input_plots }
 
 		PLOTS( input_plots )
+
+		PLOTS.out.view()
+
+		PLOTS_KRONA_BY_SITE(
+			bamdam_bam_lca.map(it -> it[3]).collect(),
+			params.metadata,
+			params.BAMDAM_MINREADS,
+			params.BAMDAM_MAXDAMAGE
+		)
+
 	}
 }
