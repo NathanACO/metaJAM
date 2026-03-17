@@ -397,9 +397,7 @@ workflow {
 			params.PLOTS_EXCLUDE_TAXA,
 			params.PLOTS_TAXA_PER_PLOT,
 			params.PLOTS_LIST_TAXA_EVOLUTION_FILE,
-			params.MAP_LAST_DB_TAG,
-			params.BAMDAM_MINREADS,
-			params.BAMDAM_MAXDAMAGE
+			params.MAP_LAST_DB_TAG
 		)) // params.SAMPLES_FOR_PLOTS,		
 		.set{ input_plots }
 

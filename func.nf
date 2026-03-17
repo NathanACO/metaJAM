@@ -662,11 +662,7 @@ process PLOTS{
         val(PLOTS_EXCLUDE_TAXA),
         val(PLOTS_TAXA_PER_PLOT),
         val(PLOTS_LIST_TAXA_EVOLUTION_FILE),
-        val(MAP_LAST_DB_TAG),
-        val(BAMDAM_MINREADS),
-        val(BAMDAM_MAXDAMAGE)
-        //val(SITE_TAG), //?
-        // path(SAMPLES_FOR_PLOTS),
+        val(MAP_LAST_DB_TAG)
             
     output:
         path("*.pdf")
