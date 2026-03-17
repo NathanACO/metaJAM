@@ -363,11 +363,11 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
   n_samples <- length(sample_order)
 
   sample_name_size <- dplyr::case_when(
-    n_samples <= 20 ~ 2.7,
-    n_samples <= 30 ~ 2.3,
-    n_samples <= 40 ~ 2.0,
-    n_samples <= 60 ~ 1.7,
-    TRUE            ~ 1.4
+    n_samples <= 20 ~ 1.4,
+    n_samples <= 30 ~ 1.2,
+    n_samples <= 40 ~ 1.0,
+    n_samples <= 60 ~ 0.7,
+    TRUE            ~ 0.4
   )
   sample_age_size <- dplyr::case_when(
     n_samples <= 20 ~ 2.6,
@@ -378,14 +378,29 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
   )
 
   sample_angle <- dplyr::case_when(
-    n_samples <= 30 ~ 0,
+    n_samples <= 20 ~ 0,
     n_samples <= 50 ~ 45,
     TRUE            ~ 60
   )
-  sample_hjust <- ifelse(sample_angle == 0, 0.5, 1)
+  sample_hjust <- ifelse(sample_angle == 0, 0.5, 0)
 
-  # Extra headroom when labels are rotated; and widen output when many samples are shown
-  top_margin_lines <- ifelse(sample_angle == 0, 3.0, ifelse(sample_angle == 45, 4.0, 4.8))
+  # Keep sample names just above the plotting area, and ages below it.
+  # Using small fixed offsets avoids the left-shift seen with large negative vjust on rotated labels.
+  name_vjust <- dplyr::case_when(
+    sample_angle == 0  ~ -0.35,
+    sample_angle == 45 ~ -0.20,
+    TRUE               ~ -0.12
+  )
+  age_vjust <- 1.55
+  age_angle <- 0
+  age_hjust <- 0.5
+
+  top_margin_lines <- dplyr::case_when(
+    sample_angle == 0  ~ 3.2,
+    sample_angle == 45 ~ 4.8,
+    TRUE               ~ 5.6
+  )
+  bottom_margin_lines <- 3.4
   plot_width <- min(18, max(9, 6 + 0.18 * n_samples))
 
   dat_all <- dat_all %>% filter(sample %in% sample_order)
@@ -409,21 +424,38 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
   base_cols <- RColorBrewer::brewer.pal(base_n, "Set2")
   sample_type_cols <- if (ntypes <= length(base_cols)) base_cols[seq_len(ntypes)] else grDevices::colorRampPalette(base_cols)(ntypes)
 
-  heat_colors <- colorRampPalette(RColorBrewer::brewer.pal(9, "YlGnBu"))(256)
+  #heat_colors <- colorRampPalette(RColorBrewer::brewer.pal(9, "YlGnBu"))(256)
+  heat_colors <- colorRampPalette(RColorBrewer::brewer.pal(9, "YlGnBu")[1:8])(256)
+  #heat_colors[256] <- "#69aedf"
 
-  ages <- meta_filt %>% select(sample, !!age_col)
-  colnames(ages)[2] <- "age"
-  age_vec <- ages$age; names(age_vec) <- ages$sample
+  ages <- meta_filt %>%
+    dplyr::distinct(sample, .keep_all = TRUE) %>%
+    dplyr::transmute(sample, age = .data[[age_col]])
+
+  plot_name_col <- intersect(c("sample_plot_name", "sample_plot", "plot_name", "sample_label"), names(meta_filt))[1]
+  if (!is.na(plot_name_col)) {
+    plot_labels <- meta_filt[[plot_name_col]][match(sample_order, meta_filt$sample)]
+    plot_labels <- as.character(plot_labels)
+    plot_labels[is.na(plot_labels) | !nzchar(trimws(plot_labels)) | trimws(toupper(plot_labels)) == "NA"] <- sample_order[is.na(plot_labels) | !nzchar(trimws(plot_labels)) | trimws(toupper(plot_labels)) == "NA"]
+  } else {
+    plot_labels <- sample_order
+  }
 
   label_df_name <- tibble(
     sample = factor(sample_order, levels = sample_order),
-    label  = sample_order,
+    label  = plot_labels,
     sample_type = sample_types
   )
+  age_labels <- ages$age[match(sample_order, ages$sample)]
+  age_labels <- dplyr::if_else(is.na(age_labels), "", as.character(age_labels))
+
   label_df_age <- tibble(
     sample = factor(sample_order, levels = sample_order),
-    label  = as.character(age_vec[sample_order])
+    label  = age_labels
   )
+
+  header_x <- -0.1
+  header_hjust <- 1
 
   legend_counts <- c(1, 10, 100, 1000, 10000, 100000)
   legend_breaks <- log10(legend_counts)
@@ -530,20 +562,23 @@ df_long <- df_long %>%
   plot_heatmap <- function(df_long, max_log, out_prefix) {
     max_log <- max(max_log, max(legend_breaks))
     min_log <- 0
+    label_df_name_plot <- label_df_name %>% dplyr::mutate(y = Inf)
+    label_df_age_plot  <- label_df_age  %>% dplyr::mutate(y = -Inf)
 
     df_long <- df_long %>%
       mutate(label = formatC(as.integer(round(reads)), format = "f", digits = 0, big.mark = ","))
 
     p <- ggplot(df_long, aes(x = sample, y = taxon, fill = log_reads)) +
-      geom_tile() +
-      geom_text(aes(label = label), size = 2) +
+      geom_tile(width = 1, height = 1) +
+      geom_text(aes(label = label, colour = reads >= 1e6), size = 1.4, show.legend = FALSE) +
+      scale_colour_manual(values = c(`TRUE` = "white", `FALSE` = "black")) +
       scale_x_discrete(
         position = "top",
         limits   = sample_order,
         labels   = rep("", length(sample_order)),
-        expand   = expansion(add = c(0.5, 0))
+        expand   = expansion(mult = 0, add = 0)
       ) +
-      scale_y_discrete(name = NULL) +
+      scale_y_discrete(name = NULL, expand = expansion(mult = 0, add = 0)) +
       scale_fill_gradientn(
         colours = heat_colors,
         limits  = c(min_log, max_log),
@@ -553,38 +588,42 @@ df_long <- df_long %>%
       ) +
       labs(x = NULL, title = NULL) +
       coord_cartesian(clip = "off") +
-      theme_bw(base_size = 9) +
+      theme_bw(base_size = 8) +
       theme(
         panel.border        = element_rect(colour = "black", fill = NA, linewidth = 0.4),
         axis.title.x.bottom = element_blank(),
         axis.ticks.x        = element_blank(),
         panel.grid          = element_blank(),
         legend.position     = "right",
-        legend.title        = element_text(size = 8),
-        legend.text         = element_text(size = 7),
-        plot.margin         = grid::unit(c(top_margin_lines, 0.5, 0.5, 1.0), "lines")
+        legend.title        = element_text(size = 7),
+        legend.text         = element_text(size = 6),
+        plot.margin         = grid::unit(c(top_margin_lines, 0.5, bottom_margin_lines, 2.6), "lines")
       ) +
       annotate("text",
-               x = 0.5, y = Inf,
-               label = "Samples\nThousand years ago",
-               hjust = 1, vjust = -0.3, size = 2.5)
+               x = -Inf, y = Inf,
+               label = "Samples",
+               hjust = 1.1, vjust = -0.05, size = 2.5) +
+      annotate("text",
+               x = -Inf, y = -Inf,
+               label = "Age",
+               hjust = 1.4, vjust = 1.25, size = 2.5)
 
     if (requireNamespace("ggnewscale", quietly = TRUE)) {
       p <- p +
         ggnewscale::new_scale_fill() +
         geom_label(
-          data = label_df_name, inherit.aes = FALSE,
-          aes(x = sample, y = Inf, label = label, fill = sample_type),
-          vjust = -1.3, angle = sample_angle, hjust = sample_hjust, size = sample_name_size,
-          label.size = 0.15,
+          data = label_df_name_plot, inherit.aes = FALSE,
+          aes(x = sample, y = y, label = label, fill = sample_type),
+          vjust = name_vjust, angle = sample_angle, hjust = sample_hjust, size = sample_name_size,
+          linewidth = 0.15,
           label.r = grid::unit(0.08, "lines"),
           key_glyph = ggplot2::draw_key_rect
         ) +
         geom_text(
-          data = label_df_age, inherit.aes = FALSE,
-          aes(x = sample, y = Inf, label = label),
-          vjust = -0.7, angle = sample_angle, hjust = sample_hjust, size = sample_age_size, colour = "black",
-          show.legend = FALSE
+          data = label_df_age_plot, inherit.aes = FALSE,
+          aes(x = sample, y = y, label = label),
+          vjust = age_vjust, angle = age_angle, hjust = age_hjust,
+          size = sample_age_size, colour = "black"
         ) +
         scale_fill_manual(
           name = "Sample type",
@@ -595,15 +634,15 @@ df_long <- df_long %>%
       message("[100_Plots.R] NOTE: package 'ggnewscale' not found - drawing colored NAME text only.")
       p <- p +
         geom_text(
-          data = label_df_name, inherit.aes = FALSE,
-          aes(x = sample, y = Inf, label = label, colour = sample_type),
-          vjust = 1.35, angle = sample_angle, hjust = sample_hjust, size = sample_name_size, show.legend = TRUE
+          data = label_df_name_plot, inherit.aes = FALSE,
+          aes(x = sample, y = y, label = label, colour = sample_type),
+          vjust = name_vjust, angle = sample_angle, hjust = sample_hjust, size = sample_name_size, show.legend = TRUE
         ) +
         geom_text(
-          data = label_df_age, inherit.aes = FALSE,
-          aes(x = sample, y = Inf, label = label),
-          vjust = 2.60, angle = sample_angle, hjust = sample_hjust, size = sample_age_size, colour = "black",
-          show.legend = FALSE
+          data = label_df_age_plot, inherit.aes = FALSE,
+          aes(x = sample, y = y, label = label),
+          vjust = age_vjust, angle = age_angle, hjust = age_hjust,
+          size = sample_age_size, colour = "black"
         ) +
         scale_colour_manual(
           name = "Sample type",
@@ -626,6 +665,8 @@ df_long <- df_long %>%
   plot_bubble_damage <- function(df_long, max_log, out_prefix) {
     max_log <- max(max_log, max(legend_breaks))
     min_log <- 0
+    label_df_name_plot <- label_df_name %>% dplyr::mutate(y = Inf)
+    label_df_age_plot  <- label_df_age  %>% dplyr::mutate(y = -Inf)
 
     # bubble size based on log10(reads+1)
     df_plot <- df_long %>%
@@ -634,7 +675,7 @@ df_long <- df_long %>%
 
     p <- ggplot(df_plot, aes(x = sample, y = taxon)) +
       geom_point(aes(size = log_reads, fill = damage_class), shape = 21, colour = "black", stroke = 0.15, alpha = 0.9) +
-      geom_text(aes(label = label), colour = "black", size = 2) +
+      geom_text(aes(label = label), colour = "black", size = 1.2) +
       scale_x_discrete(
         position = "top",
         limits   = sample_order,
@@ -644,7 +685,7 @@ df_long <- df_long %>%
       scale_y_discrete(name = NULL) +
       scale_fill_manual(
         name   = "Damage",
-        values = c(red = "red", orange = "orange", green = "green"),
+        values = c(red = "#D55E00", orange = "#F0E442", green = "#009E73"),
         breaks = c("green","orange","red"),
         labels = c("Confident", "Require investigation", "Insufficiently damaged"),
         guide  = guide_legend(order = 1, title.position = "top")
@@ -659,7 +700,7 @@ df_long <- df_long %>%
       ) +
       labs(x = NULL, title = NULL) +
       coord_cartesian(clip = "off") +
-      theme_bw(base_size = 9) +
+      theme_bw(base_size = 8) +
       theme(
         panel.border        = element_rect(colour = "black", fill = NA, linewidth = 0.4),
         axis.title.x.bottom = element_blank(),
@@ -668,29 +709,33 @@ df_long <- df_long %>%
         legend.position     = "right",
         legend.title        = element_text(size = 8),
         legend.text         = element_text(size = 7),
-        plot.margin         = grid::unit(c(top_margin_lines, 0.5, 0.5, 1.0), "lines")
+        plot.margin         = grid::unit(c(top_margin_lines, 0.5, bottom_margin_lines, 2.6), "lines")
       ) +
       annotate("text",
-               x = 0.5, y = Inf,
-               label = "Samples\nThousand years ago",
-               hjust = 1, vjust = -0.3, size = 2.5)
+               x = -Inf, y = Inf,
+               label = "Samples",
+               hjust = 1.1, vjust = -0.05, size = 2.5) +
+      annotate("text",
+               x = -Inf, y = -Inf,
+               label = "Age",
+               hjust = 1.4, vjust = 1.25, size = 2.5)
 
     if (requireNamespace("ggnewscale", quietly = TRUE)) {
       p <- p +
         ggnewscale::new_scale_fill() +
         geom_label(
-          data = label_df_name, inherit.aes = FALSE,
-          aes(x = sample, y = Inf, label = label, fill = sample_type),
-          vjust = -1.3, angle = sample_angle, hjust = sample_hjust, size = sample_name_size,
-          label.size = 0.15,
+          data = label_df_name_plot, inherit.aes = FALSE,
+          aes(x = sample, y = y, label = label, fill = sample_type),
+          vjust = name_vjust, angle = sample_angle, hjust = sample_hjust, size = sample_name_size,
+          linewidth = 0.15,
           label.r = grid::unit(0.08, "lines"),
           key_glyph = ggplot2::draw_key_rect
         ) +
         geom_text(
-          data = label_df_age, inherit.aes = FALSE,
-          aes(x = sample, y = Inf, label = label),
-          vjust = -0.7, angle = sample_angle, hjust = sample_hjust, size = sample_age_size, colour = "black",
-          show.legend = FALSE
+          data = label_df_age_plot, inherit.aes = FALSE,
+          aes(x = sample, y = y, label = label),
+          vjust = age_vjust, angle = age_angle, hjust = age_hjust,
+          size = sample_age_size, colour = "black"
         ) +
         scale_fill_manual(
           name = "Sample type",
@@ -701,15 +746,15 @@ df_long <- df_long %>%
       message("[100_Plots.R] NOTE: package 'ggnewscale' not found - drawing colored NAME text only.")
       p <- p +
         geom_text(
-          data = label_df_name, inherit.aes = FALSE,
-          aes(x = sample, y = Inf, label = label, colour = sample_type),
-          vjust = 1.35, angle = sample_angle, hjust = sample_hjust, size = sample_name_size, show.legend = TRUE
+          data = label_df_name_plot, inherit.aes = FALSE,
+          aes(x = sample, y = y, label = label, colour = sample_type),
+          vjust = name_vjust, angle = sample_angle, hjust = sample_hjust, size = sample_name_size, show.legend = TRUE
         ) +
         geom_text(
-          data = label_df_age, inherit.aes = FALSE,
-          aes(x = sample, y = Inf, label = label),
-          vjust = 2.60, angle = sample_angle, hjust = sample_hjust, size = sample_age_size, colour = "black",
-          show.legend = FALSE
+          data = label_df_age_plot, inherit.aes = FALSE,
+          aes(x = sample, y = y, label = label),
+          vjust = age_vjust, angle = age_angle, hjust = age_hjust,
+          size = sample_age_size, colour = "black"
         ) +
         scale_colour_manual(
           name = "Sample type",
@@ -734,15 +779,27 @@ plot_bubble_reads <- function(df_long, max_log, out_prefix) {
 
   max_log <- max(max_log, max(legend_breaks))
   min_log <- 0
+  label_df_name_plot <- label_df_name %>% dplyr::mutate(y = Inf)
+  label_df_age_plot  <- label_df_age  %>% dplyr::mutate(y = -Inf)
 
   df_plot <- df_long %>%
     dplyr::filter(reads > 0) %>%
-    dplyr::mutate(label = formatC(as.integer(round(reads)), format = "f", digits = 0, big.mark = ","))
+    dplyr::mutate(
+      label = formatC(as.integer(round(reads)), format = "f", digits = 0, big.mark = ","),
+      high_read_label = reads >= 1e6
+    )
 
   p <- ggplot(df_plot, aes(x = sample, y = taxon)) +
-    geom_point(aes(size = log_reads, fill = log_reads),
-               shape = 21, colour = "black", stroke = 0.15, alpha = 0.9) +
-    geom_text(aes(label = label), colour = "black", size = 2) +
+    geom_point(
+      aes(size = log_reads, fill = log_reads),
+      shape = 21, colour = "black", stroke = 0.15, alpha = 0.9
+    ) +
+    geom_text(
+      aes(label = label, colour = high_read_label),
+      size = 1.2,
+      show.legend = FALSE
+    ) +
+    scale_colour_manual(values = c(`TRUE` = "#0072B2", `FALSE` = "black")) +
     scale_x_discrete(
       position = "top",
       limits   = sample_order,
@@ -759,43 +816,53 @@ plot_bubble_reads <- function(df_long, max_log, out_prefix) {
       guide   = guide_colorbar(order = 1, title.position = "top")
     ) +
     scale_size_continuous(
-      name  = "Unique Reads",
-      range = c(0.5, 6),
-      guide = guide_legend(order = 2, title.position = "top")
+      range  = c(0.2, 7),
+      limits = c(min_log, max_log),
+      breaks = legend_breaks,
+      labels = formatC(legend_counts, format = "fg", big.mark = ","),
+      name   = "Unique Reads",
+      guide  = guide_legend(order = 2, title.position = "top")
     ) +
     labs(x = NULL, y = NULL) +
     coord_cartesian(clip = "off") +
     theme_bw(base_size = 9) +
     theme(
+      panel.border        = element_rect(colour = "black", fill = NA, linewidth = 0.4),
       axis.title.x.bottom = element_blank(),
       axis.ticks.x        = element_blank(),
       panel.grid          = element_blank(),
       legend.position     = "right",
       legend.title        = element_text(size = 8),
       legend.text         = element_text(size = 7),
-      plot.margin         = grid::unit(c(top_margin_lines, 0.5, 0.5, 1.0), "lines")
+      plot.margin         = grid::unit(c(top_margin_lines, 0.5, bottom_margin_lines, 2.6), "lines")
     ) +
     annotate("text",
-             x = 0.5, y = Inf,
-             label = "Samples\nThousand years ago",
-             hjust = 1, vjust = -0.3, size = 2.5)
+      x = -Inf, y = Inf,
+      label = "Samples",
+      hjust = 1.1, vjust = -0.05, size = 2.5
+    ) +
+    annotate("text",
+      x = -Inf, y = -Inf,
+      label = "Age",
+      hjust = 1.4, vjust = 1.25, size = 2.5
+    )
 
   if (requireNamespace("ggnewscale", quietly = TRUE)) {
     p <- p +
       ggnewscale::new_scale_fill() +
       geom_label(
-        data = label_df_name, inherit.aes = FALSE,
-        aes(x = sample, y = Inf, label = label, fill = sample_type),
-        vjust = -1.3, angle = sample_angle, hjust = sample_hjust, size = sample_name_size,
+        data = label_df_name_plot, inherit.aes = FALSE,
+        aes(x = sample, y = y, label = label, fill = sample_type),
+        vjust = name_vjust, angle = sample_angle, hjust = sample_hjust, size = sample_name_size,
         linewidth = 0.15,
         label.r = grid::unit(0.08, "lines"),
         key_glyph = ggplot2::draw_key_rect
       ) +
       geom_text(
-        data = label_df_age, inherit.aes = FALSE,
-        aes(x = sample, y = Inf, label = label),
-        vjust = -0.7, angle = sample_angle, hjust = sample_hjust, size = sample_age_size, colour = "black",
-        show.legend = FALSE
+        data = label_df_age_plot, inherit.aes = FALSE,
+        aes(x = sample, y = y, label = label),
+        vjust = age_vjust, angle = age_angle, hjust = age_hjust,
+        size = sample_age_size, colour = "black"
       ) +
       scale_fill_manual(
         name = "Sample type",
@@ -805,15 +872,16 @@ plot_bubble_reads <- function(df_long, max_log, out_prefix) {
   } else {
     p <- p +
       geom_text(
-        data = label_df_name, inherit.aes = FALSE,
-        aes(x = sample, y = Inf, label = label),
-        vjust = 1.35, angle = sample_angle, hjust = sample_hjust, size = sample_name_size, colour = "black", show.legend = FALSE
+        data = label_df_name_plot, inherit.aes = FALSE,
+        aes(x = sample, y = y, label = label),
+        vjust = name_vjust, angle = sample_angle, hjust = sample_hjust,
+        size = sample_name_size, colour = "black", show.legend = FALSE
       ) +
       geom_text(
-        data = label_df_age, inherit.aes = FALSE,
-        aes(x = sample, y = Inf, label = label),
-        vjust = 2.60, angle = sample_angle, hjust = sample_hjust, size = sample_age_size, colour = "black",
-        show.legend = FALSE
+        data = label_df_age_plot, inherit.aes = FALSE,
+        aes(x = sample, y = y, label = label),
+        vjust = age_vjust, angle = age_angle, hjust = age_hjust,
+        size = sample_age_size, colour = "black"
       )
   }
 
@@ -911,7 +979,7 @@ plot_bubble_reads <- function(df_long, max_log, out_prefix) {
 # ================================================================
 # 3) MMSEQS2 EVALUATION BUBBLE PLOT (optional)
 # ================================================================
-make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata_path, outdir) {
+make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata_path, outdir, taxa_per_plot = 0) {
   message("[mmseqs_eval] starting mmseqs evaluation plot")
 
   map_tag <- Sys.getenv("MAP_LAST_DB_TAG", "")
@@ -947,6 +1015,7 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
 
   meta <- suppressMessages(read_tsv(metadata_path, show_col_types = FALSE))
   if (!"sample" %in% names(meta)) stop("[mmseqs_eval] ERROR: metadata TSV must contain a 'sample' column.")
+  meta <- meta %>% mutate(sample = trimws(as.character(sample)))
 
   age_col <- intersect(c("age_ka", "age", "ka"), names(meta))[1]
   if (is.na(age_col)) stop("[mmseqs_eval] ERROR: metadata TSV must have an age column named one of: age_ka, age, ka")
@@ -977,6 +1046,7 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
     parts   <- strsplit(rel, "/", fixed = TRUE)[[1]]
 
     sample_id <- if (length(parts) >= 1) parts[1] else NA_character_
+    sample_id <- trimws(sample_id)
     tag_dir   <- if (length(parts) >= 2) parts[2] else NA_character_
 
     db_tag <- NA_character_
@@ -1001,13 +1071,15 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
              same_order, same_kingdom, other, no_hit)
   })
 
-  eval_raw <- bind_rows(eval_list)
+  eval_raw <- bind_rows(eval_list) %>%
+    mutate(sample = trimws(as.character(sample)))
+
   if (nrow(eval_raw) == 0L) {
     message("[mmseqs_eval] no rows read; skipping.")
     return(invisible(NULL))
   }
 
-  # ---- sample matching (same logic as bamdam) ----
+  # ---- sample matching (STRICT: do not fall back to plotting all eval samples) ----
   eval_samples <- unique(eval_raw$sample)
   meta_samples <- unique(meta$sample)
 
@@ -1019,28 +1091,26 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
   } else if (length(overlap2) > 0) {
     used_samples <- overlap2
   } else {
-    used_samples <- eval_samples
+    used_samples <- if (length(primary_samples) > 0) intersect(meta_samples, primary_samples) else meta_samples
   }
 
   meta_filt <- meta %>% filter(sample %in% used_samples)
   if (nrow(meta_filt) == 0L) {
-    message("[mmseqs_eval] WARNING: no metadata rows match evaluation samples; proceeding without ages (sample-only ordering).")
-    meta_filt <- tibble(sample = used_samples)
-    meta_filt[[age_col]] <- NA_real_
+    message("[mmseqs_eval] WARNING: no metadata rows match selected samples; skipping.")
+    return(invisible(NULL))
   }
   meta_filt <- meta_filt %>% arrange(.data[[age_col]], .data$sample)
   sample_order <- meta_filt$sample
-
 
   # ---- auto-tune top sample labels based on number of samples ----
   n_samples <- length(sample_order)
 
   sample_name_size <- dplyr::case_when(
-    n_samples <= 20 ~ 2.7,
-    n_samples <= 30 ~ 2.3,
-    n_samples <= 40 ~ 2.0,
-    n_samples <= 60 ~ 1.7,
-    TRUE            ~ 1.4
+    n_samples <= 20 ~ 1.4,
+    n_samples <= 30 ~ 1.2,
+    n_samples <= 40 ~ 1.0,
+    n_samples <= 60 ~ 0.7,
+    TRUE            ~ 0.4
   )
   sample_age_size <- dplyr::case_when(
     n_samples <= 20 ~ 2.6,
@@ -1051,21 +1121,33 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
   )
 
   sample_angle <- dplyr::case_when(
-    n_samples <= 30 ~ 0,
+    n_samples <= 20 ~ 0,
     n_samples <= 50 ~ 45,
     TRUE            ~ 60
   )
-  sample_hjust <- ifelse(sample_angle == 0, 0.5, 1)
+  sample_hjust <- ifelse(sample_angle == 0, 0.5, 0)
 
-  # Extra headroom when labels are rotated; and widen output when many samples are shown
-  top_margin_lines <- ifelse(sample_angle == 0, 3.0, ifelse(sample_angle == 45, 4.0, 4.8))
+  name_vjust <- dplyr::case_when(
+    sample_angle == 0  ~ -0.35,
+    sample_angle == 45 ~ -0.20,
+    TRUE               ~ -0.12
+  )
+  age_vjust <- 1.55
+  age_angle <- 0
+  age_hjust <- 0.5
+
+  top_margin_lines <- dplyr::case_when(
+    sample_angle == 0  ~ 3.2,
+    sample_angle == 45 ~ 4.8,
+    TRUE               ~ 5.6
+  )
+  bottom_margin_lines <- 3.4
   plot_width <- min(18, max(9, 6 + 0.18 * n_samples))
 
-  ages <- meta_filt %>% select(sample, !!age_col)
-  colnames(ages)[2] <- "age"
+  ages <- meta_filt %>% dplyr::select(sample, age = dplyr::all_of(age_col))
   age_vec <- ages$age; names(age_vec) <- ages$sample
 
-  # ---- sample_type + palette (same strategy as bamdam bubble plots) ----
+  # ---- sample_type + palette ----
   sample_type_col <- intersect(c("sample_type", "sampleType", "type", "sample_category", "sample_group"),
                                names(meta_filt))[1]
 
@@ -1080,17 +1162,26 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
   base_cols <- RColorBrewer::brewer.pal(base_n, "Set2")
   sample_type_cols <- if (ntypes <= length(base_cols)) base_cols[seq_len(ntypes)] else grDevices::colorRampPalette(base_cols)(ntypes)
 
+  plot_name_col <- intersect(c("sample_plot_name", "sample_plot", "plot_name", "sample_label"), names(meta_filt))[1]
+  if (!is.na(plot_name_col)) {
+    plot_labels <- meta_filt[[plot_name_col]][match(sample_order, meta_filt$sample)]
+    plot_labels <- as.character(plot_labels)
+    plot_labels[is.na(plot_labels) | !nzchar(trimws(plot_labels)) | trimws(toupper(plot_labels)) == "NA"] <- sample_order[is.na(plot_labels) | !nzchar(trimws(plot_labels)) | trimws(toupper(plot_labels)) == "NA"]
+  } else {
+    plot_labels <- sample_order
+  }
+
   label_df_name <- tibble(
     sample = factor(sample_order, levels = sample_order),
-    label  = sample_order,
+    label  = plot_labels,
     sample_type = sample_types
   )
   label_df_age <- tibble(
     sample = factor(sample_order, levels = sample_order),
-    label  = as.character(age_vec[sample_order])
+    label  = ifelse(is.na(age_vec[sample_order]), "", format(age_vec[sample_order], trim = TRUE, scientific = FALSE))
   )
 
-  # ---- attach bamdam genus read counts (this defines the plotted taxa) ----
+  # ---- attach bamdam genus read counts (defines plotted taxa) ----
   extract_rank <- function(tp) {
     if (is.na(tp) || !nzchar(tp)) return(NA_character_)
     first <- strsplit(tp, ";", fixed = TRUE)[[1]][1]
@@ -1163,16 +1254,18 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
     ) %>%
     filter(!is.na(bamdam_reads) & bamdam_reads > 0) %>%
     group_by(sample, exp_genus_taxid, exp_genus_name) %>%
-    summarise(bamdam_reads = sum(bamdam_reads, na.rm = TRUE),
-              bamdam_taxpath = dplyr::first(na.omit(bamdam_taxpath)),
-              .groups = "drop")
+    summarise(
+      bamdam_reads = sum(bamdam_reads, na.rm = TRUE),
+      bamdam_taxpath = dplyr::first(na.omit(bamdam_taxpath)),
+      .groups = "drop"
+    )
 
   if (nrow(bam_reads) == 0L) {
     message("[mmseqs_eval] no bamdam genus reads found (or bamdam_dir missing); skipping.")
     return(invisible(NULL))
   }
 
-  # Optional: apply the same min_reads filter as bamdam plots (across all samples)
+  # Optional: apply min_reads filter as bamdam (across all samples)
   if (exists("min_reads", inherits = TRUE) && is.numeric(min_reads) && min_reads > 1) {
     keep_taxa <- bam_reads %>%
       group_by(exp_genus_name) %>%
@@ -1204,19 +1297,18 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
       same_family = tidyr::replace_na(same_family, 0),
       other       = tidyr::replace_na(other, 0),
       no_hit      = tidyr::replace_na(no_hit, 0),
-      hits                = pmax(n_queries - no_hit, 0),
-      hits_frac_total      = if_else(n_queries > 0, hits / n_queries, 0),
+      hits                 = pmax(n_queries - no_hit, 0),
+      hits_frac_total       = if_else(n_queries > 0, hits / n_queries, 0),
       same_genus_frac_hits  = if_else(hits > 0, same_genus / hits, 0),
       same_family_frac_hits = if_else(hits > 0, same_family / hits, 0),
       same_genus_frac_total  = if_else(n_queries > 0, same_genus / n_queries, 0),
       same_family_frac_total = if_else(n_queries > 0, same_family / n_queries, 0),
-      other_frac_hits       = if_else(hits > 0, other / hits, 0),
       eval_class = case_when(
-        n_queries == 0 ~ "Require to investigate blast for a specific WGS genera db",
-        hits_frac_total < 0.50 ~ "Require to investigate blast for a specific WGS genera db",
+        n_queries == 0 ~ "Require specific WGS genera MMSeqs2 investigation",
+        hits_frac_total < 0.50 ~ "Require specific WGS genera MMSeqs2 investigation",
         hits > 0 & same_genus_frac_hits >= 0.40 & same_genus_frac_total >= 0.15 ~ "Confident for genus",
-        hits > 0 & same_family_frac_hits >= (1/3) & same_family_frac_total >= 0.15 ~ "Confident for family but require investigation for genus",
-        TRUE ~ "False assignation, potential db bias or contamination"
+        hits > 0 & same_family_frac_hits >= (1/3) & same_family_frac_total >= 0.15 ~ "Confident for family\n but require investigation for genus",
+        TRUE ~ "False assignation\n potential db bias or contamination"
       )
     ) %>%
     select(sample, exp_kingdom_name, exp_genus_taxid, exp_genus_name, exp_genus_name_key,
@@ -1227,7 +1319,6 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
     left_join(eval_classed %>% select(sample, exp_genus_taxid, eval_class),
               by = c("sample", "exp_genus_taxid"))
 
-  # Fallback name join for taxa where evaluation lacks taxid
   df <- df %>%
     left_join(eval_classed %>% select(sample, exp_genus_name_key, eval_class) %>% rename(eval_class_by_name = eval_class),
               by = c("sample", "exp_genus_name_key")) %>%
@@ -1239,9 +1330,9 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
       eval_class = if_else(is.na(eval_class) | !nzchar(eval_class), "Not tested for mmseqs", eval_class),
       eval_class = factor(eval_class, levels = c(
         "Confident for genus",
-        "Confident for family but require investigation for genus",
-        "False assignation, potential db bias or contamination",
-        "Require to investigate blast for a specific WGS genera db",
+        "Confident for family\n but require investigation for genus",
+        "False assignation\n potential db bias or contamination",
+        "Require specific WGS genera MMSeqs2 investigation",
         "Not tested for mmseqs"
       )),
       clade = factor(vapply(bamdam_taxpath, get_clade, character(1)),
@@ -1253,13 +1344,12 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
   suppressWarnings(write_tsv(df, merged_tsv))
   message("[mmseqs_eval] wrote merged file: ", merged_tsv)
 
-  # ---- ordering of taxa: clade block then alpha ----
+  # ---- ordering of taxa ----
   taxon_order <- df %>%
     distinct(exp_genus_name, clade) %>%
     arrange(clade, exp_genus_name) %>%
     pull(exp_genus_name)
 
-  # ---- build plot df ----
   df_plot <- df %>%
     mutate(
       sample = factor(sample, levels = sample_order),
@@ -1268,117 +1358,146 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
       label = formatC(as.integer(round(bamdam_reads)), format = "f", digits = 0, big.mark = ",")
     )
 
-  # ---- size legend (Unique Reads; same as bamdam bubble plots) ----
   legend_counts <- c(1, 10, 100, 1000, 10000, 100000)
   legend_breaks <- log10(legend_counts)
 
-  p <- ggplot(df_plot, aes(x = sample, y = taxon)) +
-    geom_point(aes(size = log_reads, fill = eval_class), shape = 21, colour = "black", stroke = 0.15, alpha = 0.9) +
-    geom_text(aes(label = label), colour = "black", size = 2) +
-    scale_x_discrete(
-      position = "top",
-      limits   = sample_order,
-      labels   = rep("", length(sample_order)),
-      expand   = expansion(add = c(0.6, 0.6))
-    ) +
-    scale_y_discrete(name = NULL) +
-    scale_fill_manual(
-      name   = "MMSeqs2",
-      values = c(
-        "Confident for genus" = "green",
-        "Confident for family but require investigation for genus" = "orange",
-        "False assignation, potential db bias or contamination" = "red",
-        "Require to investigate blast for a specific WGS genera db" = "blue",
-        "Not tested for mmseqs" = "grey80"
-      ),
-      breaks = c(
-        "Confident for genus",
-        "Confident for family but require investigation for genus",
-        "False assignation, potential db bias or contamination",
-        "Require to investigate blast for a specific WGS genera db",
-        "Not tested for mmseqs"
-      ),
-      guide = guide_legend(order = 1, title.position = "top", override.aes = list(size = 3))
-    ) +
-    scale_size_continuous(
-      range  = c(0.2, 7),
-      limits = c(0, max(max(df_plot$log_reads, na.rm = TRUE), max(legend_breaks))),
-      breaks = legend_breaks,
-      labels = formatC(legend_counts, format = "fg", big.mark = ","),
-      name   = "Unique Reads",
-      guide  = guide_legend(order = 2, title.position = "top")
-    ) +
-    labs(x = NULL, title = NULL) +
-    coord_cartesian(clip = "off") +
-    theme_bw(base_size = 9) +
-    theme(
-      panel.border        = element_rect(colour = "black", fill = NA, linewidth = 0.4),
-      axis.title.x.bottom = element_blank(),
-      axis.ticks.x        = element_blank(),
-      panel.grid          = element_blank(),
-      legend.position     = "right",
-      legend.title        = element_text(size = 9),
-      legend.text         = element_text(size = 8),
-      axis.text.y         = element_text(size = 7),
-      axis.text.x.top     = element_blank(),
-      plot.margin         = grid::unit(c(top_margin_lines, 0.5, 0.5, 1.0), "lines")
-    ) +
-    annotate("text",
-             x = 0.5, y = Inf,
-             label = "Samples\nThousand years ago",
-             hjust = 1, vjust = -0.15, size = 2.5)
-
-  # Top labels: match bamdam bubble plots (colored boxes if ggnewscale available)
-  if (requireNamespace("ggnewscale", quietly = TRUE)) {
-    p <- p +
-      ggnewscale::new_scale_fill() +
-      geom_label(
-        data = label_df_name, inherit.aes = FALSE,
-        aes(x = sample, y = Inf, label = label, fill = sample_type),
-        vjust = -0.8, angle = sample_angle, hjust = sample_hjust, size = sample_name_size,
-        label.size = 0.15,
-        label.r = grid::unit(0.08, "lines"),
-        key_glyph = ggplot2::draw_key_rect
-      ) +
-      geom_text(
-        data = label_df_age, inherit.aes = FALSE,
-        aes(x = sample, y = Inf, label = label),
-        vjust = -0.35, angle = sample_angle, hjust = sample_hjust, size = sample_age_size, colour = "black",
-        show.legend = FALSE
-      ) +
-      scale_fill_manual(
-        name = "Sample type",
-        values = setNames(sample_type_cols, levels(label_df_name$sample_type)),
-        guide = guide_legend(order = 3, title.position = "top")
-      )
+  # ---- split taxa into multiple panels if requested ----
+  tax_levels <- levels(df_plot$taxon)
+  if (taxa_per_plot > 0 && length(tax_levels) > taxa_per_plot) {
+    idx <- seq_along(tax_levels)
+    chunk_ids <- ceiling(idx / taxa_per_plot)
+    chunks <- split(tax_levels, chunk_ids)
   } else {
-    p <- p +
-      geom_text(
-        data = label_df_name, inherit.aes = FALSE,
-        aes(x = sample, y = Inf, label = label, colour = sample_type),
-        vjust = 0.8, angle = sample_angle, hjust = sample_hjust, size = sample_name_size, show.legend = TRUE
-      ) +
-      geom_text(
-        data = label_df_age, inherit.aes = FALSE,
-        aes(x = sample, y = Inf, label = label),
-        vjust = 1.7, angle = sample_angle, hjust = sample_hjust, size = sample_age_size, colour = "black",
-        show.legend = FALSE
-      ) +
-      scale_colour_manual(
-        name = "Sample type",
-        values = setNames(sample_type_cols, levels(label_df_name$sample_type)),
-        guide = guide_legend(order = 3, title.position = "top")
-      )
+    chunks <- list(tax_levels)
   }
 
-  pdf_file <- file.path(outdir, "mmseqs_evaluation_bubbleplot.pdf")
-  png_file <- file.path(outdir, "mmseqs_evaluation_bubbleplot.png")
+  for (ci in seq_along(chunks)) {
+    taxa_chunk <- chunks[[ci]]
 
-  message("[mmseqs_eval] saving: ", pdf_file)
-  ggsave(pdf_file, p, width = plot_width, height = 8.5)
+    df_chunk <- df_plot %>%
+      dplyr::filter(.data$taxon %in% taxa_chunk) %>%
+      dplyr::mutate(taxon = factor(as.character(taxon), levels = taxa_chunk)) %>%
+      droplevels()
 
-  message("[mmseqs_eval] saving: ", png_file)
-  ggsave(png_file, p, width = plot_width, height = 8.5, dpi = 300)
+    part_lab <- NULL
+    if (taxa_per_plot > 0) {
+      start_i <- (ci - 1L) * taxa_per_plot + 1L
+      end_i   <- start_i + length(taxa_chunk) - 1L
+      part_lab <- sprintf("part%02d_%04d-%04d", ci, start_i, end_i)
+    }
+
+    p <- ggplot(df_chunk, aes(x = sample, y = taxon)) +
+      geom_point(aes(size = log_reads, fill = eval_class), shape = 21, colour = "black", stroke = 0.15, alpha = 0.9) +
+      geom_text(aes(label = label), colour = "black", size = 1.2) +
+      scale_x_discrete(
+        position = "top",
+        limits   = sample_order,
+        labels   = rep("", length(sample_order)),
+        expand   = expansion(add = c(0.6, 0.6))
+      ) +
+      scale_y_discrete(name = NULL) +
+      scale_fill_manual(
+        name   = "MMSeqs2",
+        values = c(
+          "Confident for genus" = "#009E73",
+          "Confident for family\n but require investigation for genus" = "#F0E442",
+          "False assignation\n potential db bias or contamination" = "#D55E00",
+          "Require specific WGS genera MMSeqs2 investigation" = "#0072B2",
+          "Not tested for mmseqs" = "#999999"
+        ),
+        breaks = c(
+          "Confident for genus",
+          "Confident for family\n but require investigation for genus",
+          "False assignation\n potential db bias or contamination",
+          "Require specific WGS genera MMSeqs2 investigation",
+          "Not tested for mmseqs"
+        ),
+        guide = guide_legend(order = 1, title.position = "top", override.aes = list(size = 3))
+      ) +
+      scale_size_continuous(
+        range  = c(0.2, 7),
+        limits = c(0, max(max(df_chunk$log_reads, na.rm = TRUE), max(legend_breaks))),
+        breaks = legend_breaks,
+        labels = formatC(legend_counts, format = "fg", big.mark = ","),
+        name   = "Unique Reads",
+        guide  = guide_legend(order = 2, title.position = "top")
+      ) +
+      labs(x = NULL, title = NULL) +
+      coord_cartesian(clip = "off") +
+      theme_bw(base_size = 9) +
+      theme(
+        panel.border        = element_rect(colour = "black", fill = NA, linewidth = 0.4),
+        axis.title.x.bottom = element_blank(),
+        axis.ticks.x        = element_blank(),
+        panel.grid          = element_blank(),
+        legend.position     = "right",
+        legend.title        = element_text(size = 8),
+        legend.text         = element_text(size = 5),
+        axis.text.y         = element_text(size = 6),
+        axis.text.x.top     = element_blank(),
+        plot.margin         = grid::unit(c(top_margin_lines, 0.5, bottom_margin_lines, 1.0), "lines")
+      ) +
+      annotate("text",
+               x = -Inf, y = Inf,
+               label = "Samples",
+               hjust = 1.1, vjust = -0.05, size = 2.5) +
+      annotate("text",
+               x = -Inf, y = -Inf,
+               label = "Age",
+               hjust = 1.4, vjust = 1.25, size = 2.5)
+
+    if (requireNamespace("ggnewscale", quietly = TRUE)) {
+      p <- p +
+        ggnewscale::new_scale_fill() +
+        geom_label(
+          data = label_df_name, inherit.aes = FALSE,
+          aes(x = sample, y = Inf, label = label, fill = sample_type),
+          vjust = name_vjust, angle = sample_angle, hjust = sample_hjust, size = sample_name_size,
+          linewidth = 0.15,
+          label.r = grid::unit(0.08, "lines"),
+          key_glyph = ggplot2::draw_key_rect
+        ) +
+        geom_text(
+          data = label_df_age, inherit.aes = FALSE,
+          aes(x = sample, y = -Inf, label = label),
+          vjust = age_vjust, angle = age_angle, hjust = age_hjust, size = sample_age_size, colour = "black",
+          show.legend = FALSE
+        ) +
+        scale_fill_manual(
+          name = "Sample type",
+          values = setNames(sample_type_cols, levels(label_df_name$sample_type)),
+          guide = guide_legend(order = 3, title.position = "top")
+        )
+    } else {
+      p <- p +
+        geom_text(
+          data = label_df_name, inherit.aes = FALSE,
+          aes(x = sample, y = Inf, label = label, colour = sample_type),
+          vjust = name_vjust, angle = sample_angle, hjust = sample_hjust, size = sample_name_size, show.legend = TRUE
+        ) +
+        geom_text(
+          data = label_df_age, inherit.aes = FALSE,
+          aes(x = sample, y = -Inf, label = label),
+          vjust = age_vjust, angle = age_angle, hjust = age_hjust, size = sample_age_size, colour = "black",
+          show.legend = FALSE
+        ) +
+        scale_colour_manual(
+          name = "Sample type",
+          values = setNames(sample_type_cols, levels(label_df_name$sample_type)),
+          guide = guide_legend(order = 3, title.position = "top")
+        )
+    }
+
+    base_name <- paste0("mmseqs_evaluation_bubbleplot", if (!is.null(part_lab)) paste0(".", part_lab) else "")
+    pdf_file <- file.path(outdir, paste0(base_name, ".pdf"))
+    png_file <- file.path(outdir, paste0(base_name, ".png"))
+
+    message("[mmseqs_eval] saving: ", pdf_file)
+    ggsave(pdf_file, p, width = plot_width, height = 8.5)
+
+    message("[mmseqs_eval] saving: ", png_file)
+    ggsave(png_file, p, width = plot_width, height = 8.5, dpi = 300)
+  }
 
   message("[mmseqs_eval] done.")
 }
@@ -1461,11 +1580,11 @@ make_taxa_evolution_plots <- function(bamdam_dir, samples_path, metadata_path, m
   n_samples <- length(sample_order)
 
   sample_name_size <- dplyr::case_when(
-    n_samples <= 20 ~ 2.7,
-    n_samples <= 30 ~ 2.3,
-    n_samples <= 40 ~ 2.0,
-    n_samples <= 60 ~ 1.7,
-    TRUE            ~ 1.4
+    n_samples <= 20 ~ 1.4,
+    n_samples <= 30 ~ 1.2,
+    n_samples <= 40 ~ 1.0,
+    n_samples <= 60 ~ 0.7,
+    TRUE            ~ 0.4
   )
   sample_age_size <- dplyr::case_when(
     n_samples <= 20 ~ 2.6,
@@ -1476,28 +1595,50 @@ make_taxa_evolution_plots <- function(bamdam_dir, samples_path, metadata_path, m
   )
 
   sample_angle <- dplyr::case_when(
-    n_samples <= 30 ~ 0,
+    n_samples <= 20 ~ 0,
     n_samples <= 50 ~ 45,
     TRUE            ~ 60
   )
-  sample_hjust <- ifelse(sample_angle == 0, 0.5, 1)
+  sample_hjust <- ifelse(sample_angle == 0, 0.5, 0)
 
-  top_margin_lines <- ifelse(sample_angle == 0, 3.0, ifelse(sample_angle == 45, 4.0, 4.8))
+  name_vjust <- dplyr::case_when(
+    sample_angle == 0  ~ -0.35,
+    sample_angle == 45 ~ -0.20,
+    TRUE               ~ -0.12
+  )
+  age_vjust <- 1.55
+  age_angle <- 0
+  age_hjust <- 0.5
+
+  top_margin_lines <- dplyr::case_when(
+    sample_angle == 0  ~ 3.2,
+    sample_angle == 45 ~ 4.8,
+    TRUE               ~ 5.6
+  )
+  bottom_margin_lines <- 3.4
   plot_width <- min(18, max(9, 6 + 0.18 * n_samples))
 
   # Ages (as character labels)
-  ages <- meta_filt %>% select(sample, !!age_col)
-  colnames(ages)[2] <- "age"
+  ages <- meta_filt %>% dplyr::select(sample, age = dplyr::all_of(age_col))
   age_vec <- ages$age
   names(age_vec) <- ages$sample
 
+  plot_name_col <- intersect(c("sample_plot_name", "sample_plot", "plot_name", "sample_label"), names(meta_filt))[1]
+  if (!is.na(plot_name_col)) {
+    plot_labels <- meta_filt[[plot_name_col]][match(sample_order, meta_filt$sample)]
+    plot_labels <- as.character(plot_labels)
+    plot_labels[is.na(plot_labels) | !nzchar(trimws(plot_labels)) | trimws(toupper(plot_labels)) == "NA"] <- sample_order[is.na(plot_labels) | !nzchar(trimws(plot_labels)) | trimws(toupper(plot_labels)) == "NA"]
+  } else {
+    plot_labels <- sample_order
+  }
+
   label_df_name <- tibble(
     sample = factor(sample_order, levels = sample_order),
-    label  = sample_order
+    label  = plot_labels
   )
   label_df_age <- tibble(
     sample = factor(sample_order, levels = sample_order),
-    label  = as.character(age_vec[sample_order])
+    label  = ifelse(is.na(age_vec[sample_order]), "", format(age_vec[sample_order], trim = TRUE, scientific = FALSE))
   )
 
   # ---- sample_type + palette (same strategy as bamdam/mmseqs top labels) ----
@@ -1719,12 +1860,16 @@ make_taxa_evolution_plots <- function(bamdam_dir, samples_path, metadata_path, m
         axis.text.x  = element_blank(),
         axis.ticks.x = element_blank(),
         panel.grid.major.x = element_blank(),
-        plot.margin  = grid::unit(c(top_margin_lines, 0.5, 0.5, 1.0), "lines")
+        plot.margin  = grid::unit(c(top_margin_lines, 0.5, bottom_margin_lines, 1.0), "lines")
       ) +
       annotate("text",
-               x = 0.5, y = Inf,
-               label = "Samples\nThousand years ago",
-               hjust = 1, vjust = -0.3, size = 2.5)
+               x = -Inf, y = Inf,
+               label = "Samples",
+               hjust = 1.1, vjust = -0.05, size = 2.5) +
+      annotate("text",
+               x = -Inf, y = -Inf,
+               label = "Age",
+               hjust = 1.4, vjust = 1.25, size = 2.5)
 
     # Top labels: same as bamdam/mmseqs plots
     if (requireNamespace("ggnewscale", quietly = TRUE)) {
@@ -1733,15 +1878,15 @@ make_taxa_evolution_plots <- function(bamdam_dir, samples_path, metadata_path, m
         geom_label(
           data = label_df_name, inherit.aes = FALSE,
           aes(x = sample, y = Inf, label = label, fill = sample_type),
-          vjust = -1.3, angle = sample_angle, hjust = sample_hjust, size = sample_name_size,
+          vjust = name_vjust, angle = sample_angle, hjust = sample_hjust, size = sample_name_size,
           label.size = 0.15,
           label.r = grid::unit(0.08, "lines"),
           key_glyph = ggplot2::draw_key_rect
         ) +
         geom_text(
           data = label_df_age, inherit.aes = FALSE,
-          aes(x = sample, y = Inf, label = label),
-          vjust = -0.7, angle = sample_angle, hjust = sample_hjust, size = sample_age_size, colour = "black",
+          aes(x = sample, y = -Inf, label = label),
+          vjust = age_vjust, angle = age_angle, hjust = age_hjust, size = sample_age_size, colour = "black",
           show.legend = FALSE
         ) +
         scale_fill_manual(
@@ -1754,12 +1899,12 @@ make_taxa_evolution_plots <- function(bamdam_dir, samples_path, metadata_path, m
         geom_text(
           data = label_df_name, inherit.aes = FALSE,
           aes(x = sample, y = Inf, label = label, colour = sample_type),
-          vjust = 1.35, angle = sample_angle, hjust = sample_hjust, size = sample_name_size, show.legend = TRUE
+          vjust = name_vjust, angle = sample_angle, hjust = sample_hjust, size = sample_name_size, show.legend = TRUE
         ) +
         geom_text(
           data = label_df_age, inherit.aes = FALSE,
-          aes(x = sample, y = Inf, label = label),
-          vjust = 2.60, angle = sample_angle, hjust = sample_hjust, size = sample_age_size, colour = "black",
+          aes(x = sample, y = -Inf, label = label),
+          vjust = age_vjust, angle = age_angle, hjust = age_hjust, size = sample_age_size, colour = "black",
           show.legend = FALSE
         ) +
         scale_colour_manual(
@@ -1801,12 +1946,16 @@ make_taxa_evolution_plots <- function(bamdam_dir, samples_path, metadata_path, m
           axis.text.x  = element_blank(),
           axis.ticks.x = element_blank(),
           panel.grid.major.x = element_blank(),
-          plot.margin  = grid::unit(c(top_margin_lines, 0.5, 0.5, 1.0), "lines")
+          plot.margin  = grid::unit(c(top_margin_lines, 0.5, bottom_margin_lines, 1.0), "lines")
         ) +
         annotate("text",
-                 x = 0.5, y = Inf,
-                 label = "Samples\nThousand years ago",
-                 hjust = 1, vjust = -0.3, size = 2.5)
+               x = -Inf, y = Inf,
+               label = "Samples",
+               hjust = 1.1, vjust = -0.05, size = 2.5) +
+        annotate("text",
+               x = -Inf, y = -Inf,
+               label = "Age",
+               hjust = 1.4, vjust = 1.25, size = 2.5)
 
       # Top labels: same as bamdam/mmseqs plots
       if (requireNamespace("ggnewscale", quietly = TRUE)) {
@@ -1815,15 +1964,15 @@ make_taxa_evolution_plots <- function(bamdam_dir, samples_path, metadata_path, m
           geom_label(
             data = label_df_name, inherit.aes = FALSE,
             aes(x = sample, y = Inf, label = label, fill = sample_type),
-            vjust = -1.3, angle = sample_angle, hjust = sample_hjust, size = sample_name_size,
+            vjust = name_vjust, angle = sample_angle, hjust = sample_hjust, size = sample_name_size,
             label.size = 0.15,
             label.r = grid::unit(0.08, "lines"),
             key_glyph = ggplot2::draw_key_rect
           ) +
           geom_text(
             data = label_df_age, inherit.aes = FALSE,
-            aes(x = sample, y = Inf, label = label),
-            vjust = -0.7, angle = sample_angle, hjust = sample_hjust, size = sample_age_size, colour = "black",
+            aes(x = sample, y = -Inf, label = label),
+            vjust = age_vjust, angle = age_angle, hjust = age_hjust, size = sample_age_size, colour = "black",
             show.legend = FALSE
           ) +
           scale_fill_manual(
@@ -1836,12 +1985,12 @@ make_taxa_evolution_plots <- function(bamdam_dir, samples_path, metadata_path, m
           geom_text(
             data = label_df_name, inherit.aes = FALSE,
             aes(x = sample, y = Inf, label = label, colour = sample_type),
-            vjust = 1.35, angle = sample_angle, hjust = sample_hjust, size = sample_name_size, show.legend = TRUE
+            vjust = name_vjust, angle = sample_angle, hjust = sample_hjust, size = sample_name_size, show.legend = TRUE
           ) +
           geom_text(
             data = label_df_age, inherit.aes = FALSE,
-            aes(x = sample, y = Inf, label = label),
-            vjust = 2.60, angle = sample_angle, hjust = sample_hjust, size = sample_age_size, colour = "black",
+            aes(x = sample, y = -Inf, label = label),
+            vjust = age_vjust, angle = age_angle, hjust = age_hjust, size = sample_age_size, colour = "black",
             show.legend = FALSE
           ) +
           scale_colour_manual(
@@ -1870,7 +2019,7 @@ make_taxa_evolution_plots <- function(bamdam_dir, samples_path, metadata_path, m
 # ================================================================
 make_metrics_plot(metrics_path, samples_path, outdir)
 make_bamdam_abundance_plots(bamdam_dir, samples_path, metadata_path, outdir, min_reads, bamdam_plot_mode, taxa_per_plot)
-make_mmseqs_evaluation_bubbleplot(mmseqs_dir, samples_path, metadata_path, outdir)
+make_mmseqs_evaluation_bubbleplot(mmseqs_dir, samples_path, metadata_path, outdir, taxa_per_plot)
 make_taxa_evolution_plots(bamdam_dir, samples_path, metadata_path, metrics_path, outdir, taxa_trend_file, min_reads)
 
 message("[100_Plots.R] all done.")
