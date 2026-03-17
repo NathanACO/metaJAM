@@ -109,6 +109,7 @@ MMSeqs2 database
 `PLOTS_KRONA`=1                   # Plots the bamdam results for all samples in metadata if enable. 1=enable, 0=disable\
 `PLOTS_LIST_TAXA_EVOLUTION_FILE` # Give a list of taxa with one taxa per line, to produce plot of abundance of each taxa as a line representation\
 `PLOTS_TAXA_PER_PLOT`=50       # Number of taxa passing the filters to plot per graph
+MAP_LAST_DB_TAG = "mam-bird-fish_v2" #specify database name for plotting
 
 ### 5. SBATCH task parameter for memory and time assigned to the processing using tools
 To be refine based on samples size and database using
@@ -132,6 +133,7 @@ run the script once before running anything
 mkdir assets
 touch assets/NO_FILE
 cd assets
+touch NO_FILE{1..8} #placeholders for the optional input in the pipeline
 #prepare NCBI taxonomy information: names.dmp and nodes.dmp
 curl -O https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz
 tar -xzf taxdump.tar.gz names.dmp nodes.dmp
