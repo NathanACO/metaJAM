@@ -707,10 +707,25 @@ process PLOTS_KRONA_BY_SITE{
     script:
     """
     #plot for each site:  
-    sites=\$(awk -F'\t' 'NR==1{for(i=1;i<=NF;i++) if(\$i=="site") c=i; next} !a[\$c]++{print \$c}' "${METADATA_PATH}")
+    sites=\$(awk -F'\\t' 'NR==1{for(i=1;i<=NF;i++) if(\$i=="site") c=i; next} !a[\$c]++{print \$c}' "${METADATA_PATH}")
 
     for site in \${sites}; do
-        samples=\$(awk -F'\t' -v site="\${site}" 'NR==1{for(i=1;i<=NF;i++){if(\$i=="sample")s=i; if(\$i=="site")c=i} next} (c>0 && s>0) && \$c==site && \$s!=""{print \$s}' "${METADATA_PATH}" | sort -u)
+        samples=\$(
+            awk -F'\\t' -v site="\$site" '
+            NR==1{
+            for(i=1;i<=NF;i++){
+                if(\$i=="sample") s=i
+                if(\$i=="site")   c=i
+            }
+            if(!s || !c){
+                print "ERROR: column not found" > "/dev/stderr"
+                exit 1
+            }
+            next
+            }
+            \$c==site{print \$s}
+            ' "${METADATA_PATH}" | sort -u
+        )
         LIST_TSV="\${site}_all_tsv_list.txt"
         : > "\${LIST_TSV}"
         # Collect bamdam TSVs for each sample

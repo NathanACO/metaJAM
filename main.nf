@@ -143,7 +143,7 @@ workflow {
 		} else if (params.ENABLE_LOW_COMPLEXITY_FILTER=="PRINSEQ") {
 			PRINSEQ.out.rm_low_complexity.set { preprocessed_reads }
 		}
-	} else if (params.ENABLE_PREPROCESS=="disable") {
+	} else if (params.ENABLE_PREPROCESS=="disable" && params.ENABLE_KRAKEN_GTDB =="enable" ) {
 		fastp_ch = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE5"] }
 
 		preprocessed_reads = Channel
@@ -166,7 +166,7 @@ workflow {
 			KRAKEN2( preprocessed_reads.map { it -> tuple(it[0], it[1], params.KRAKEN2_FILTER_DATABASE) } )
 			KRAKEN2.out.not_microbe
 			.set { kraken_out }	
-	} else if (params.ENABLE_KRAKEN_GTDB=="disable" && params.OVERRIDE_LIST_KRAKEN != "") {
+	} else if (params.ENABLE_KRAKEN_GTDB=="disable" && params.ENABLE_MAPPING =="enable") {
 	// } else {
 
 		kraken_out = Channel
@@ -178,6 +178,7 @@ workflow {
 				def fq   = file(f)
 				def id   = fq.baseName
 					.replaceAll(/(_R?[12](_001)?|_[12])\.f(ast)?q(\.gz)?$/, '')
+					.replaceAll(params.suffix_OVERRIDE_LIST, '')
 				tuple(id, fq)
 			}
 	}
@@ -362,13 +363,13 @@ workflow {
 
 	if (params.ENABLE_METRICS == "enable") {
 
-		// paired_reads.view { "DEBUG paired_reads: $it" }
-		// fastp_ch.view { "DEBUG fastp_ch: $it" }
-		// preprocessed_reads.view { "DEBUG preprocessed_reads: $it" }
-		// kraken_out.view { "DEBUG kraken_out: $it" }
-		// mapped_bam.view { "DEBUG mapped_bam: $it" }
-		// bamdam_bam_lca.map{it -> tuple(it[0], it[1])}.view { "DEBUG bamdam ext: $it" }
-		// bamdam_bam_lca.view { "DEBUG bamdam: $it" }
+		paired_reads.view { "DEBUG paired_reads: $it" }
+		fastp_ch.view { "DEBUG fastp_ch: $it" }
+		preprocessed_reads.view { "DEBUG preprocessed_reads: $it" }
+		kraken_out.view { "DEBUG kraken_out: $it" }
+		mapped_bam.view { "DEBUG mapped_bam: $it" }
+		bamdam_bam_lca.map{it -> tuple(it[0], it[1])}.view { "DEBUG bamdam ext: $it" }
+		bamdam_bam_lca.view { "DEBUG bamdam: $it" }
 
 		paired_reads
 		.combine( fastp_ch ,by:0 )
