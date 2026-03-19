@@ -1,4 +1,4 @@
-#!/usr/bin/env nextflow
+// --- PARAMETER VALIDATION (nf-core/eager style) ---
 nextflow.enable.dsl = 2
 
 // include the subworkflow
@@ -6,6 +6,7 @@ include { FASTP; SGA; PRINSEQ; KRAKEN2; BOWTIE2; MERGE_BAM;  MASK_REGIONS; FILTE
 include { MASK_MICROBIAL_LIKE_REGION } from './MCWorkflow/main.nf'
 
 def validate_pipeline() {
+
     log.info "--- Validating Pipeline Inputs ---"
 
     // 1. Define the execution order and their specific tool requirements
@@ -15,6 +16,7 @@ def validate_pipeline() {
         [name: 'PRINSEQ',  toggle: params.ENABLE_PRINSEQ,  req: { }],
         [name: 'KRAKEN2',  toggle: params.ENABLE_KRAKEN_GTDB, req: { if(!params.KRAKEN2_FILTER_DATABASE) error "Missing Kraken2 Database." }],
         [name: 'MAPPING',  toggle: params.ENABLE_MAPPING,  req: { if(!params.BOWTIE2_MAPPING_DBs) error "Missing Bowtie2 Mapping DBs." }],
+		[name: 'MASKING',  toggle: params.ENABLE_MASK_REGIONS, req: { if(!params.REGIONS_TO_MASK && params.ENABLE_GENERATE_BEDFILE_TO_MASK != "enable") error "Masking enabled but no regions to mask provided, and generating bedfile is not enabled. Please change one of these." }],
         [name: 'NGSLCA',   toggle: params.ENABLE_NGSLCA,   req: { if((!params.KRAKEN2_FILTER_DATABASE && !params.ACC2TAXID) || !params.NAMES || !params.NODES) error "NGSLCA requires ACC2TAXID (or bowtie2 mapping database), NAMES, and NODES files." }],
         [name: 'BAMDAM',   toggle: params.ENABLE_BAMDAM,   req: { }],
         [name: 'MMSEQS2',  toggle: params.ENABLE_MMSEQS2,  req: { if(!params.MMSEQS2_DB) error "MMSEQS2 enabled but database path is missing." }],
@@ -46,7 +48,7 @@ def validate_pipeline() {
     // 4. SEQUENTIAL VALIDATION: Check requirements for all tools from startPoint to end
     process_order.eachWithIndex { step, i ->
         if (i >= first_idx && step.toggle == "enable") {
-            step.req() 
+            step.req()
         }
     }
 
@@ -54,12 +56,10 @@ def validate_pipeline() {
     return startPoint
 }
 
-// Global variable for the workflow block to use
-workflow_start_node = validate_pipeline()
+workflow_entry_point = validate_pipeline()
 
-
+// --- WORKFLOW START ---
 workflow {
-	// input =================
 
 	ch_sample_ids = Channel
     .fromPath(params.metadata)
@@ -69,53 +69,68 @@ workflow {
 	//ch_sample_ids.view()
 
     paired_reads = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE1", params.METAJAM_DIR+"/assets/NO_FILE2"] }
-	//paired_reads = ch_sample_ids.map { id -> [id, [], []] }
 	fastp_ch = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE3"] }
     preprocessed_reads = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE4"] } // for nextflow evaluation
-	
+
+	// allows to read fastq from a list of path
+	if (params.ENABLE_PREPROCESS=="enable" && (params.FASTQ_list_path != "" || params.FASTQ_direct_path != "")) {
+		if (params.FASTQ_list_path != ""){
+			paired_reads1 = Channel
+			.fromPath(params.FASTQ_list_path)
+			.splitText()
+			.map { it.trim() }
+			.filter { it }
+			.map { f ->
+				def id = f.tokenize('/')[-1]
+								.replaceAll(/(_R?1(_001)?|_1)\.f(ast)?q\.gz$/, '')
+								.replaceAll(/(_R?2(_002)?|_1)\.f(ast)?q\.gz$/, '')
+								.replaceAll(params.suffix_OVERRIDE_LIST, '')
+				tuple(id, file(f, checkIfExists: true))
+			}
+			.groupTuple()
+			.map { id, reads -> tuple(id, reads[0], reads[1]) }
+		} else {
+			paired_reads1 = Channel.empty()
+		}
+		// allows to read fastq from direct path
+		if (params.FASTQ_direct_path != ""){
+			paired_reads2 = Channel
+				.fromFilePairs(params.FASTQ_direct_path)
+				.map { id, reads -> tuple(id.replaceAll(params.suffix_OVERRIDE_LIST, ''), reads[0], reads[1]) }
+		} else {
+			paired_reads2 = Channel.empty()
+		}
+
+		// use both ways of specified fastq and remove duplicate
+		paired_reads1.concat(paired_reads2).unique()
+		.set{paired_reads}
+		//paired_reads.view()
+	}
+
+	if (params.ENABLE_MAPPING=="enable") {
+		Channel.fromPath( params.BOWTIE2_MAPPING_DBs )
+		.splitText { it.strip( ) }
+		.map { it -> 
+		def name = it.tokenize('/')[-1]   // get basename
+		tuple(name, file("${it}*bt2*"))}
+		.groupTuple()
+		.map { idx, idxs -> tuple(idx, idxs[0]) }
+		.set { mapping_indexes }
+		// mapping_indexes.view()
+	} else {
+		mapping_indexes = Channel.empty()
+	}
+
+	input_fastq = paired_reads.map { tuple(it[0], it[1], it[2], params.FASTP_OVERLAP_LEN_REQUIRE, params.FASTP_MIN_LENGTH) }
+
 	// Channel preprocessed_reads
 	if (params.ENABLE_PREPROCESS == "enable" ) {
 		// if (params.ENABLE_FASTP == "enable") { FASTP( input ) }
 
 		if ( params.ENABLE_FASTP == "enable" ) {
-					// allows to read fastq from a list of path
-			if (params.FASTQ_list_path != ""){
-				paired_reads1 = Channel
-				.fromPath(params.FASTQ_list_path)
-				.splitText()
-				.map { it.trim() }
-				.filter { it }
-				.map { f ->
-					def id = f.tokenize('/')[-1]
-									.replaceAll(/(_R?1(_001)?|_1)\.f(ast)?q\.gz$/, '')
-									.replaceAll(/(_R?2(_002)?|_1)\.f(ast)?q\.gz$/, '')
-									.replaceAll(params.suffix_OVERRIDE_LIST, '')
-					tuple(id, file(f, checkIfExists: true))
-				}
-				.groupTuple()
-				.map { id, reads -> tuple(id, reads[0], reads[1]) }
-			} else {
-				paired_reads1 = Channel.empty()
-			}
-			// allows to read fastq from direct path
-			if (params.FASTQ_direct_path != ""){
-				paired_reads2 = Channel
-					.fromFilePairs(params.FASTQ_direct_path)
-					.map { id, reads -> 
-					tuple(id.replaceAll(params.suffix_OVERRIDE_LIST, ''), reads[0], reads[1]) 
-					}
-			} else {
-				paired_reads2 = Channel.empty()
-			}
-
-			// use both ways of specified fastq and remove duplicate
-			paired_reads1.concat(paired_reads2).unique()
-			.set{paired_reads}
-
-			input_fastq = paired_reads.map { tuple(it[0], it[1], it[2], params.FASTP_OVERLAP_LEN_REQUIRE, params.FASTP_MIN_LENGTH) }
 			FASTP(input_fastq)
 			FASTP.out.set{fastp_ch}
-		} else {
+		} else if (workflow_entry_point == "SGA" || workflow_entry_point == "PRINSEQ") {
 			Channel.fromPath(params.OVERRIDE_LIST_FASTP)
 			.splitText()
 			.map { it.trim() }
@@ -127,25 +142,32 @@ workflow {
 					.replaceAll(params.suffix_OVERRIDE_LIST, '')
 				tuple(id, fq) }
 			.set{fastp_ch}
+		} else {
+			    println "If skip fastp or fastp, you need to supply OVERRIDE_LIST_FASTP in config"
+    			exit 1
 		}
 
-    	if (params.ENABLE_SGA == "enable") {  
-			SGA(fastp_ch .map { tuple(it[0], it[1], params.SGA_DUST_THRESHOLD) })
-			// SGA.out.rm_low_complexity.view()
-			 }
-		if (params.ENABLE_PRINSEQ == "enable") {  
-			PRINSEQ(fastp_ch .map { tuple(it[0], it[1], params.PRINSEQ_COMPLEXITY_METHOD, params.PRINSEQ_COMPLEXITY_THRESHOLD, params.PRINSEQ_MIN_LEN, params.PRINSEQ_DEREP)}) 
-			// PRINSEQ.out.rm_low_complexity.view()
+		// make filtering out low-complexity reads optional
+		if (params.ENABLE_SGA == "enable" || params.ENABLE_PRINSEQ == "enable") {  
+			if (params.ENABLE_SGA == "enable") {  
+				SGA(fastp_ch .map { tuple(it[0], it[1], params.SGA_DUST_THRESHOLD) })
+				// SGA.out.rm_low_complexity.view()
+				}
+			if (params.ENABLE_PRINSEQ == "enable") {  
+				PRINSEQ(fastp_ch .map { tuple(it[0], it[1], params.PRINSEQ_COMPLEXITY_METHOD, params.PRINSEQ_COMPLEXITY_THRESHOLD, params.PRINSEQ_MIN_LEN, params.PRINSEQ_DEREP)}) 
+				// PRINSEQ.out.rm_low_complexity.view()
+				}
+
+			if (params.ENABLE_LOW_COMPLEXITY_FILTER=="SGA"){
+				SGA.out.rm_low_complexity.set { preprocessed_reads }
+			} else if (params.ENABLE_LOW_COMPLEXITY_FILTER=="PRINSEQ") {
+				PRINSEQ.out.rm_low_complexity.set { preprocessed_reads }
 			}
-
-		if (params.ENABLE_LOW_COMPLEXITY_FILTER=="SGA"){
-			SGA.out.rm_low_complexity.set { preprocessed_reads }
-		} else if (params.ENABLE_LOW_COMPLEXITY_FILTER=="PRINSEQ") {
-			PRINSEQ.out.rm_low_complexity.set { preprocessed_reads }
+		} else {
+			preprocessed_reads = fastp_ch
 		}
-	} else if (params.ENABLE_PREPROCESS=="disable" && params.ENABLE_KRAKEN_GTDB =="enable" ) {
-		fastp_ch = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE5"] }
-
+	} else if (workflow_entry_point == "KRAKEN2") {
+		// to test
 		preprocessed_reads = Channel
 			.fromPath(params.OVERRIDE_PREPROCESSED)
 			.splitText()
@@ -159,14 +181,15 @@ workflow {
 				tuple(id, fq)
 			}
 	}
+
 	// preprocessed_reads.view()
 
-	kraken_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE6"] }
+	kraken_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE5"] }
 	if (params.ENABLE_KRAKEN_GTDB == "enable") { 
 			KRAKEN2( preprocessed_reads.map { it -> tuple(it[0], it[1], params.KRAKEN2_FILTER_DATABASE) } )
 			KRAKEN2.out.not_microbe
 			.set { kraken_out }	
-	} else if (params.ENABLE_KRAKEN_GTDB=="disable" && params.ENABLE_MAPPING =="enable") {
+	} else if (workflow_entry_point == "MAPPING") {
 	// } else {
 
 		kraken_out = Channel
@@ -183,19 +206,8 @@ workflow {
 			}
 	}
 	// kraken_out.view()
-
-	bowtie2_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE7"] }
-	if (params.ENABLE_MAPPING == "enable") {
-			Channel.fromPath( params.BOWTIE2_MAPPING_DBs )
-			.splitText { it.strip( ) }
-			.map { it -> 
-			def name = it.tokenize('/')[-1]   // get basename
-			tuple(name, file("${it}*bt2*"))}
-			.groupTuple()
-			.map { idx, idxs -> tuple(idx, idxs[0]) }
-			.set { mapping_indexes }
-			// mapping_indexes.view()
-
+	bowtie2_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE6"] }
+	if (params.ENABLE_MAPPING == "enable") { 
 			kraken_out
 			.map { it -> tuple(it[0], it[1], params.BOWTIE2_N_ALLOW_MULTIMAPPER) }
 			.combine( mapping_indexes )
@@ -204,8 +216,7 @@ workflow {
 			BOWTIE2( input_bowtie2 )
 
 			BOWTIE2.out.set { bowtie2_out }
-	} else if (params.ENABLE_MAPPING=="disable") {
-
+	} else if (workflow_entry_point == "MASKING" || workflow_entry_point == "NGSLCA") {
 		bowtie2_out = Channel
 		.fromPath(params.OVERRIDE_LIST_BAM)
 		.splitCsv(header: false, sep: '\t', strip: true)
@@ -268,13 +279,15 @@ workflow {
 			.map { idx, idxs -> tuple(idx, idxs[0]) }
 			.set { mapping_indexes }
 
+			GET_ACC2TAXID( mapping_indexes ) //??
+
 			GET_ACC2TAXID.out.collectFile(name: 'acc2taxid.txt', newLine: true)
 			.set{acc2taxid}
 		}
 
 		NGSLCA( bam.map { tuple(it[0], it[1], params.NAMES, params.NODES, acc2taxid )} )
 		NGSLCA.out.lca.set{lca}
-	} else if (params.ENABLE_NGSLCA != "enable" && params.OVERRIDE_LIST_NGSLCA != "") {
+	} else if (workflow_entry_point == "BAMDAM") {
 		Channel.fromPath(params.OVERRIDE_LIST_NGSLCA)
 		.splitCsv(header: false, sep: '\t', strip: true)
 		.map { row -> tuple( row[0], file(row[1]))}
@@ -304,7 +317,7 @@ workflow {
 		BAMDAM.out.xml.set{bamdam_xml}
 		// bamdam_bam_lca.view()
 			
-	} else if (params.ENABLE_BAMDAM != "enable" && params.OVERRIDE_LIST_BAMDAM != "") {
+	} else if (workflow_entry_point == "MMSEQS2") {
 		Channel
 		.fromPath(params.OVERRIDE_LIST_BAMDAM)
 		.splitCsv(header: false, sep: '\t', strip: true)
@@ -314,6 +327,7 @@ workflow {
 
 		// bamdam_bam_lca.view()
 	}
+
 
 	if (params.ENABLE_MMSEQS2 == "enable") {
 		MMSEQS2_GENERA_FILE = Channel.fromPath(params.MMSEQS2_GENERA_FILE, checkIfExists:true)
@@ -344,14 +358,13 @@ workflow {
 		//input_mmseq2.view()
 		
 		MMSEQ2( input_mmseq2 )
-		MMSEQ2.out.evaluation.set{mmseq2_evaluation}
+		MMSEQ2.out.evaluation.collect().set{mmseq2_evaluation}
 	} else {
-		mmseq2_evaluation = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE8"] }
+		mmseq2_evaluation = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE7"] }
 	}
-	//mmseq2_evaluation.view()
 
 	if (params.ENABLE_KRONATOOLS == "enable") { 
-		if (params.ENABLE_BAMDAM != "enable" && params.OVERRIDE_LIST_BAMDAM_XML != "") {
+		if (params.ENABLE_BAMDAM == "disable" && params.OVERRIDE_LIST_BAMDAM_XML != "") {
 			
 			Channel.fromPath(params.OVERRIDE_LIST_BAMDAM_XML)
 			.splitCsv(header: false, sep: '\t', strip: true)
@@ -361,15 +374,17 @@ workflow {
 		KRONATOOLS( bamdam_xml )
 	}
 
+	metrics = Channel.empty()
 	if (params.ENABLE_METRICS == "enable") {
 
-		paired_reads.view { "DEBUG paired_reads: $it" }
-		fastp_ch.view { "DEBUG fastp_ch: $it" }
-		preprocessed_reads.view { "DEBUG preprocessed_reads: $it" }
-		kraken_out.view { "DEBUG kraken_out: $it" }
-		mapped_bam.view { "DEBUG mapped_bam: $it" }
-		bamdam_bam_lca.map{it -> tuple(it[0], it[1])}.view { "DEBUG bamdam ext: $it" }
-		bamdam_bam_lca.view { "DEBUG bamdam: $it" }
+		// add check by printing out the channels of input_metrics
+		paired_reads.view{"DEBUG: paired_reads = ${it}"}
+		fastp_ch.view{"DEBUG: fastp_ch = ${it}"}
+		preprocessed_reads.view{"DEBUG: preprocessed_reads = ${it}"}
+		kraken_out.view{"DEBUG: kraken_out = ${it}"}
+		mapped_bam.view{"DEBUG: mapped_bam = ${it}"}
+		bamdam_bam_lca.view{"DEBUG: bamdam_bam_lca = ${it}"}
+
 
 		paired_reads
 		.combine( fastp_ch ,by:0 )
@@ -378,40 +393,46 @@ workflow {
 		.combine( mapped_bam, by:0 )
 		.combine( bamdam_bam_lca.map{it -> tuple(it[0], it[1])}, by:0 )
 		.set{ input_metrics }
-		input_metrics.view{ "DEBUG input_metrics: $it" }
+		input_metrics.view()
 
 		METRICS( input_metrics )
-		// METRICS.out.collect().view()
+		METRICS.out.collect().view()
 		CONCAT_METRICS( METRICS.out.collect() )
+
+		CONCAT_METRICS.out.set{ metrics }
+
+	} else {
+		Channel.fromPath(params.OVERRIDE_LIST_METRICS)
+		.set{ metrics }
 	}
 
 	if (params.ENABLE_PLOTS == "enable") {
-		CONCAT_METRICS.out
+		metrics
 		.combine(bamdam_bam_lca.map(it -> it[2]).collect())
-		.combine(mmseq2_evaluation.collect())
+		.combine(mmseq2_evaluation)
 		.map(it -> tuple(it[0], it[1], it[2],
+			params.SAMPLES_FOR_PLOTS,		
 			params.metadata,
-			params.PLOTS_MIN_READS,
-			params.PLOTS_MODE,
+			params.MAP_LAST_DB_TAG,
+			params.PLOT_DIR,
+			params.MIN_READS,
+			params.PLOTS_BAMDAM_PLOT_MODE,
 			params.PLOTS_DAMAGE_THRESHOLD,
 			params.PLOTS_PLOT_LOW_DAMAGE_TAXA,
 			params.PLOTS_EXCLUDE_TAXA,
-			params.PLOTS_TAXA_PER_PLOT,
+			params.BAMDAM_TAXA_PER_PLOT,
 			params.PLOTS_LIST_TAXA_EVOLUTION_FILE,
 			params.MAP_LAST_DB_TAG
-		)) // params.SAMPLES_FOR_PLOTS,		
+		))
 		.set{ input_plots }
 
 		PLOTS( input_plots )
 
-		PLOTS.out.view()
-
 		PLOTS_KRONA_BY_SITE(
-			bamdam_bam_lca.map(it -> it[3]).collect(),
-			params.metadata,
+			bamdam_bam_lca.map(it -> it[3]).collect(), 
+			params.metadata, 
 			params.BAMDAM_MINREADS,
 			params.BAMDAM_MAXDAMAGE
 		)
-
-	}
+	}	
 }
