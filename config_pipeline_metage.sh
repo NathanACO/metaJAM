@@ -179,7 +179,6 @@ BAMDAM_TAXA_PER_PLOT=50       # Number of taxa passing the filters to plot per g
 # MMseqs2 search settings (optional, but good to centralize)
 MMSEQS2_THREADS=60
 MMSEQS2_MAX_SEQS=300
-MMSEQS2_MIN_LENGTH=30
 MIN_SEQID=0.85
 MIN_BITS=50
 MIN_QUERY_COV=0.95
