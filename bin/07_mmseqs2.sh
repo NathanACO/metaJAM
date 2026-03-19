@@ -60,7 +60,6 @@ SEED="${MMSEQS2_SEED:-}"
 
 THREADS="${MMSEQS2_THREADS:-7}"
 MAX_SEQS="${MMSEQS2_MAX_SEQS:-300}"
-MIN_LEN="${MMSEQS2_MIN_LENGTH:-30}"
 S_PARAM="${MMSEQS2_S:-7.5}"
 SKM="${MMSEQS2_SPACED_KMER_MODE:-1}"
 SPLIT_MEM="${MMSEQS2_SPLIT_MEM_LIMIT:-220G}"
@@ -136,7 +135,6 @@ else
     --spaced-kmer-mode "${SKM}" \
     -s "${S_PARAM}" \
     -e "${MAX_EVALUE:-1e-5}" \
-    --min-length "${MIN_LEN}" \
     --min-seq-id "${MIN_SEQID}" \
     --max-seqs "${MAX_SEQS}" \
     --cov-mode 2 -c "${MIN_QUERY_COV}" \
