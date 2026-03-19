@@ -131,9 +131,7 @@ taxadb #use to download a file for setup
 run the script once before running anything
 ```
 mkdir assets
-touch assets/NO_FILE
 cd assets
-touch NO_FILE{1..8} #placeholders for the optional input in the pipeline
 #prepare NCBI taxonomy information: names.dmp and nodes.dmp
 curl -O https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz
 tar -xzf taxdump.tar.gz names.dmp nodes.dmp
