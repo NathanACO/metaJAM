@@ -415,7 +415,6 @@ process MMSEQ2 {
         val(SPACED_KMER_MODE),
         val(S),
         val(MAX_EVALUE),
-        val(MIN_LENGTH),
         val(MIN_SEQID),
         val(MAX_SEQS),
         val(MIN_QUERY_COV),
@@ -480,7 +479,6 @@ process MMSEQ2 {
         --spaced-kmer-mode "${SPACED_KMER_MODE}" \
         -s "${S}" \
         -e "${MAX_EVALUE}" \
-        --min-length "${MIN_LENGTH}" \
         --min-seq-id "${MIN_SEQID}" \
         --max-seqs "${MAX_SEQS}" \
         --cov-mode 2 -c "${MIN_QUERY_COV}" \

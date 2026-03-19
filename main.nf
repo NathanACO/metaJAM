@@ -2,7 +2,7 @@
 nextflow.enable.dsl = 2
 
 // include the subworkflow
-include { FASTP; SGA; PRINSEQ; KRAKEN2; BOWTIE2; MERGE_BAM;  MASK_REGIONS; FILTERBAM; NGSLCA;  BAMDAM; MMSEQ2 ; KRONATOOLS; METRICS; CONCAT_METRICS; PLOTS; PLOTS_KRONA_BY_SITE} from './func.nf'
+include { FASTP; SGA; PRINSEQ; KRAKEN2; BOWTIE2; MERGE_BAM;  MASK_REGIONS; FILTERBAM; NGSLCA;  BAMDAM; MMSEQ2 ; KRONATOOLS; METRICS; CONCAT_METRICS; PLOTS; PLOTS_KRONA_BY_SITE } from './func.nf'
 include { MASK_MICROBIAL_LIKE_REGION } from './MCWorkflow/main.nf'
 
 def validate_pipeline() {
@@ -24,7 +24,7 @@ def validate_pipeline() {
         [name: 'PLOTS',    toggle: params.ENABLE_PLOTS,    req: { if(!params.metadata) error "Plots enabled but 'metadata' file is missing." }]
     ]
 
-    // 2. Identify the Start Point (The first "enable" in the list)
+  // 2. Identify the Start Point (The first "enable" in the list)
     def first_idx = process_order.findIndexOf { it.toggle == "enable" }
     
     if (first_idx == -1) {
@@ -48,7 +48,7 @@ def validate_pipeline() {
     // 4. SEQUENTIAL VALIDATION: Check requirements for all tools from startPoint to end
     process_order.eachWithIndex { step, i ->
         if (i >= first_idx && step.toggle == "enable") {
-            step.req()
+            step.req() 
         }
     }
 
@@ -66,14 +66,18 @@ workflow {
     .splitCsv(header: true, sep: '\t', strip: true)
     .map { row -> row.sample }
     .unique()
-	//ch_sample_ids.view()
 
     paired_reads = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE1", params.METAJAM_DIR+"/assets/NO_FILE2"] }
 	fastp_ch = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE3"] }
     preprocessed_reads = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE4"] } // for nextflow evaluation
 
-	// allows to read fastq from a list of path
-	if (params.ENABLE_PREPROCESS=="enable" && (params.FASTQ_list_path != "" || params.FASTQ_direct_path != "")) {
+	input_fastq = paired_reads.map { tuple(it[0], it[1], it[2], params.FASTP_OVERLAP_LEN_REQUIRE, params.FASTP_MIN_LENGTH) }
+
+	// Channel preprocessed_reads
+	if (params.ENABLE_PREPROCESS == "enable" ) {
+		// if (params.ENABLE_FASTP == "enable") { FASTP( input ) }
+
+		// allows to read fastq from a list of path
 		if (params.FASTQ_list_path != ""){
 			paired_reads1 = Channel
 			.fromPath(params.FASTQ_list_path)
@@ -105,27 +109,6 @@ workflow {
 		paired_reads1.concat(paired_reads2).unique()
 		.set{paired_reads}
 		//paired_reads.view()
-	}
-
-	if (params.ENABLE_MAPPING=="enable") {
-		Channel.fromPath( params.BOWTIE2_MAPPING_DBs )
-		.splitText { it.strip( ) }
-		.map { it -> 
-		def name = it.tokenize('/')[-1]   // get basename
-		tuple(name, file("${it}*bt2*"))}
-		.groupTuple()
-		.map { idx, idxs -> tuple(idx, idxs[0]) }
-		.set { mapping_indexes }
-		// mapping_indexes.view()
-	} else {
-		mapping_indexes = Channel.empty()
-	}
-
-	input_fastq = paired_reads.map { tuple(it[0], it[1], it[2], params.FASTP_OVERLAP_LEN_REQUIRE, params.FASTP_MIN_LENGTH) }
-
-	// Channel preprocessed_reads
-	if (params.ENABLE_PREPROCESS == "enable" ) {
-		// if (params.ENABLE_FASTP == "enable") { FASTP( input ) }
 
 		if ( params.ENABLE_FASTP == "enable" ) {
 			FASTP(input_fastq)
@@ -142,9 +125,6 @@ workflow {
 					.replaceAll(params.suffix_OVERRIDE_LIST, '')
 				tuple(id, fq) }
 			.set{fastp_ch}
-		} else {
-			    println "If skip fastp or fastp, you need to supply OVERRIDE_LIST_FASTP in config"
-    			exit 1
 		}
 
 		// make filtering out low-complexity reads optional
@@ -199,15 +179,25 @@ workflow {
 			.filter { it }
 			.map { f ->
 				def fq   = file(f)
-				def id   = fq.baseName
-					.replaceAll(/(_R?[12](_001)?|_[12])\.f(ast)?q(\.gz)?$/, '')
-					.replaceAll(params.suffix_OVERRIDE_LIST, '')
+				def id   = fq.baseName.replaceAll(/(_R?[12](_001)?|_[12])\.f(ast)?q(\.gz)?$/, '')
 				tuple(id, fq)
 			}
 	}
+
 	// kraken_out.view()
 	bowtie2_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE6"] }
 	if (params.ENABLE_MAPPING == "enable") { 
+
+			Channel.fromPath( params.BOWTIE2_MAPPING_DBs )
+			.splitText { it.strip( ) }
+			.map { it -> 
+			def name = it.tokenize('/')[-1]   // get basename
+			tuple(name, file("${it}*bt2*"))}
+			.groupTuple()
+			.map { idx, idxs -> tuple(idx, idxs[0]) }
+			.set { mapping_indexes }
+			// mapping_indexes.view()
+
 			kraken_out
 			.map { it -> tuple(it[0], it[1], params.BOWTIE2_N_ALLOW_MULTIMAPPER) }
 			.combine( mapping_indexes )
@@ -217,10 +207,11 @@ workflow {
 
 			BOWTIE2.out.set { bowtie2_out }
 	} else if (workflow_entry_point == "MASKING" || workflow_entry_point == "NGSLCA") {
+		mapping_indexes = Channel.empty()
 		bowtie2_out = Channel
 		.fromPath(params.OVERRIDE_LIST_BAM)
 		.splitCsv(header: false, sep: '\t', strip: true)
-		.map { row -> tuple( row[0], file(row[1]))}
+		.map { row -> tuple( row[0].replaceAll(params.suffix_OVERRIDE_LIST, ''), file(row[1]))}
 	}
 
 	bowtie2_out.groupTuple().set{mapped_bam}
@@ -341,7 +332,6 @@ workflow {
 		params.MMSEQS2_SPACED_KMER_MODE,
 		params.MMSEQS2_S,
 		params.MMSEQS2_MAX_EVALUE,
-		params.MMSEQS2_MIN_LENGTH,
 		params.MMSEQS2_MIN_SEQID,
 		params.MMSEQS2_MAX_SEQS,
 		params.MMSEQS2_MIN_QUERY_COV,
@@ -378,13 +368,12 @@ workflow {
 	if (params.ENABLE_METRICS == "enable") {
 
 		// add check by printing out the channels of input_metrics
-		paired_reads.view{"DEBUG: paired_reads = ${it}"}
-		fastp_ch.view{"DEBUG: fastp_ch = ${it}"}
-		preprocessed_reads.view{"DEBUG: preprocessed_reads = ${it}"}
-		kraken_out.view{"DEBUG: kraken_out = ${it}"}
-		mapped_bam.view{"DEBUG: mapped_bam = ${it}"}
-		bamdam_bam_lca.view{"DEBUG: bamdam_bam_lca = ${it}"}
-
+		// paired_reads.view{"DEBUG: paired_reads = ${it}"}
+		// fastp_ch.view{"DEBUG: fastp_ch = ${it}"}
+		// preprocessed_reads.view{"DEBUG: preprocessed_reads = ${it}"}
+		// kraken_out.view{"DEBUG: kraken_out = ${it}"}
+		// mapped_bam.view{"DEBUG: mapped_bam = ${it}"}
+		// bamdam_bam_lca.view{"DEBUG: bamdam_bam_lca = ${it}"}
 
 		paired_reads
 		.combine( fastp_ch ,by:0 )
