@@ -355,7 +355,6 @@ workflow {
 		params.MMSEQS2_SPACED_KMER_MODE,
 		params.MMSEQS2_S,
 		params.MMSEQS2_MAX_EVALUE,
-		params.MMSEQS2_MIN_LENGTH,
 		params.MMSEQS2_MIN_SEQID,
 		params.MMSEQS2_MAX_SEQS,
 		params.MMSEQS2_MIN_QUERY_COV,
