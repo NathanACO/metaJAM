@@ -81,16 +81,8 @@ workflow {
 		if (params.FASTQ_list_path != ""){
 			paired_reads1 = Channel
 			.fromPath(params.FASTQ_list_path)
-			.splitText()
-			.map { it.trim() }
-			.filter { it }
-			.map { f ->
-				def id = f.tokenize('/')[-1]
-								.replaceAll(/(_R?1(_001)?|_1)\.f(ast)?q\.gz$/, '')
-								.replaceAll(/(_R?2(_002)?|_1)\.f(ast)?q\.gz$/, '')
-								.replaceAll(params.suffix_OVERRIDE_LIST, '')
-				tuple(id, file(f, checkIfExists: true))
-			}
+			.splitCsv(header: false, sep: '\t', strip: true)
+			.map { row -> tuple( row[0], file(row[1]))}
 			.groupTuple()
 			.map { id, reads -> tuple(id, reads[0], reads[1]) }
 		} else {
@@ -114,16 +106,10 @@ workflow {
 			FASTP(input_fastq)
 			FASTP.out.set{fastp_ch}
 		} else if (workflow_entry_point == "SGA" || workflow_entry_point == "PRINSEQ") {
-			Channel.fromPath(params.OVERRIDE_LIST_FASTP)
-			.splitText()
-			.map { it.trim() }
-			.filter { it }
-			.map { f ->
-				def fq   = file(f)
-				def id   = fq.baseName
-					.replaceAll(/(_R?[12](_001)?|_[12])\.f(ast)?q(\.gz)?$/, '')
-					.replaceAll(params.suffix_OVERRIDE_LIST, '')
-				tuple(id, fq) }
+			Channel
+			.fromPath(params.OVERRIDE_LIST_FASTP)
+			.splitCsv(header: false, sep: '\t', strip: true)
+			.map { row -> tuple( row[0], file(row[1]))}
 			.set{fastp_ch}
 		}
 
@@ -146,43 +132,42 @@ workflow {
 		} else {
 			preprocessed_reads = fastp_ch
 		}
-	} else if (workflow_entry_point == "KRAKEN2") {
+	//} else if (workflow_entry_point == "KRAKEN2" || params.OVERRIDE_PREPROCESSED) {
+	} else if (workflow_entry_point == "KRAKEN2" || (params.OVERRIDE_PREPROCESSED?.trim() && file(params.OVERRIDE_PREPROCESSED).exists())) {
 		// to test
 		preprocessed_reads = Channel
 			.fromPath(params.OVERRIDE_PREPROCESSED)
-			.splitText()
-			.map { it.trim() }
-			.filter { it }
-			.map { f ->
-				def fq   = file(f)
-				def id   = fq.baseName
-					.replaceAll(/(_R?[12](_001)?|_[12])\.f(ast)?q(\.gz)?$/, '')
-					.replaceAll(params.suffix_OVERRIDE_LIST, '')
-				tuple(id, fq)
-			}
+			.splitCsv(header: false, sep: '\t', strip: true)
+			.map { row -> tuple( row[0], file(row[1]))}
 	}
 
 	// preprocessed_reads.view()
+	if (params.ENABLE_KRAKEN_GTDB == "enable" || workflow_entry_point == "MAPPING" || (params.OVERRIDE_LIST_KRAKEN?.trim() && file(params.OVERRIDE_LIST_KRAKEN).exists())) {
+		if (params.ENABLE_KRAKEN_GTDB == "enable") { 
+				KRAKEN2( preprocessed_reads.map { it -> tuple(it[0], it[1], params.KRAKEN2_FILTER_DATABASE) } )
+				KRAKEN2.out.not_microbe
+				.set { kraken_out1 }	
+		} else {
+			kraken_out1 = Channel.empty()
+		} 
+		
+		
+		if (workflow_entry_point == "MAPPING" || (params.OVERRIDE_LIST_KRAKEN?.trim() && file(params.OVERRIDE_LIST_KRAKEN).exists())) {
 
-	kraken_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE5"] }
-	if (params.ENABLE_KRAKEN_GTDB == "enable") { 
-			KRAKEN2( preprocessed_reads.map { it -> tuple(it[0], it[1], params.KRAKEN2_FILTER_DATABASE) } )
-			KRAKEN2.out.not_microbe
-			.set { kraken_out }	
-	} else if (workflow_entry_point == "MAPPING") {
-	// } else {
+			kraken_out2 = Channel
+				.fromPath(params.OVERRIDE_LIST_KRAKEN)
+				.splitCsv(header: false, sep: '\t', strip: true)
+				.map { row -> tuple( row[0], file(row[1]))}
+		} else {
+			kraken_out2 = Channel.empty()
+		}
 
-		kraken_out = Channel
-			.fromPath(params.OVERRIDE_LIST_KRAKEN)
-			.splitText()
-			.map { it.trim() }
-			.filter { it }
-			.map { f ->
-				def fq   = file(f)
-				def id   = fq.baseName.replaceAll(/(_R?[12](_001)?|_[12])\.f(ast)?q(\.gz)?$/, '')
-				tuple(id, fq)
-			}
+		kraken_out1.concat(kraken_out2).unique().set{kraken_out}
+	} else {
+		kraken_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE5"] }
 	}
+
+	kraken_out.view()
 
 	// kraken_out.view()
 	bowtie2_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE6"] }
@@ -211,7 +196,7 @@ workflow {
 		bowtie2_out = Channel
 		.fromPath(params.OVERRIDE_LIST_BAM)
 		.splitCsv(header: false, sep: '\t', strip: true)
-		.map { row -> tuple( row[0].replaceAll(params.suffix_OVERRIDE_LIST, ''), file(row[1]))}
+		.map { row -> tuple( row[0], file(row[1]))}
 	}
 
 	bowtie2_out.groupTuple().set{mapped_bam}
