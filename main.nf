@@ -3,26 +3,67 @@ nextflow.enable.dsl = 2
 
 // include the subworkflow
 include { FASTP; SGA; PRINSEQ; KRAKEN2; BOWTIE2; MERGE_BAM;  MASK_REGIONS; FILTERBAM; NGSLCA;  BAMDAM; MMSEQ2 ; KRONATOOLS; METRICS; CONCAT_METRICS; PLOTS; PLOTS_KRONA_BY_SITE } from './func.nf'
-include { MASK_MICROBIAL_LIKE_REGION } from './MCWorkflow/main.nf'
+include { MASK_MICROBIAL_LIKE_REGION } from './subworkflows/mcworkflow.nf'
 
 def validate_pipeline() {
 
     log.info "--- Validating Pipeline Inputs ---"
 
+	if (!params.metadata) error "Missing required file parameter: metadata"
+	if (params.METAJAM_DIR == "" || params.METAJAM_DIR == null) error "Missing required value parameter: METAJAM_DIR"
+
     // 1. Define the execution order and their specific tool requirements
     def process_order = [
-        [name: 'FASTP',    toggle: params.ENABLE_FASTP,    req: { if(!params.FASTQ_direct_path && !params.FASTQ_list_path) error "FASTP enabled but no input FASTQ provided." }],
-        [name: 'SGA',      toggle: params.ENABLE_SGA,      req: { }],
-        [name: 'PRINSEQ',  toggle: params.ENABLE_PRINSEQ,  req: { }],
-        [name: 'KRAKEN2',  toggle: params.ENABLE_KRAKEN_GTDB, req: { if(!params.KRAKEN2_FILTER_DATABASE) error "Missing Kraken2 Database." }],
-        [name: 'MAPPING',  toggle: params.ENABLE_MAPPING,  req: { if(!params.BOWTIE2_MAPPING_DBs) error "Missing Bowtie2 Mapping DBs." }],
-		[name: 'MASKING',  toggle: params.ENABLE_MASK_REGIONS, req: { if(!params.REGIONS_TO_MASK && params.ENABLE_GENERATE_BEDFILE_TO_MASK != "enable") error "Masking enabled but no regions to mask provided, and generating bedfile is not enabled. Please change one of these." }],
-        [name: 'NGSLCA',   toggle: params.ENABLE_NGSLCA,   req: { if((!params.KRAKEN2_FILTER_DATABASE && !params.ACC2TAXID) || !params.NAMES || !params.NODES) error "NGSLCA requires ACC2TAXID (or bowtie2 mapping database), NAMES, and NODES files." }],
+		[name: 'FASTP',    toggle: params.ENABLE_FASTP,    req: {
+			if ((params.FASTQ_direct_path == "" || params.FASTQ_direct_path == null) && !params.FASTQ_list_path) {
+				error "FASTP enabled but no input FASTQ provided. Set FASTQ_direct_path or FASTQ_list_path."
+			}
+		}],
+        [name: 'SGA',      toggle: params.ENABLE_SGA,      req: {if (params.ENABLE_SGA != "enable" && !params.OVERRIDE_PREPROCESSED) error "SGA enabled but params.OVERRIDE_PREPROCESSED is not provided."}],
+        [name: 'PRINSEQ',  toggle: params.ENABLE_PRINSEQ,  req: {if (params.ENABLE_PRINSEQ != "enable" && !params.OVERRIDE_PREPROCESSED) error "PRINSEQ enabled but params.OVERRIDE_PREPROCESSED is not provided."}],
+		[name: 'KRAKEN2',  toggle: params.ENABLE_KRAKEN_GTDB, req: {
+			if (!params.KRAKEN2_FILTER_DATABASE) error "Missing required file parameter: KRAKEN2_FILTER_DATABASE"
+		}],
+		[name: 'MAPPING',  toggle: params.ENABLE_MAPPING,  req: {
+			if (!params.BOWTIE2_MAPPING_DBs) error "Missing required file parameter: BOWTIE2_MAPPING_DBs"
+			if (params.BOWTIE2_N_ALLOW_MULTIMAPPER == "" || params.BOWTIE2_N_ALLOW_MULTIMAPPER == null) error "Missing required value parameter: BOWTIE2_N_ALLOW_MULTIMAPPER"
+		}],
+		[name: 'MASKING',  toggle: params.ENABLE_MASK_REGIONS, req: {
+			if (params.ENABLE_GENERATE_BEDFILE_TO_MASK == "enable") {
+				if (!params.BOWTIE2_MAPPING_DBs && (!params.MCWORKFLOW_input_dir && !params.MCWORKFLOW_input_list)) error "Missing required file parameter: MCWORKFLOW_input_list/MCWORKFLOW_input_dir or BOWTIE2_MAPPING_DBs. At least one of them is required to generate mapping indexes for masking."
+				if (!params.MCWORKFLOW_pseudo_reads_file_dir) error "Missing required file parameter: MCWORKFLOW_pseudo_reads_file_dir"
+				if (params.MCWORKFLOW_type_of_pseudo_reads == "" || params.MCWORKFLOW_type_of_pseudo_reads == null) error "Missing required value parameter: MCWORKFLOW_type_of_pseudo_reads"
+				if (params.MCWORKFLOW_n_allowed_multimappers == "" || params.MCWORKFLOW_n_allowed_multimappers == null) error "Missing required value parameter: MCWORKFLOW_n_allowed_multimappers"
+			} else {
+				if (!params.REGIONS_TO_MASK) error "Masking enabled but required file parameter REGIONS_TO_MASK is missing while ENABLE_GENERATE_BEDFILE_TO_MASK is not enabled."
+			}
+		}],
+		[name: 'NGSLCA',   toggle: params.ENABLE_NGSLCA,   req: {
+			if (!params.NAMES) error "Missing required file parameter: NAMES"
+			if (!params.NODES) error "Missing required file parameter: NODES"
+			if (!params.ACC2TAXID && !params.BOWTIE2_MAPPING_DBs) error "NGSLCA requires ACC2TAXID or BOWTIE2_MAPPING_DBs."
+		}],
         [name: 'BAMDAM',   toggle: params.ENABLE_BAMDAM,   req: { }],
-        [name: 'MMSEQS2',  toggle: params.ENABLE_MMSEQS2,  req: { if(!params.MMSEQS2_DB) error "MMSEQS2 enabled but database path is missing." }],
+		[name: 'MMSEQS2',  toggle: params.ENABLE_MMSEQS2,  req: {
+			if (!params.MMSEQS2_DB) error "Missing required file parameter: MMSEQS2_DB"
+			if (!params.MMSEQS2_TAXADB_SQLITE) error "Missing required file parameter: MMSEQS2_TAXADB_SQLITE"
+			if (!params.MMSEQS2_GENERA_FILE) error "Missing required file parameter: MMSEQS2_GENERA_FILE"
+			if (params.MMSEQS2_DATABASE_NAME == "" || params.MMSEQS2_DATABASE_NAME == null) error "Missing required value parameter: MMSEQS2_DATABASE_NAME"
+		}],
         [name: 'METRICS',  toggle: params.ENABLE_METRICS,  req: { }],
-        [name: 'PLOTS',    toggle: params.ENABLE_PLOTS,    req: { if(!params.metadata) error "Plots enabled but 'metadata' file is missing." }]
-    ]
+		[name: 'PLOTS',    toggle: params.ENABLE_PLOTS,    req: {
+			if (!params.metadata) error "Plots enabled but required file parameter metadata is missing."
+			if (params.MAP_LAST_DB_TAG == "" || params.MAP_LAST_DB_TAG == null) error "Missing required value parameter: MAP_LAST_DB_TAG"
+		}],
+		[name: 'KRONATOOLS', toggle: params.ENABLE_KRONATOOLS, req: { if(params.ENABLE_BAMDAM != "enable" && !params.OVERRIDE_LIST_BAMDAM_XML) error "Kronatools enabled without BamDam requires OVERRIDE_LIST_BAMDAM_XML file parameter." }],
+		[name: 'PLOTS_KRONA_BY_SITE', toggle: params.ENABLE_PLOTS, req: {
+			if (params.ENABLE_BAMDAM != "enable" && !params.OVERRIDE_LIST_BAMDAM) error "Plots:PLOTS_KRONA_BY_SITE enabled but neither upstream bamdam is enabled nor params.OVERRIDE_LIST_BAMDAM is provided. Please change of the settings."
+			if (!params.metadata) error "Krona plots enabled but required file parameter metadata is missing."
+			if (params.BAMDAM_MINREADS == "" || params.BAMDAM_MINREADS == null) error "Missing required value parameter: BAMDAM_MINREADS"
+			if (params.BAMDAM_MAXDAMAGE == "" || params.BAMDAM_MAXDAMAGE == null) error "Missing required value parameter: BAMDAM_MAXDAMAGE"
+			}
+    	]
+	]
 
   // 2. Identify the Start Point (The first "enable" in the list)
     def first_idx = process_order.findIndexOf { it.toggle == "enable" }
@@ -39,6 +80,7 @@ def validate_pipeline() {
     switch(startPoint) {
         case 'KRAKEN2': if(!params.OVERRIDE_PREPROCESSED) error "Starting at Kraken2: Provide 'OVERRIDE_PREPROCESSED'."; break
         case 'MAPPING': if(!params.OVERRIDE_LIST_KRAKEN)  error "Starting at Mapping: Provide 'OVERRIDE_LIST_KRAKEN'."; break
+		case 'MASKING': if(!params.OVERRIDE_LIST_BAM)  error "Starting at Masking: Provide 'OVERRIDE_LIST_BAM'."; break
         case 'NGSLCA':  if(!params.OVERRIDE_LIST_BAM)     error "Starting at NGSLCA: Provide 'OVERRIDE_LIST_BAM'."; break
         case 'BAMDAM':  if(!params.OVERRIDE_LIST_NGSLCA)  error "Starting at BAMDAM: Provide 'OVERRIDE_LIST_NGSLCA'."; break
         case 'MMSEQS2': if(!params.OVERRIDE_LIST_BAMDAM)  error "Starting at MMSEQS2: Provide 'OVERRIDE_LIST_BAMDAM'."; break
@@ -161,6 +203,7 @@ workflow {
 		} else {
 			kraken_out2 = Channel.empty()
 		}
+		kraken_out2.view()
 
 		kraken_out1.concat(kraken_out2).unique().set{kraken_out}
 	} else {
@@ -171,7 +214,7 @@ workflow {
 
 	// kraken_out.view()
 	bowtie2_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE6"] }
-	if (params.ENABLE_MAPPING == "enable") { 
+	if (params.ENABLE_MAPPING == "enable" || (workflow_entry_point == "MASKING" && params.ENABLE_GENERATE_BEDFILE_TO_MASK == "enable")) { 
 
 			Channel.fromPath( params.BOWTIE2_MAPPING_DBs )
 			.splitText { it.strip( ) }
@@ -183,16 +226,18 @@ workflow {
 			.set { mapping_indexes }
 			// mapping_indexes.view()
 
-			kraken_out
-			.map { it -> tuple(it[0], it[1], params.BOWTIE2_N_ALLOW_MULTIMAPPER) }
-			.combine( mapping_indexes )
-			.set{input_bowtie2}
-			// input_bowtie2.view()
-			BOWTIE2( input_bowtie2 )
+			if (params.ENABLE_MAPPING == "enable") {
+				kraken_out
+				.map { it -> tuple(it[0], it[1], params.BOWTIE2_N_ALLOW_MULTIMAPPER) }
+				.combine( mapping_indexes )
+				.set{input_bowtie2}
+				// input_bowtie2.view()
+				BOWTIE2( input_bowtie2 )
 
-			BOWTIE2.out.set { bowtie2_out }
-	} else if (workflow_entry_point == "MASKING" || workflow_entry_point == "NGSLCA") {
-		mapping_indexes = Channel.empty()
+				BOWTIE2.out.set { bowtie2_out }
+			}
+	} else if (workflow_entry_point == "NGSLCA" || workflow_entry_point == "MASKING") {
+		if (workflow_entry_point == "NGSLCA"){mapping_indexes = Channel.empty()}
 		bowtie2_out = Channel
 		.fromPath(params.OVERRIDE_LIST_BAM)
 		.splitCsv(header: false, sep: '\t', strip: true)
@@ -209,10 +254,10 @@ workflow {
 
 	if (params.ENABLE_MASK_REGIONS == "enable" ) { 
 		if (params.ENABLE_GENERATE_BEDFILE_TO_MASK == "enable"){
-			MASK_MICROBIAL_LIKE_REGION(
-			params.MCWORKFLOW_input_dir, params.MCWORKFLOW_input_list, params.MCWORKFLOW_pseudo_reads_file_dir,
+			MASK_MICROBIAL_LIKE_REGION( params.MCWORKFLOW_input_dir, params.MCWORKFLOW_input_list,
+			mapping_indexes, params.MCWORKFLOW_pseudo_reads_file_dir,
 			params.MCWORKFLOW_type_of_pseudo_reads, params.MCWORKFLOW_n_allowed_multimappers,
-			"${params.OUTPUT_Dir}/bedfile_for_masking", './MCWorkflow', './MCWorkflow/GTDB_fna2name.txt'
+			"${params.METAJAM_DIR}", "${params.METAJAM_DIR}/assets/GTDB_fna2name.txt", params.ENABLE_MASK_FASTA
 			)
 			MASK_MICROBIAL_LIKE_REGION.out.set{regions_to_mask}
 		} else {
