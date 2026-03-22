@@ -224,6 +224,21 @@ process MERGE_BAM {
     """
 }
 
+process CONCATENATE_BEDFILES {
+    label 'little_memory'
+
+    input: path(bed_files)
+
+    output:
+        path("concatenated.bed")
+
+    publishDir "${params.OUTPUT_Dir}/06_masked_bam", mode: "copy"
+        
+    script:
+    """
+        cat *.bed | sort -k1,1 -k2,2n > concatenated.bed
+    """
+}
 
 
 // merge bam of same sample mapped to different databases
@@ -384,25 +399,6 @@ process BAMDAM {
   """
 }
 
-
-process KRONATOOLS {
-    label 'small_memory'
-    conda 'bioconda::krona'
-    publishDir "${params.OUTPUT_Dir}/09_kronaTools", mode: "copy"
-    input:
-        tuple val(ID), path(xml)
-            
-    output:
-        path("*.html")
-
-    script:
-    """
-        ktImportXML -o "${ID}.html" "$xml"
-    """
-}
-
-
-
 process MMSEQ2 {
     conda 'envs/mmseq2.yml'
 
@@ -433,7 +429,7 @@ process MMSEQ2 {
         path("*.besthit.assigned.tsv")
         tuple val(ID), path("*.bamdam_mmseqs.evaluation.summary.tsv"), emit: evaluation
 
-    publishDir "${params.OUTPUT_Dir}/bamdam", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/09_mmseq2", mode: "copy"
 
     script:
     def seedArg = SEED ? "--seed ${SEED}" : ""
@@ -628,7 +624,7 @@ process CONCAT_METRICS {
 
     output: path("metrics")
 
-    publishDir "${params.OUTPUT_Dir}/11_metrics", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/10_metrics", mode: "copy"
 
     script:
 
@@ -646,7 +642,7 @@ process PLOTS{
 
     label 'little_memory'
 
-    publishDir "${params.OUTPUT_Dir}/12_plots", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/11_plots", mode: "copy"
 
     input:    
         tuple path(METRICS_TSV),
@@ -692,7 +688,7 @@ process PLOTS_KRONA_BY_SITE{
 
     label 'little_memory'
 
-    publishDir "${params.OUTPUT_Dir}/12_plots", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/11_plots", mode: "copy"
 
     input:
         path(tsv)
@@ -735,4 +731,20 @@ process PLOTS_KRONA_BY_SITE{
         ktImportXML -o "\${site}_all.html" "\${site}_all.xml"
     done
         """
+}
+
+process KRONATOOLS {
+    label 'small_memory'
+    conda 'bioconda::krona'
+    publishDir "${params.OUTPUT_Dir}/11_plots", mode: "copy"
+    input:
+        tuple val(ID), path(xml)
+            
+    output:
+        path("*.html")
+
+    script:
+    """
+        ktImportXML -o "${ID}.html" "$xml"
+    """
 }

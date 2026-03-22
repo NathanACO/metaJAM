@@ -6,7 +6,7 @@ workflow MASK_MICROBIAL_LIKE_REGION {
   take:
     input_dir 
     input_list
-    mapping_indexes
+    BOWTIE2_MAPPING_DBs
     pseudo_reads_file_dir
     type_of_pseudo_reads 
     n_allowed_multimappers
@@ -34,7 +34,7 @@ workflow MASK_MICROBIAL_LIKE_REGION {
     }
 
     // prioritize reading mapping indexes if provided, otherwise generate them from input fasta files
-    if (!mapping_indexes) {
+    if (!BOWTIE2_MAPPING_DBs) {
 
       input1 = Channel.empty()
       if (input_dir != ""){
@@ -77,21 +77,27 @@ workflow MASK_MICROBIAL_LIKE_REGION {
       //files.view()
 
       index_reference(files)
-      
-      input_for_align = index_reference.out
-            .combine(pseudo_reads_file)
-            .map{it -> tuple(it, type_of_pseudo_reads, n_allowed_multimappers)}
-                  .map{it -> it.flatten()}
-                  .map{it -> tuple(it[0], tuple(it[1],it[2],it[3],it[4],it[5],it[6]),it[7], type_of_pseudo_reads, n_allowed_multimappers)}
 
-      //input_for_align.view()
+      index_reference.out.set{mapping_indexes}
+
     } else {
-      input_for_align = mapping_indexes
+      Channel.fromPath( BOWTIE2_MAPPING_DBs )
+			.splitText { it.strip( ) }
+			.map { it -> 
+			def name = it.tokenize('/')[-1]   // get basename
+			tuple(name, file("${it}*bt2*"))}
+			.groupTuple()
+			.map { idx, idxs -> tuple(idx, idxs[0]) }
+			.set { mapping_indexes }
+
+    }
+    
+    input_for_align = mapping_indexes
       .combine(pseudo_reads_file)
       .map{it -> tuple(it, type_of_pseudo_reads, n_allowed_multimappers)}
             .map{it -> it.flatten()}
             .map{it -> tuple(it[0], tuple(it[1],it[2],it[3],it[4],it[5],it[6]),it[7], type_of_pseudo_reads, n_allowed_multimappers)}
-    }
+
 
     //input_for_align.view{"Input for alignment: ${it}"}
 
@@ -182,13 +188,20 @@ process merge_bam {
 
     script:
     """
-        #filtering out unmapped reads in case it's not done for input bam
+        mapped_bams=()        
         for bam1 in *.bam; do
             [[ "\$bam1" == *mapped.bam ]] && continue
-            samtools view -@ "${task.cpus}" -b -F 0x4 "\$bam1" -o "\$(basename \$bam1 .bam).mapped.bam"
+            out_bam="\$(basename \$bam1 .bam).mapped.bam"
+            samtools view -@ 80 -b -F 0x4 "\$bam1" -o "\$out_bam"
+            if [[ \$(samtools view -c "\$out_bam") -ne 0 ]]; then mapped_bams+=("\$out_bam"); fi   # only keep non-empty BAMs
         done
-    
-        samtools merge ${ID}.merged.bam *.mapped.bam
+
+        if [ \${#mapped_bams[@]} -eq 0 ]; then
+            echo "ERROR: No mapped reads found in any BAM." >&2
+            exit 1
+        fi
+
+        samtools merge ${ID}.merged.bam "\${mapped_bams[@]}"
 
         samtools quickcheck ${ID}.merged.bam || {
             echo "ERROR: Merging is not successful: ${ID}.merged.bam" >&2
@@ -267,7 +280,10 @@ process make_bedfile {
   script:
   """
   out=\$(basename "$raw_bed" .txt).bed
-  cut -f 2,3,4 "$raw_bed" | tail -n +2 > "\$out"
+  cut -f 2,3,4 "$raw_bed" | tail -n +2 | awk '{
+    \$2=sprintf("%.0f",\$2);
+    \$3=sprintf("%.0f",\$3);
+    print}' OFS='\t' > "\$out"
   """
 }
 

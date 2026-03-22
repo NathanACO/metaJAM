@@ -2,7 +2,7 @@
 nextflow.enable.dsl = 2
 
 // include the subworkflow
-include { FASTP; SGA; PRINSEQ; KRAKEN2; BOWTIE2; MERGE_BAM;  MASK_REGIONS; FILTERBAM; NGSLCA;  BAMDAM; MMSEQ2 ; KRONATOOLS; METRICS; CONCAT_METRICS; PLOTS; PLOTS_KRONA_BY_SITE } from './func.nf'
+include { FASTP; SGA; PRINSEQ; KRAKEN2; BOWTIE2; MERGE_BAM; CONCATENATE_BEDFILES; MASK_REGIONS; FILTERBAM; NGSLCA;  BAMDAM; MMSEQ2 ; KRONATOOLS; METRICS; CONCAT_METRICS; PLOTS; PLOTS_KRONA_BY_SITE } from './func.nf'
 include { MASK_MICROBIAL_LIKE_REGION } from './subworkflows/mcworkflow.nf'
 
 def validate_pipeline() {
@@ -203,18 +203,18 @@ workflow {
 		} else {
 			kraken_out2 = Channel.empty()
 		}
-		kraken_out2.view()
+		//kraken_out2.view()
 
 		kraken_out1.concat(kraken_out2).unique().set{kraken_out}
 	} else {
 		kraken_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE5"] }
 	}
 
-	kraken_out.view()
+	//kraken_out.view()
 
 	// kraken_out.view()
 	bowtie2_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE6"] }
-	if (params.ENABLE_MAPPING == "enable" || (workflow_entry_point == "MASKING" && params.ENABLE_GENERATE_BEDFILE_TO_MASK == "enable")) { 
+	if (params.ENABLE_MAPPING == "enable") { 
 
 			Channel.fromPath( params.BOWTIE2_MAPPING_DBs )
 			.splitText { it.strip( ) }
@@ -255,11 +255,15 @@ workflow {
 	if (params.ENABLE_MASK_REGIONS == "enable" ) { 
 		if (params.ENABLE_GENERATE_BEDFILE_TO_MASK == "enable"){
 			MASK_MICROBIAL_LIKE_REGION( params.MCWORKFLOW_input_dir, params.MCWORKFLOW_input_list,
-			mapping_indexes, params.MCWORKFLOW_pseudo_reads_file_dir,
+			params.BOWTIE2_MAPPING_DBs, params.MCWORKFLOW_pseudo_reads_file_dir,
 			params.MCWORKFLOW_type_of_pseudo_reads, params.MCWORKFLOW_n_allowed_multimappers,
 			"${params.METAJAM_DIR}", "${params.METAJAM_DIR}/assets/GTDB_fna2name.txt", params.ENABLE_MASK_FASTA
 			)
-			MASK_MICROBIAL_LIKE_REGION.out.set{regions_to_mask}
+
+			CONCATENATE_BEDFILES( MASK_MICROBIAL_LIKE_REGION.out.map{ it -> it[1]}.collect() )
+
+			CONCATENATE_BEDFILES.out.set{regions_to_mask}
+
 		} else {
 			Channel.fromPath( params.REGIONS_TO_MASK ).set{regions_to_mask}
 		}
@@ -412,10 +416,10 @@ workflow {
 		.combine( mapped_bam, by:0 )
 		.combine( bamdam_bam_lca.map{it -> tuple(it[0], it[1])}, by:0 )
 		.set{ input_metrics }
-		input_metrics.view()
+		//input_metrics.view()
 
 		METRICS( input_metrics )
-		METRICS.out.collect().view()
+		//METRICS.out.collect().view()
 		CONCAT_METRICS( METRICS.out.collect() )
 
 		CONCAT_METRICS.out.set{ metrics }
