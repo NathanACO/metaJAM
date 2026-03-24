@@ -1,11 +1,11 @@
-sample	age_ka	depth_cm	sample_type	layer	notes	site
-NS_018	5	25	    sediment	NA	Good DNA	Orsa
-NS_058	5.1	27	    sediment	NA	Good DNA	Orsa
-NS_059	5.2	28	    sediment	NA	Good DNA	Orsa
-NS_060	10	30	    sediment	NA	RLow Sequencing	Orsa
-NS_062	11	35	    sediment	NA	Good DNA	Orsa
-NS_063	12	45	    sediment	NA	Good DNA	Orsa
-NS_065	15	55	    Blank	NA	Good DNA	Orsa
-NM003-1	29	40	    squirrel_coprolite	X	Lower layer	SPM
-NM010-1	36	55	    sediment	        IX	Low biomass	SPM
-BLANK-1	0.0	    NA	    negative_control	NA	Field blank	SPM
+sample_plot_name  sample	age_ka	depth_cm	sample_type	layer	notes	site
+18  NS_018	5	25	    sediment	NA	Good DNA	Orsa
+58  NS_058	5.1	27	    sediment	NA	Good DNA	Orsa
+59  NS_059	5.2	28	    sediment	NA	Good DNA	Orsa
+60  NS_060	10	30	    sediment	NA	RLow Sequencing	Orsa
+62  NS_062	11	35	    sediment	NA	Good DNA	Orsa
+63  NS_063	12	45	    sediment	NA	Good DNA	Orsa
+65  NS_065	15	55	    Blank	NA	Good DNA	Orsa
+03  NM003-1	29	40	    squirrel_coprolite	X	Lower layer	SPM
+1 0  NM010-1	36	55	    sediment	        IX	Low biomass	SPM
+Blk1  BLANK-1	0.0	    NA	    negative_control	NA	Field blank	SPM
