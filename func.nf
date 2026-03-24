@@ -637,7 +637,7 @@ process CONCAT_METRICS {
 }
 
 
-process PLOTS{
+process PLOTS {
     conda './envs/plots.yml'
 
     label 'little_memory'
@@ -649,6 +649,7 @@ process PLOTS{
         path(BAMDAM_LCA), 
         path(mmseq2_evaluation),
         path(METADATA_PATH),
+	path(SAMPLES_FOR_PLOTS),
         val(MIN_READS),
         val(PLOTS_MODE),
         val(PLOTS_DAMAGE_THRESHOLD),
@@ -665,25 +666,60 @@ process PLOTS{
         
     script:
     """
+    #plots all sampoles in SAMPLES_FOR_PLOTS unless it's empty (plot all samples in metadata)
+    if [[ -z "$SAMPLES_FOR_PLOTS" ]]; then
+        all_samples="$METADATA_PATH"
+    else
+        all_samples="$SAMPLES_FOR_PLOTS"
+    fi
+
+    # collect unique sites
+    sites=\$(awk -F'\t' '
+    NR==1 {
+        for(i=1;i<=NF;i++) if(\$i=="site") c=i;
+        next
+    }
+    !a[\$c]++ {print \$c}
+    ' "$METADATA_PATH")
+
+    # create per-site metadata files (with header + full rows)
+    for site in \$sites; do
+        awk -F'\t' -v site="\$site" '
+        NR==1 {
+            for(i=1;i<=NF;i++){
+                if(\$i=="sample") s=i;
+                if(\$i=="site") c=i
+            }
+            print
+            next
+        }
+        (c>0 && s>0) && \$c==site && \$s!="" {print}
+        ' "$METADATA_PATH" > "\${site}.metadata.txt"
+    done
+
+    # run plotting for each sample list / metadata file
+    for samples in \$all_samples *.metadata.txt; do
         100_Plots.R \
-        --metrics "${METRICS_TSV}" \
-        --bamdam_dir "./" \
-        --metadata "${METADATA_PATH}" \
-        --db_tag "${MAP_LAST_DB_TAG}" \
-        --outdir "./" \
-        --min_reads "${MIN_READS}" \
-        --bamdam_plot "${PLOTS_MODE}" \
-        --damage_threshold "${PLOTS_DAMAGE_THRESHOLD}" \
-        --plot_low_damage_taxa "${PLOTS_PLOT_LOW_DAMAGE_TAXA}" \
-        --exclude_taxa "${PLOTS_EXCLUDE_TAXA}" \
-        --taxa_per_plot "${PLOTS_TAXA_PER_PLOT}" \
-        --taxa_trend_file "${PLOTS_LIST_TAXA_EVOLUTION_FILE}" \
-        --mmseqs_dir "./" 
-        > "${MAP_LAST_DB_TAG}.R.out" 2>&1
+            --metrics "$METRICS_TSV" \
+            --samples "\$samples" \
+            --bamdam_dir "./" \
+            --metadata "$METADATA_PATH" \
+            --db_tag "$MAP_LAST_DB_TAG" \
+            --outdir "./" \
+            --min_reads "$MIN_READS" \
+            --bamdam_plot "$PLOTS_MODE" \
+            --damage_threshold "$PLOTS_DAMAGE_THRESHOLD" \
+            --plot_low_damage_taxa "$PLOTS_PLOT_LOW_DAMAGE_TAXA" \
+            --exclude_taxa "$PLOTS_EXCLUDE_TAXA" \
+            --taxa_per_plot "$PLOTS_TAXA_PER_PLOT" \
+            --taxa_trend_file "$PLOTS_LIST_TAXA_EVOLUTION_FILE" \
+            --mmseqs_dir "./" \
+            > "${MAP_LAST_DB_TAG}.R.out" 2>&1
+    done
     """
 }
 
-process PLOTS_KRONA_BY_SITE{
+process PLOTS_KRONA_BY_SITE {
     conda './envs/bamdam_kronatools.yml'
 
     label 'little_memory'
@@ -735,7 +771,7 @@ process PLOTS_KRONA_BY_SITE{
         """
 }
 
-process KRONATOOLS {
+process PLOTS_KRONA_ALL_SITES {
     label 'small_memory'
     conda 'bioconda::krona'
     publishDir "${params.OUTPUT_Dir}/11_plots", mode: "copy"

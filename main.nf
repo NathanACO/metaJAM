@@ -2,7 +2,7 @@
 nextflow.enable.dsl = 2
 
 // include the subworkflow
-include { FASTP; SGA; PRINSEQ; KRAKEN2; BOWTIE2; MERGE_BAM; CONCATENATE_BEDFILES; MASK_REGIONS; FILTERBAM; NGSLCA;  BAMDAM; MMSEQ2 ; KRONATOOLS; METRICS; CONCAT_METRICS; PLOTS; PLOTS_KRONA_BY_SITE } from './func.nf'
+include { FASTP; SGA; PRINSEQ; KRAKEN2; BOWTIE2; MERGE_BAM; CONCATENATE_BEDFILES; MASK_REGIONS; FILTERBAM; NGSLCA;  BAMDAM; MMSEQ2 ; PLOTS_KRONA_ALL_SITES; METRICS; CONCAT_METRICS; PLOTS; PLOTS_KRONA_BY_SITE } from './func.nf'
 include { MASK_MICROBIAL_LIKE_REGION } from './subworkflows/mcworkflow.nf'
 
 def validate_pipeline() {
@@ -55,7 +55,7 @@ def validate_pipeline() {
 			if (!params.metadata) error "Plots enabled but required file parameter metadata is missing."
 			if (params.MAP_LAST_DB_TAG == "" || params.MAP_LAST_DB_TAG == null) error "Missing required value parameter: MAP_LAST_DB_TAG"
 		}],
-		[name: 'KRONATOOLS', toggle: params.ENABLE_KRONATOOLS, req: { if(params.ENABLE_BAMDAM != "enable" && !params.OVERRIDE_LIST_BAMDAM_XML) error "Kronatools enabled without BamDam requires OVERRIDE_LIST_BAMDAM_XML file parameter." }],
+		[name: 'PLOTS_KRONA_ALL_SITES', toggle: params.ENABLE_KRONATOOLS, req: { if(params.ENABLE_BAMDAM != "enable" && !params.OVERRIDE_LIST_BAMDAM_XML) error "Kronatools enabled without BamDam requires OVERRIDE_LIST_BAMDAM_XML file parameter." }],
 		[name: 'PLOTS_KRONA_BY_SITE', toggle: params.ENABLE_PLOTS, req: {
 			if (params.ENABLE_BAMDAM != "enable" && !params.OVERRIDE_LIST_BAMDAM) error "Plots:PLOTS_KRONA_BY_SITE enabled but neither upstream bamdam is enabled nor params.OVERRIDE_LIST_BAMDAM is provided. Please change of the settings."
 			if (!params.metadata) error "Krona plots enabled but required file parameter metadata is missing."
@@ -395,7 +395,7 @@ workflow {
 			.map { row -> tuple( row[0], file(row[1]))}
 			.set{bamdam_xml}
 		}
-		KRONATOOLS( bamdam_xml )
+		PLOTS_KRONA_ALL_SITES( bamdam_xml )
 	}
 
 	metrics = Channel.empty()
@@ -463,12 +463,10 @@ workflow {
 		.combine(bamdam_bam_lca.map(it -> it[2]).collect())
 		.combine(mmseq2_evaluation)
 		.map(it -> tuple(it[0], it[1], it[2],
-			params.SAMPLES_FOR_PLOTS,		
 			params.metadata,
-			params.MAP_LAST_DB_TAG,
-			params.PLOT_DIR,
-			params.MIN_READS,
-			params.PLOTS_BAMDAM_PLOT_MODE,
+			params.PLOTS_SAMPLES_FOR_PLOTS,
+			params.PLOTS_MIN_READS,
+			params.PLOTS_MODE,
 			params.PLOTS_DAMAGE_THRESHOLD,
 			params.PLOTS_PLOT_LOW_DAMAGE_TAXA,
 			params.PLOTS_EXCLUDE_TAXA,
@@ -479,12 +477,12 @@ workflow {
 		.set{ input_plots }
 
 		PLOTS( input_plots )
-
-		// PLOTS_KRONA_BY_SITE(
-		// 	bamdam_bam_lca.map(it -> it[3]).collect(), 
-		// 	params.metadata, 
-		// 	params.BAMDAM_MINREADS,
-		// 	params.BAMDAM_MAXDAMAGE
-		// )
+            
+		PLOTS_KRONA_BY_SITE(
+			bamdam_bam_lca.map(it -> it[3]).collect(), 
+			params.metadata, 
+			params.BAMDAM_MINREADS,
+			params.BAMDAM_MAXDAMAGE
+		)
 	}	
 }
