@@ -84,7 +84,7 @@ def validate_pipeline() {
         case 'NGSLCA':  if(!params.OVERRIDE_LIST_BAM)     error "Starting at NGSLCA: Provide 'OVERRIDE_LIST_BAM'."; break
         case 'BAMDAM':  if(!params.OVERRIDE_LIST_NGSLCA)  error "Starting at BAMDAM: Provide 'OVERRIDE_LIST_NGSLCA'."; break
         case 'MMSEQS2': if(!params.OVERRIDE_LIST_BAMDAM)  error "Starting at MMSEQS2: Provide 'OVERRIDE_LIST_BAMDAM'."; break
-        case 'METRICS': if(!params.OVERRIDE_LIST_METRICS) error "Starting at Metrics: Provide 'OVERRIDE_LIST_METRICS'."; break
+		case 'PLOTS': if(!params.OVERRIDE_LIST_METRICS) error "Starting at Plots: Provide 'OVERRIDE_LIST_METRICS'."; break
     }
 
     // 4. SEQUENTIAL VALIDATION: Check requirements for all tools from startPoint to end
@@ -109,9 +109,14 @@ workflow {
     .map { row -> row.sample }
     .unique()
 
+	//placeholders for having them as optional output
     paired_reads = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE1", params.METAJAM_DIR+"/assets/NO_FILE2"] }
 	fastp_ch = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE3"] }
     preprocessed_reads = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE4"] } // for nextflow evaluation
+	kraken_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE5"] }
+	bowtie2_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE6"] }
+	mmseq2_evaluation2 = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE7"] }
+	metrics2 = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE8"] }
 
 	input_fastq = paired_reads.map { tuple(it[0], it[1], it[2], params.FASTP_OVERLAP_LEN_REQUIRE, params.FASTP_MIN_LENGTH) }
 
@@ -142,6 +147,7 @@ workflow {
 		// use both ways of specified fastq and remove duplicate
 		paired_reads1.concat(paired_reads2).unique()
 		.set{paired_reads}
+		
 		//paired_reads.view()
 
 		if ( params.ENABLE_FASTP == "enable" ) {
@@ -215,13 +221,9 @@ workflow {
 		//kraken_out2.view()
 		kraken_out1.concat(kraken_out2).unique().set{kraken_out}
 
-	} else {
-		kraken_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE5"] }
 	}
 	//kraken_out.view()
 
-	// kraken_out.view()
-	bowtie2_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE6"] }
 	if (params.ENABLE_MAPPING == "enable") { 
 
 			Channel.fromPath( params.BOWTIE2_MAPPING_DBs )
@@ -414,7 +416,7 @@ workflow {
 		.map { row -> 
 			tuple( row[0], file(row[1]))}
 		.collect().set{mmseq2_evaluation2}
-	} else {mmseq2_evaluation2 = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE7"] }}
+	} 
 
 	mmseq2_evaluation1.concat(mmseq2_evaluation2).unique().set{mmseq2_evaluation}
 
@@ -491,7 +493,7 @@ workflow {
 	if (params.OVERRIDE_LIST_METRICS) {
 		Channel.fromPath(params.OVERRIDE_LIST_METRICS)
 		.set{ metrics2 }
-	} else {metrics2 = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE8"] }}
+	} 
 	metrics1.concat(metrics2).unique().set{metrics}
 
 	if (params.ENABLE_PLOTS == "enable") {
