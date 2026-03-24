@@ -146,14 +146,18 @@ workflow {
 
 		if ( params.ENABLE_FASTP == "enable" ) {
 			FASTP(input_fastq)
-			FASTP.out.set{fastp_ch}
-		} else if (workflow_entry_point == "SGA" || workflow_entry_point == "PRINSEQ") {
+			FASTP.out.set{fastp_ch1}
+		} else {fastp_ch1 = Channel.empty()}
+		
+		if (workflow_entry_point == "SGA" || workflow_entry_point == "PRINSEQ" || params.OVERRIDE_LIST_FASTP ) {
 			Channel
 			.fromPath(params.OVERRIDE_LIST_FASTP)
 			.splitCsv(header: false, sep: '\t', strip: true)
 			.map { row -> tuple( row[0], file(row[1]))}
-			.set{fastp_ch}
-		}
+			.set{fastp_ch2}
+		} else {fastp_ch2 = Channel.empty()}
+
+		fastp_ch1.concat(fastp_ch2).unique().set{fastp_ch}
 
 		// make filtering out low-complexity reads optional
 		if (params.ENABLE_SGA == "enable" || params.ENABLE_PRINSEQ == "enable") {  
@@ -167,24 +171,30 @@ workflow {
 				}
 
 			if (params.ENABLE_LOW_COMPLEXITY_FILTER=="SGA"){
-				SGA.out.rm_low_complexity.set { preprocessed_reads }
+				SGA.out.rm_low_complexity.set { preprocessed_reads1 }
 			} else if (params.ENABLE_LOW_COMPLEXITY_FILTER=="PRINSEQ") {
-				PRINSEQ.out.rm_low_complexity.set { preprocessed_reads }
+				PRINSEQ.out.rm_low_complexity.set { preprocessed_reads1 }
 			}
 		} else {
-			preprocessed_reads = fastp_ch
+			preprocessed_reads1 = fastp_ch
 		}
 	//} else if (workflow_entry_point == "KRAKEN2" || params.OVERRIDE_PREPROCESSED) {
-	} else if (workflow_entry_point == "KRAKEN2" || (params.OVERRIDE_PREPROCESSED?.trim() && file(params.OVERRIDE_PREPROCESSED).exists())) {
+	} else {preprocessed_reads1 = Channel.empty()}
+	
+	if (workflow_entry_point == "KRAKEN2" || params.OVERRIDE_PREPROCESSED) {
 		// to test
-		preprocessed_reads = Channel
+		preprocessed_reads2 = Channel
 			.fromPath(params.OVERRIDE_PREPROCESSED)
 			.splitCsv(header: false, sep: '\t', strip: true)
 			.map { row -> tuple( row[0], file(row[1]))}
+	} else {
+		preprocessed_reads2 = Channel.empty()
 	}
 
+	preprocessed_reads1.concat(preprocessed_reads2).unique().set{preprocessed_reads}
+
 	// preprocessed_reads.view()
-	if (params.ENABLE_KRAKEN_GTDB == "enable" || workflow_entry_point == "MAPPING" || (params.OVERRIDE_LIST_KRAKEN?.trim() && file(params.OVERRIDE_LIST_KRAKEN).exists())) {
+	if (params.ENABLE_KRAKEN_GTDB == "enable" || workflow_entry_point == "MAPPING" || params.OVERRIDE_LIST_KRAKEN ) {
 		if (params.ENABLE_KRAKEN_GTDB == "enable") { 
 				KRAKEN2( preprocessed_reads.map { it -> tuple(it[0], it[1], params.KRAKEN2_FILTER_DATABASE) } )
 				KRAKEN2.out.not_microbe
@@ -193,8 +203,7 @@ workflow {
 			kraken_out1 = Channel.empty()
 		} 
 		
-		
-		if (workflow_entry_point == "MAPPING" || (params.OVERRIDE_LIST_KRAKEN?.trim() && file(params.OVERRIDE_LIST_KRAKEN).exists())) {
+		if (workflow_entry_point == "MAPPING" || params.OVERRIDE_LIST_KRAKEN ) {
 
 			kraken_out2 = Channel
 				.fromPath(params.OVERRIDE_LIST_KRAKEN)
@@ -204,12 +213,11 @@ workflow {
 			kraken_out2 = Channel.empty()
 		}
 		//kraken_out2.view()
-
 		kraken_out1.concat(kraken_out2).unique().set{kraken_out}
+
 	} else {
 		kraken_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE5"] }
 	}
-
 	//kraken_out.view()
 
 	// kraken_out.view()
@@ -234,23 +242,23 @@ workflow {
 				// input_bowtie2.view()
 				BOWTIE2( input_bowtie2 )
 
-				BOWTIE2.out.set { bowtie2_out }
+				BOWTIE2.out.set { bowtie2_out1 }
 			}
-	} else if (workflow_entry_point == "NGSLCA" || workflow_entry_point == "MASKING") {
+	} else {bowtie2_out1 = Channel.empty()}
+	
+	if (workflow_entry_point == "NGSLCA" || workflow_entry_point == "MASKING" || params.OVERRIDE_LIST_BAM ) {
 		if (workflow_entry_point == "NGSLCA"){mapping_indexes = Channel.empty()}
-		bowtie2_out = Channel
+		bowtie2_out2 = Channel
 		.fromPath(params.OVERRIDE_LIST_BAM)
 		.splitCsv(header: false, sep: '\t', strip: true)
 		.map { row -> tuple( row[0], file(row[1]))}
-	}
+	} else {bowtie2_out2 = Channel.empty()}
+
+	bowtie2_out1.concat(bowtie2_out2).unique().set{bowtie2_out}
 
 	bowtie2_out.groupTuple().set{mapped_bam}
-	// mapped_bam.view()
 
 	MERGE_BAM( mapped_bam )
-	// MERGE_BAM.out.view()
-
-	// MERGE_BAM.out.map { tuple(it[0], it[1], params.REGIONS_TO_MASK) } .view()
 
 	if (params.ENABLE_MASK_REGIONS == "enable" ) { 
 		if (params.ENABLE_GENERATE_BEDFILE_TO_MASK == "enable"){
@@ -311,13 +319,20 @@ workflow {
 		}
 
 		NGSLCA( bam.map { tuple(it[0], it[1], params.NAMES, params.NODES, acc2taxid )} )
-		NGSLCA.out.lca.set{lca}
-	} else if (workflow_entry_point == "BAMDAM") {
+		NGSLCA.out.lca.set{lca1}
+	} else {
+		lca1 = Channel.empty()
+	}
+	
+	if (workflow_entry_point == "BAMDAM" || params.OVERRIDE_LIST_NGSLCA ) {
 		Channel.fromPath(params.OVERRIDE_LIST_NGSLCA)
 		.splitCsv(header: false, sep: '\t', strip: true)
 		.map { row -> tuple( row[0], file(row[1]))}
-		.set{lca}
+		.set{lca2}
+	} else {
+		lca2 = Channel.empty()
 	}
+	lca1.concat(lca2).unique().set{lca}
 	// lca.view()
 
 	if (params.ENABLE_BAMDAM == "enable" ) {
@@ -337,21 +352,28 @@ workflow {
 		//input_bamdam.view()
 
 		BAMDAM( input_bamdam )
-		BAMDAM.out.lca.set{bamdam_bam_lca}
+		BAMDAM.out.lca.set{bamdam_bam_lca1}
 
-		BAMDAM.out.xml.set{bamdam_xml}
+		BAMDAM.out.xml.set{bamdam_xml1}
 		// bamdam_bam_lca.view()
 			
-	} else if (workflow_entry_point == "MMSEQS2") {
+	} else {
+		bamdam_bam_lca1 = Channel.empty()
+		bamdam_xml1 = Channel.empty()
+	}
+	
+	if (workflow_entry_point == "MMSEQS2" || params.OVERRIDE_LIST_BAMDAM ) {
 		Channel
 		.fromPath(params.OVERRIDE_LIST_BAMDAM)
 		.splitCsv(header: false, sep: '\t', strip: true)
 		.map { row -> 
 			tuple( row[0], file(row[1]), file(row[2]), file(row[3]))}
-		.set{bamdam_bam_lca}
+		.set{bamdam_bam_lca2}
 
 		// bamdam_bam_lca.view()
-	}
+	} else {bamdam_bam_lca2 = Channel.empty()}
+
+	bamdam_bam_lca1.concat(bamdam_bam_lca2).unique().set{bamdam_bam_lca}
 
 
 	if (params.ENABLE_MMSEQS2 == "enable") {
@@ -382,19 +404,30 @@ workflow {
 		//input_mmseq2.view()
 		
 		MMSEQ2( input_mmseq2 )
-		MMSEQ2.out.evaluation.collect().set{mmseq2_evaluation}
-	} else {
-		mmseq2_evaluation = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE7"] }
-	}
+		MMSEQ2.out.evaluation.collect().set{mmseq2_evaluation1}
+	} else {mmseq2_evaluation1 = Channel.empty()}
+	
+	if ( params.OVERRIDE_LIST_MMSEQ2 ) {
+		Channel
+		.fromPath(params.OVERRIDE_LIST_MMSEQ2)
+		.splitCsv(header: false, sep: '\t', strip: true)
+		.map { row -> 
+			tuple( row[0], file(row[1]))}
+		.collect().set{mmseq2_evaluation2}
+	} else {mmseq2_evaluation2 = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE7"] }}
+
+	mmseq2_evaluation1.concat(mmseq2_evaluation2).unique().set{mmseq2_evaluation}
 
 	if (params.ENABLE_KRONATOOLS == "enable") { 
-		if (params.ENABLE_BAMDAM == "disable" && params.OVERRIDE_LIST_BAMDAM_XML != "") {
+		if (params.OVERRIDE_LIST_BAMDAM_XML ) {
 			
 			Channel.fromPath(params.OVERRIDE_LIST_BAMDAM_XML)
 			.splitCsv(header: false, sep: '\t', strip: true)
 			.map { row -> tuple( row[0], file(row[1]))}
-			.set{bamdam_xml}
-		}
+			.set{bamdam_xml2}
+		} else { bamdam_xml2 = Channel.empty() }
+		bamdam_xml1.concat(bamdam_xml2).unique().set{bamdam_xml}
+
 		PLOTS_KRONA_ALL_SITES( bamdam_xml )
 	}
 
@@ -451,12 +484,15 @@ workflow {
 		//METRICS.out.collect().view()
 		CONCAT_METRICS( METRICS.out.collect() )
 
-		CONCAT_METRICS.out.set{ metrics }
+		CONCAT_METRICS.out.set{ metrics1 }
 
-	} else {
+	} else {metrics1 = Channel.empty()}
+
+	if (params.OVERRIDE_LIST_METRICS) {
 		Channel.fromPath(params.OVERRIDE_LIST_METRICS)
-		.set{ metrics }
-	}
+		.set{ metrics2 }
+	} else {metrics2 = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE8"] }}
+	metrics1.concat(metrics2).unique().set{metrics}
 
 	if (params.ENABLE_PLOTS == "enable") {
 		metrics
