@@ -401,13 +401,42 @@ workflow {
 	metrics = Channel.empty()
 	if (params.ENABLE_METRICS == "enable") {
 
-		// add check by printing out the channels of input_metrics
-		// paired_reads.view{"DEBUG: paired_reads = ${it}"}
-		// fastp_ch.view{"DEBUG: fastp_ch = ${it}"}
-		// preprocessed_reads.view{"DEBUG: preprocessed_reads = ${it}"}
-		// kraken_out.view{"DEBUG: kraken_out = ${it}"}
-		// mapped_bam.view{"DEBUG: mapped_bam = ${it}"}
-		// bamdam_bam_lca.view{"DEBUG: bamdam_bam_lca = ${it}"}
+		//check if any channel does not match the ch_sample_ids in metadata so it does not hang silently
+		paired_reads = paired_reads.combine( ch_sample_ids ,by:0 )
+		.ifEmpty {
+    	    log.error "paired_reads (params.FASTQ_list_path or params.FASTQ_direct_path) does not match with the sample IDs in params.metadata. Please check your input files and metadata."
+        	System.exit(1)
+    	}
+
+		fastp_ch = fastp_ch.combine(ch_sample_ids, by:0)
+		.ifEmpty {
+			log.error "fastp output (params.OVERRIDE_LIST_FASTP) does not match sample IDs in params.metadata"
+			System.exit(1)
+		}
+
+		preprocessed_reads = preprocessed_reads.combine(ch_sample_ids, by:0)
+			.ifEmpty {
+				log.error "preprocessed_reads (params.OVERRIDE_PREPROCESSED) does not match sample IDs in params.metadata"
+				System.exit(1)
+			}
+
+		kraken_out = kraken_out.combine(ch_sample_ids, by:0)
+			.ifEmpty {
+				log.error "kraken_out (params.OVERRIDE_LIST_KRAKEN) does not match sample IDs in params.metadata"
+				System.exit(1)
+			}
+
+		mapped_bam = mapped_bam.combine(ch_sample_ids, by:0)
+			.ifEmpty {
+				log.error "mapped_bam (params.OVERRIDE_LIST_BAM) does not match sample IDs in params.metadata"
+				System.exit(1)
+			}
+
+		bamdam_bam_lca = bamdam_bam_lca.combine( ch_sample_ids ,by:0 )
+		.ifEmpty {
+    	    log.error "bamdam_bam_lca (params.OVERRIDE_LIST_BAMDAM) does not match with the sample IDs in params.metadata. Please check your input files and metadata."
+        	System.exit(1)
+    	}
 
 		paired_reads
 		.combine( fastp_ch ,by:0 )
@@ -416,7 +445,7 @@ workflow {
 		.combine( mapped_bam, by:0 )
 		.combine( bamdam_bam_lca.map{it -> tuple(it[0], it[1])}, by:0 )
 		.set{ input_metrics }
-		//input_metrics.view()
+		input_metrics.view()
 
 		METRICS( input_metrics )
 		//METRICS.out.collect().view()
@@ -451,11 +480,11 @@ workflow {
 
 		PLOTS( input_plots )
 
-		PLOTS_KRONA_BY_SITE(
-			bamdam_bam_lca.map(it -> it[3]).collect(), 
-			params.metadata, 
-			params.BAMDAM_MINREADS,
-			params.BAMDAM_MAXDAMAGE
-		)
+		// PLOTS_KRONA_BY_SITE(
+		// 	bamdam_bam_lca.map(it -> it[3]).collect(), 
+		// 	params.metadata, 
+		// 	params.BAMDAM_MINREADS,
+		// 	params.BAMDAM_MAXDAMAGE
+		// )
 	}	
 }

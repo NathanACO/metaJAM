@@ -690,6 +690,8 @@ process PLOTS_KRONA_BY_SITE{
 
     publishDir "${params.OUTPUT_Dir}/11_plots", mode: "copy"
 
+    errorStrategy { task.exitStatus == 255 ? 'ignore' : 'retry' } 
+
     input:
         path(tsv)
         path(METADATA_PATH)
