@@ -2,7 +2,7 @@
 nextflow.enable.dsl = 2
 
 // include the subworkflow
-include { FASTP; SGA; PRINSEQ; KRAKEN2; BOWTIE2; MERGE_BAM; CONCATENATE_BEDFILES; MASK_REGIONS; FILTERBAM; NGSLCA;  BAMDAM; MMSEQ2 ; PLOTS_KRONA_ALL_SITES; METRICS; CONCAT_METRICS; PLOTS; PLOTS_KRONA_BY_SITE } from './func.nf'
+include { FASTP; SGA; PRINSEQ; KRAKEN2; BOWTIE2; MERGE_BAM; CONCATENATE_BEDFILES; MASK_REGIONS; FILTERBAM; NGSLCA;  BAMDAM; MMSEQ2 ; PLOTS_KRONA_BY_SAMPLE; METRICS; CONCAT_METRICS; PLOTS; PLOTS_KRONA_BY_SITE } from './func.nf'
 include { MASK_MICROBIAL_LIKE_REGION } from './subworkflows/mcworkflow.nf'
 
 def validate_pipeline() {
@@ -55,7 +55,7 @@ def validate_pipeline() {
 			if (!params.metadata) error "Plots enabled but required file parameter metadata is missing."
 			if (params.MAP_LAST_DB_TAG == "" || params.MAP_LAST_DB_TAG == null) error "Missing required value parameter: MAP_LAST_DB_TAG"
 		}],
-		[name: 'PLOTS_KRONA_ALL_SITES', toggle: params.ENABLE_KRONATOOLS, req: { if(params.ENABLE_BAMDAM != "enable" && !params.OVERRIDE_LIST_BAMDAM_XML) error "Kronatools enabled without BamDam requires OVERRIDE_LIST_BAMDAM_XML file parameter." }],
+		[name: 'PLOTS_KRONA_BY_SAMPLE', toggle: params.ENABLE_KRONATOOLS, req: { if(params.ENABLE_BAMDAM != "enable" && !params.OVERRIDE_LIST_BAMDAM) error "Kronatools enabled without BamDam requires OVERRIDE_LIST_BAMDAM file parameter." }],
 		[name: 'PLOTS_KRONA_BY_SITE', toggle: params.ENABLE_PLOTS, req: {
 			if (params.ENABLE_BAMDAM != "enable" && !params.OVERRIDE_LIST_BAMDAM) error "Plots:PLOTS_KRONA_BY_SITE enabled but neither upstream bamdam is enabled nor params.OVERRIDE_LIST_BAMDAM is provided. Please change of the settings."
 			if (!params.metadata) error "Krona plots enabled but required file parameter metadata is missing."
@@ -354,9 +354,13 @@ workflow {
 		//input_bamdam.view()
 
 		BAMDAM( input_bamdam )
-		BAMDAM.out.lca.set{bamdam_bam_lca1}
+		BAMDAM.out.lca
+		.map { row -> tuple( row[0], file(row[1]), file(row[2]), file(row[3]) )}
+		.set{bamdam_bam_lca1}
 
-		BAMDAM.out.xml.set{bamdam_xml1}
+		BAMDAM.out.lca
+		.map { row -> tuple( row[0], file(row[4]), file(row[3]))}
+		.set{bamdam_xml1}
 		// bamdam_bam_lca.view()
 			
 	} else {
@@ -369,14 +373,24 @@ workflow {
 		.fromPath(params.OVERRIDE_LIST_BAMDAM)
 		.splitCsv(header: false, sep: '\t', strip: true)
 		.map { row -> 
-			tuple( row[0], file(row[1]), file(row[2]), file(row[3]))}
+			tuple( row[0], file(row[1]), file(row[2]), file(row[3]),file(row[4]))}
+		.set{bamdam_bam_override}
+
+		bamdam_bam_override
+		.map { row -> tuple( row[0], file(row[1]), file(row[2]), file(row[3]) )}
 		.set{bamdam_bam_lca2}
 
+		bamdam_bam_override
+		.map { row -> tuple( row[0], file(row[4]), file(row[3]))}
+		.set{bamdam_xml2}
+
 		// bamdam_bam_lca.view()
-	} else {bamdam_bam_lca2 = Channel.empty()}
+	} else {
+		bamdam_bam_lca2 = Channel.empty()
+		bamdam_xml2 = Channel.empty()
+	}
 
 	bamdam_bam_lca1.concat(bamdam_bam_lca2).unique().set{bamdam_bam_lca}
-
 
 	if (params.ENABLE_MMSEQS2 == "enable") {
 		MMSEQS2_GENERA_FILE = Channel.fromPath(params.MMSEQS2_GENERA_FILE, checkIfExists:true)
@@ -421,16 +435,10 @@ workflow {
 	mmseq2_evaluation1.concat(mmseq2_evaluation2).unique().set{mmseq2_evaluation}
 
 	if (params.ENABLE_KRONATOOLS == "enable") { 
-		if (params.OVERRIDE_LIST_BAMDAM_XML ) {
-			
-			Channel.fromPath(params.OVERRIDE_LIST_BAMDAM_XML)
-			.splitCsv(header: false, sep: '\t', strip: true)
-			.map { row -> tuple( row[0], file(row[1]))}
-			.set{bamdam_xml2}
-		} else { bamdam_xml2 = Channel.empty() }
+
 		bamdam_xml1.concat(bamdam_xml2).unique().set{bamdam_xml}
 
-		PLOTS_KRONA_ALL_SITES( bamdam_xml )
+		PLOTS_KRONA_BY_SAMPLE( bamdam_xml )
 	}
 
 	metrics = Channel.empty()
@@ -486,6 +494,7 @@ workflow {
 		//METRICS.out.collect().view()
 		CONCAT_METRICS( METRICS.out.collect() )
 
+
 		CONCAT_METRICS.out.set{ metrics1 }
 
 	} else {metrics1 = Channel.empty()}
@@ -515,7 +524,7 @@ workflow {
 		.set{ input_plots }
 
 		PLOTS( input_plots )
-            
+        //PLOTS_KRONA_BY_SITE seperated from PLOTS for a cleaner conda env
 		PLOTS_KRONA_BY_SITE(
 			bamdam_bam_lca.map(it -> it[3]).collect(), 
 			params.metadata, 

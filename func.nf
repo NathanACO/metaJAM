@@ -339,8 +339,7 @@ process BAMDAM {
         val(MODE)
             
     output:
-        tuple val(ID), path("*.small.bam"), path("*.small.lca"), path("*.tsv"), emit: lca
-        tuple val(ID), path("*.xml"), emit: xml
+        tuple val(ID), path("*.small.bam"), path("*.small.lca"), path("*.tsv"), path("*.xml"), emit: lca
         tuple path("*.subs.txt"), path("*.png") // damage metircs and plots
 
     script:
@@ -771,18 +770,19 @@ process PLOTS_KRONA_BY_SITE {
         """
 }
 
-process PLOTS_KRONA_ALL_SITES {
+process PLOTS_KRONA_BY_SAMPLE {
     label 'small_memory'
     conda 'bioconda::krona'
-    publishDir "${params.OUTPUT_Dir}/11_plots", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/08_bamdam", mode: "copy"
     input:
-        tuple val(ID), path(xml)
+        tuple val(ID), path(xml), path(tsv)
             
     output:
         path("*.html")
 
     script:
     """
-        ktImportXML -o "${ID}.html" "$xml"
+        # Ensure TSV is available in working directory for XML to reference
+        ktImportXML -o "${ID}.html" ${xml}
     """
 }
