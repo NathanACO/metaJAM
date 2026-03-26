@@ -648,7 +648,7 @@ process PLOTS {
         path(BAMDAM_LCA), 
         path(mmseq2_evaluation),
         path(METADATA_PATH),
-	path(SAMPLES_FOR_PLOTS),
+	    path(SAMPLES_FOR_PLOTS),
         val(MIN_READS),
         val(PLOTS_MODE),
         val(PLOTS_DAMAGE_THRESHOLD),
@@ -666,10 +666,10 @@ process PLOTS {
     script:
     """
     #plots all sampoles in SAMPLES_FOR_PLOTS unless it's empty (plot all samples in metadata)
-    if [[ -z "$SAMPLES_FOR_PLOTS" ]]; then
-        all_samples="$METADATA_PATH"
-    else
+    if [[ -s "$SAMPLES_FOR_PLOTS" ]]; then
         all_samples="$SAMPLES_FOR_PLOTS"
+    else
+        all_samples="$METADATA_PATH"
     fi
 
     # collect unique sites

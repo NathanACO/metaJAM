@@ -429,7 +429,9 @@ workflow {
 		.splitCsv(header: false, sep: '\t', strip: true)
 		.map { row -> 
 			tuple( row[0], file(row[1]))}
-		.collect().set{mmseq2_evaluation2}
+		.set{mmseq2_evaluation2}
+	} else {
+		mmseq2_evaluation2 = Channel.empty()
 	} 
 
 	mmseq2_evaluation1.concat(mmseq2_evaluation2).unique().set{mmseq2_evaluation}
@@ -488,7 +490,7 @@ workflow {
 		.combine( mapped_bam, by:0 )
 		.combine( bamdam_bam_lca.map{it -> tuple(it[0], it[1])}, by:0 )
 		.set{ input_metrics }
-		input_metrics.view()
+		//input_metrics.view()
 
 		METRICS( input_metrics )
 		//METRICS.out.collect().view()
@@ -502,13 +504,14 @@ workflow {
 	if (params.OVERRIDE_LIST_METRICS) {
 		Channel.fromPath(params.OVERRIDE_LIST_METRICS)
 		.set{ metrics2 }
-	} 
+	} else {metrics2 = Channel.empty()}
 	metrics1.concat(metrics2).unique().set{metrics}
 
 	if (params.ENABLE_PLOTS == "enable") {
+
 		metrics
-		.combine(bamdam_bam_lca.map(it -> it[2]).collect())
-		.combine(mmseq2_evaluation)
+		.combine(bamdam_bam_lca.map{it -> it[2]}.collect().map{[it]})
+		.combine(mmseq2_evaluation.map{it -> it[1]}.collect().map{[it]})
 		.map(it -> tuple(it[0], it[1], it[2],
 			params.metadata,
 			params.PLOTS_SAMPLES_FOR_PLOTS,
@@ -517,11 +520,13 @@ workflow {
 			params.PLOTS_DAMAGE_THRESHOLD,
 			params.PLOTS_PLOT_LOW_DAMAGE_TAXA,
 			params.PLOTS_EXCLUDE_TAXA,
-			params.BAMDAM_TAXA_PER_PLOT,
+			params.PLOTS_TAXA_PER_PLOT,
 			params.PLOTS_LIST_TAXA_EVOLUTION_FILE,
 			params.MAP_LAST_DB_TAG
 		))
 		.set{ input_plots }
+
+		//input_plots.view{"Debug input_plots: ${it}"}
 
 		PLOTS( input_plots )
         //PLOTS_KRONA_BY_SITE seperated from PLOTS for a cleaner conda env
