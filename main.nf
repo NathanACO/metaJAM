@@ -510,7 +510,7 @@ workflow {
 	if (params.ENABLE_PLOTS == "enable") {
 
 		metrics
-		.combine(bamdam_bam_lca.map{it -> it[2]}.collect().map{[it]})
+		.combine(bamdam_bam_lca.map{it -> it[3]}.collect().map{[it]})
 		.combine(mmseq2_evaluation.map{it -> it[1]}.collect().map{[it]})
 		.map(it -> tuple(it[0], it[1], it[2],
 			params.metadata,

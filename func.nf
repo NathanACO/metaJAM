@@ -683,17 +683,14 @@ process PLOTS {
 
     # create per-site metadata files (with header + full rows)
     for site in \$sites; do
+        head -1 "\$all_samples" > "\${site}.metadata.txt"
         awk -F'\t' -v site="\$site" '
         NR==1 {
-            for(i=1;i<=NF;i++){
-                if(\$i=="sample") s=i;
-                if(\$i=="site") c=i
-            }
-            print
+            for (i=1; i<=NF; i++) if (\$i=="site") col=i
             next
         }
-        (c>0 && s>0) && \$c==site && \$s!="" {print}
-        ' "$METADATA_PATH" > "\${site}.metadata.txt"
+        \$col==site
+        ' "\$all_samples" >> "\${site}.metadata.txt"
     done
 
     # run plotting for each sample list / metadata file
@@ -701,10 +698,10 @@ process PLOTS {
         100_Plots.R \
             --metrics "$METRICS_TSV" \
             --samples "\$samples" \
-            --bamdam_dir "./" \
+            --bamdam_dir "." \
             --metadata "$METADATA_PATH" \
             --db_tag "$MAP_LAST_DB_TAG" \
-            --outdir "./" \
+            --outdir "." \
             --min_reads "$MIN_READS" \
             --bamdam_plot "$PLOTS_MODE" \
             --damage_threshold "$PLOTS_DAMAGE_THRESHOLD" \
@@ -712,8 +709,8 @@ process PLOTS {
             --exclude_taxa "$PLOTS_EXCLUDE_TAXA" \
             --taxa_per_plot "$PLOTS_TAXA_PER_PLOT" \
             --taxa_trend_file "$PLOTS_LIST_TAXA_EVOLUTION_FILE" \
-            --mmseqs_dir "./" \
-            > "${MAP_LAST_DB_TAG}.R.out" 2>&1
+            --mmseqs_dir "." \
+            > "${MAP_LAST_DB_TAG}.R.out" #2>&1
     done
     """
 }

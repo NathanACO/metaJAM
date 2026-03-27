@@ -106,6 +106,18 @@ read_sample_list <- function(path) {
   unique(vapply(samp, normalize_one, character(1)))
 }
 
+format_sample_debug <- function(samples) {
+  samples <- unique(as.character(samples))
+  samples <- samples[!is.na(samples) & nzchar(samples)]
+
+  if (length(samples) == 0) {
+    return("NONE")
+  }
+
+  paste(sort(samples), collapse = ", ")
+}
+
+
 # ================================================================
 # 1) METRICS DOT PLOT (always)
 # ================================================================
@@ -243,12 +255,15 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
 
   # bamdam files: *.tsv with TaxName / TotalReads / taxpath
   files <- list.files(bamdam_dir, pattern = "\\.tsv$", full.names = TRUE, recursive = TRUE)
-
+  files <- files[!grepl("\\.evaluation\\.", files)]
+  
   # If MAP_LAST_DB_TAG is set, pre-filter to files inside <SAMPLE>_<TAG>/ to avoid mixing runs
   if (nzchar(map_tag)) {
     tag_needle <- paste0("_", map_tag, .Platform$file.sep)
     files <- files[grepl(tag_needle, files, fixed = TRUE)]
   }
+
+  message("line266: ", files)
 
   message("[bamdam] found ", length(files), " bamdam *.tsv files")
   if (length(files) > 0) {
@@ -284,6 +299,7 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
   }
 
   # ---- read bamdam tsvs ----
+  message("line302: files to read: ", files)
   bam_list <- purrr::map(files, function(f) {
     x <- suppressMessages(read_tsv(f, show_col_types = FALSE))
 
@@ -293,25 +309,9 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
       stop("Bamdam file ", f, " is missing columns: ", paste(missing, collapse = ", "))
     }
 
-    # Derive sample + database tag from the folder structure:
-    # bamdam_dir/<sample>/<sample>_<tag>/.../*.tsv
-    f_norm  <- normalizePath(f, winslash = "/", mustWork = FALSE)
-    bd_norm <- normalizePath(bamdam_dir, winslash = "/", mustWork = FALSE)
-    rel     <- sub(paste0("^", bd_norm, "/?"), "", f_norm)
-    parts   <- strsplit(rel, "/", fixed = TRUE)[[1]]
-
-    sample_id <- if (length(parts) >= 1) parts[1] else NA_character_
-    tag_dir   <- if (length(parts) >= 2) parts[2] else NA_character_
-
-    db_tag <- NA_character_
-    if (!is.na(sample_id) && !is.na(tag_dir) && startsWith(tag_dir, paste0(sample_id, "_"))) {
-      db_tag <- sub(paste0("^", sample_id, "_"), "", tag_dir)
-    }
-
-    # If MAP_LAST_DB_TAG is set, keep only matching-tag files
-    if (nzchar(map_tag) && (is.na(db_tag) || db_tag != map_tag)) {
-      return(tibble())
-    }
+    # All files are in a flat directory; derive sample from filename and db_tag from MAP_LAST_DB_TAG
+    sample_id <- sub("\\.tsv$", "", basename(f))
+    db_tag    <- map_tag
 
     ranks <- vapply(x$taxpath, get_rank, character(1))
 
@@ -332,6 +332,8 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
     message("[bamdam] all counts are zero; skipping.")
     return(invisible(NULL))
   }
+  message("line348 [bamdam] samples read from bam_list: ", format_sample_debug(bam_list))
+  message("line349 [bamdam] samples read from dat_all: ", format_sample_debug(dat_all))
 
   # ---- sample matching ----
   bam_samples  <- unique(dat_all$sample)
@@ -347,6 +349,9 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
   } else {
     used_samples <- bam_samples
   }
+
+  message("[bamdam] samples read from bamdam.tsv: ", format_sample_debug(bam_samples))
+  message("[bamdam] samples read from metadata: ", format_sample_debug(meta_samples))
 
   meta_filt <- meta %>% filter(sample %in% used_samples)
   if (nrow(meta_filt) == 0L) {
