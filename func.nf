@@ -161,15 +161,91 @@ output:
         
     script:
     """
-        bowtie2 --very-sensitive -p "${task.cpus}" -k $n_allow_multimapper -x \$(basename $idx) -U $reads | \
-            samtools view -@ "${task.cpus}" -Sb -q 0 -F 4 - > $ID.\$(basename $idx).bam
+        if bowtie2 --sensitive -p "${task.cpus}" -k $n_allow_multimapper -x $idx -U $reads | \
+            samtools view -@ "${task.cpus}" -Sb -q 0 -F 4 - > $ID.$idx.bam; then
+            echo "mapping directly" >&2
+        else
+            #generate headers file:
+            bowtie2-inspect "$idx" > "${idx}.fa"
+            samtools dict "${idx}.fa" | LC_ALL=C grep "^@SQ" | cut -f1-3 > "${idx}.headers"
+
+            bowtie2 --very-sensitive -p "${task.cpus}" -k $n_allow_multimapper -x $idx -U $reads | \
+                samtools view -@ "${task.cpus}" -Sb -q 0 -F 4 - > ${ID}.${idx}.bam
+
+            bowtie2 -x $idx -U $reads --time --sensitive --threads "${task.cpus}" -k $n_allow_multimapper --no-sq --no-unal -S ${ID}_${idx}_noheader.sam --un ${ID}_${idx}_unclass.fq
+            echo \$(date -u) "1. Headerless ${ID} .sam file made, unclassified reads .fq made."  >&2
+
+            #By default, the read header portion of .sam files processed from PhyloNorway is too large to coerce into a .bam format, but the header is still required. We need to add in header lines that are relevant to the specific .sam file.
+            #Extract unique AP_* patterns from column 3 of .sam file, then find matching lines in column 2 of ${idx}.headers
+            awk '\$3 ~ /^AP_/' ${ID}_${idx}_noheader.sam | awk '{print \$3}' | uniq > ${ID}_ap_patterns.txt
+            awk 'NR==FNR{pat[\$1]; next} {match(\$2, /^SN:(.*)/, arr); if(arr[1] in pat) print}' "${ID}_ap_patterns.txt" "${idx}.headers"  > ${ID}_header_matches.txt"
+
+            #Combine first line of the .sam file, then header_matches, then rest of .sam file, write a new .sam file with headers
+            {
+                head -n 1 ${ID}_${idx}_noheader.sam
+                cat ${ID}_header_matches.txt
+                tail -n +2 ${ID}_${idx}_noheader.sam
+            } > 0_sam/${ID}_${idx}_aln.sam
+            echo \$(date -u) "2. Headers added to ${ID} .sam file (${ID}_${idx}_aln.sam)"  >&2
+
+            #-----------BAM----------------
+            #Convert output to output.bam, sort and index for downstream analyses (need to include -n for sorting by name, required for bamdam)
+            samtools view -@ "${task.cpus}" -b 0_sam/${ID}_${idx}_aln.sam | samtools sort -n -@ "${task.cpus}" -o 1_aln_bam/${ID}_${idx}_aln.bam
+            echo \$(date -u) "3. .bam file for ${ID} created and sorted by name (${ID}_${idx}_aln.bam)."  >&2
     """
 }
+
+
+process BOWTIE2_IF_MANY_CONTIGS {
+    // label 'small_memory' // for test
+    conda './envs/bowtie2.yml'
+    input:    
+        tuple val(ID), path(reads), val(n_allow_multimapper), 
+              val(idx), path(idxs)
+
+output:
+    tuple val(ID), path("*.bam")
+
+    publishDir "${params.OUTPUT_Dir}/04_mapping", mode: "copy"
+        
+    script:
+    """
+        #generate headers file:
+        bowtie2-inspect "$idx" > "${idx}.fa"
+        samtools dict "${idx}.fa" | LC_ALL=C grep "^@SQ" | cut -f1-3 > "${idx}.headers"
+
+        bowtie2 --very-sensitive -p "${task.cpus}" -k $n_allow_multimapper -x $idx -U $reads | \
+            samtools view -@ "${task.cpus}" -Sb -q 0 -F 4 - > ${ID}.${idx}.bam
+
+        bowtie2 -x $idx -U $reads --time --sensitive --threads "${task.cpus}" -k $n_allow_multimapper --no-sq --no-unal -S ${ID}_${idx}_noheader.sam --un ${ID}_${idx}_unclass.fq
+        echo \$(date -u) "1. Headerless ${ID} .sam file made, unclassified reads .fq made."  >&2
+
+        #By default, the read header portion of .sam files processed from PhyloNorway is too large to coerce into a .bam format, but the header is still required. We need to add in header lines that are relevant to the specific .sam file.
+        #Extract unique AP_* patterns from column 3 of .sam file, then find matching lines in column 2 of ${idx}.headers
+        awk '\$3 ~ /^AP_/' ${ID}_${idx}_noheader.sam | awk '{print \$3}' | uniq > ${ID}_ap_patterns.txt
+        awk 'NR==FNR{pat[\$1]; next} {match(\$2, /^SN:(.*)/, arr); if(arr[1] in pat) print}' "${ID}_ap_patterns.txt" "${idx}.headers"  > ${ID}_header_matches.txt"
+
+        #Combine first line of the .sam file, then header_matches, then rest of .sam file, write a new .sam file with headers
+        {
+            head -n 1 ${ID}_${idx}_noheader.sam
+            cat ${ID}_header_matches.txt
+            tail -n +2 ${ID}_${idx}_noheader.sam
+        } > 0_sam/${ID}_${idx}_aln.sam
+        echo \$(date -u) "2. Headers added to ${ID} .sam file (${ID}_${idx}_aln.sam)"  >&2
+
+        #-----------BAM----------------
+        #Convert output to output.bam, sort and index for downstream analyses (need to include -n for sorting by name, required for bamdam)
+        samtools view -@ "${task.cpus}" -b 0_sam/${ID}_${idx}_aln.sam | samtools sort -n -@ "${task.cpus}" -o 1_aln_bam/${ID}_${idx}_aln.bam
+        echo \$(date -u) "3. .bam file for ${ID} created and sorted by name (${ID}_${idx}_aln.bam)."  >&2
+    """
+}
+
+
 
 process GET_ACC2TAXID {
     label 'little_memory'
 
-    conda ''
+    conda './envs/acc2taxid.yml'
 
     input:
     tuple val(idx_ID), path(idxs)
@@ -181,11 +257,14 @@ process GET_ACC2TAXID {
 
     script:
     """
-        if acc2taxid_exists == "false"; do
-            bowtie2-inspect $idx_ID | grep ">" | cut -f 1,2,3 -d" "| sed 's/>//' > $idx_ID.contigs
-        fi
+        bowtie2-inspect $idx_ID | grep ">" | cut -f 1,2,3 -d" "| sed 's/>//' > ${idx_ID}.contigs
 
-        generate_acc2taxid.sh $idx_ID.contigs ${task.cpus}
+        cut -f 2,3 -d' ' ${idx_ID}.contigs | sort | uniq > species
+
+        get_acc2taxid.py species > species_taxid
+
+        add_taxid.py ${idx_ID}.contigs species_taxid > ${idx_ID}.acc2taxid
+
     """
 
 
@@ -298,6 +377,8 @@ process NGSLCA {
 
     label 'little_memory'
     conda './envs/ngsLCA2.yml'
+    errorStrategy = { task.exitStatus == 1 ? 'ignore' : 'retry' }
+    
     input:    
         tuple val(ID), path(bam), path(NAMES), path(NODES), path(ACC2TAX)
             
@@ -306,6 +387,8 @@ process NGSLCA {
 	path("*.log")
 
     publishDir "${params.OUTPUT_Dir}/07_ngslca", mode: "copy"
+
+    errorStrategy 'ignore'
         
     script:
     """

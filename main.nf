@@ -2,7 +2,7 @@
 nextflow.enable.dsl = 2
 
 // include the subworkflow
-include { FASTP; SGA; PRINSEQ; KRAKEN2; BOWTIE2; MERGE_BAM; CONCATENATE_BEDFILES; MASK_REGIONS; FILTERBAM; NGSLCA;  BAMDAM; MMSEQ2 ; PLOTS_KRONA_BY_SAMPLE; METRICS; CONCAT_METRICS; PLOTS; PLOTS_KRONA_BY_SITE } from './func.nf'
+include { FASTP; SGA; PRINSEQ; KRAKEN2; BOWTIE2; MERGE_BAM; CONCATENATE_BEDFILES; MASK_REGIONS; FILTERBAM; NGSLCA;  BAMDAM; MMSEQ2 ; PLOTS_KRONA_BY_SAMPLE; METRICS; CONCAT_METRICS; PLOTS; PLOTS_KRONA_BY_SITE; GET_ACC2TAXID } from './func.nf'
 include { MASK_MICROBIAL_LIKE_REGION } from './subworkflows/mcworkflow.nf'
 
 def validate_pipeline() {
@@ -43,7 +43,9 @@ def validate_pipeline() {
 			if (!params.NODES) error "Missing required file parameter: NODES"
 			if (!params.ACC2TAXID && !params.BOWTIE2_MAPPING_DBs) error "NGSLCA requires ACC2TAXID or BOWTIE2_MAPPING_DBs."
 		}],
-        [name: 'BAMDAM',   toggle: params.ENABLE_BAMDAM,   req: { }],
+        [name: 'BAMDAM',   toggle: params.ENABLE_BAMDAM,   req: { 
+			if ((params.ENABLE_MAPPING != "enable" && !params.OVERRIDE_LIST_BAM) || (params.ENABLE_NGSLCA != "enable" && !params.OVERRIDE_LIST_NGSLCA)) error "BAMDAM requires either mapping or NGSLCA to be enabled or overridden."		
+		}],
 		[name: 'MMSEQS2',  toggle: params.ENABLE_MMSEQS2,  req: {
 			if (!params.MMSEQS2_DB) error "Missing required file parameter: MMSEQS2_DB"
 			if (!params.MMSEQS2_TAXADB_SQLITE) error "Missing required file parameter: MMSEQS2_TAXADB_SQLITE"
@@ -108,49 +110,47 @@ workflow {
     .splitCsv(header: true, sep: '\t', strip: true)
     .map { row -> row.sample }
     .unique()
-
-	//placeholders for having them as optional output
-    paired_reads = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE1", params.METAJAM_DIR+"/assets/NO_FILE2"] }
-	fastp_ch = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE3"] }
-    preprocessed_reads = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE4"] } // for nextflow evaluation
-	kraken_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE5"] }
-	bowtie2_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE6"] }
-	mmseq2_evaluation2 = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE7"] }
-	metrics2 = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE8"] }
-
-	input_fastq = paired_reads.map { tuple(it[0], it[1], it[2], params.FASTP_OVERLAP_LEN_REQUIRE, params.FASTP_MIN_LENGTH) }
+	//ch_sample_ids.view()
 
 	// Channel preprocessed_reads
 	if (params.ENABLE_PREPROCESS == "enable" ) {
 		// if (params.ENABLE_FASTP == "enable") { FASTP( input ) }
 
-		// allows to read fastq from a list of path
-		if (params.FASTQ_list_path != ""){
-			paired_reads1 = Channel
-			.fromPath(params.FASTQ_list_path)
-			.splitCsv(header: false, sep: '\t', strip: true)
-			.map { row -> tuple( row[0], file(row[1]))}
-			.groupTuple()
-			.map { id, reads -> tuple(id, reads[0], reads[1]) }
-		} else {
-			paired_reads1 = Channel.empty()
-		}
-		// allows to read fastq from direct path
-		if (params.FASTQ_direct_path != ""){
-			paired_reads2 = Channel
-				.fromFilePairs(params.FASTQ_direct_path)
-				.map { id, reads -> tuple(id.replaceAll(params.suffix_OVERRIDE_LIST, ''), reads[0], reads[1]) }
-		} else {
-			paired_reads2 = Channel.empty()
-		}
+		if (params.FASTQ_list_path || params.FASTQ_direct_path) {
+			
+			// allows to read fastq from a list of path
+			if (params.FASTQ_list_path){
+				paired_reads1 = Channel
+				.fromPath(params.FASTQ_list_path)
+				.splitCsv(header: false, sep: '\t', strip: true)
+				.map { row -> tuple( row[0], file(row[1]), file(row[2]))}
+				// .groupTuple()
+				// .map { id, reads -> tuple(id, reads[0], reads[1]) }
+				//paired_reads1.view{"Debug paired_reads1 from FASTQ_list_path: ${it}"}
 
-		// use both ways of specified fastq and remove duplicate
-		paired_reads1.concat(paired_reads2).unique()
-		.set{paired_reads}
+			} else {
+				paired_reads1 = Channel.empty()
+			}
+			// allows to read fastq from direct path
+			if (params.FASTQ_direct_path != ""){
+				paired_reads2 = Channel
+					.fromFilePairs(params.FASTQ_direct_path)
+					.map { id, reads -> tuple(id.replaceAll(params.suffix_OVERRIDE_LIST, ''), reads[0], reads[1]) }
+			} else {
+				paired_reads2 = Channel.empty()
+			}
+
+			// use both ways of specified fastq and remove duplicate
+			paired_reads1.concat(paired_reads2).unique()
+			.set{paired_reads}
+		} else {
+			paired_reads = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE1", params.METAJAM_DIR+"/assets/NO_FILE2"] }
+		}
 		
 		//paired_reads.view()
 
 		if ( params.ENABLE_FASTP == "enable" ) {
+			input_fastq = paired_reads.map { tuple(it[0], it[1], it[2], params.FASTP_OVERLAP_LEN_REQUIRE, params.FASTP_MIN_LENGTH) }
 			FASTP(input_fastq)
 			FASTP.out.set{fastp_ch1}
 		} else {fastp_ch1 = Channel.empty()}
@@ -185,7 +185,11 @@ workflow {
 			preprocessed_reads1 = fastp_ch
 		}
 	//} else if (workflow_entry_point == "KRAKEN2" || params.OVERRIDE_PREPROCESSED) {
-	} else {preprocessed_reads1 = Channel.empty()}
+	} else {
+		paired_reads = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE1", params.METAJAM_DIR+"/assets/NO_FILE2"] }
+		fastp_ch = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE3"] }
+    	preprocessed_reads1 = Channel.empty()  // for nextflow evaluation
+	}
 	
 	if (workflow_entry_point == "KRAKEN2" || params.OVERRIDE_PREPROCESSED) {
 		// to test
@@ -196,8 +200,13 @@ workflow {
 	} else {
 		preprocessed_reads2 = Channel.empty()
 	}
-
-	preprocessed_reads1.concat(preprocessed_reads2).unique().set{preprocessed_reads}
+	
+	preprocessed_reads = preprocessed_reads1
+    .concat(preprocessed_reads2)
+    .unique()
+    .ifEmpty {
+        ch_sample_ids.map { id -> [id, params.METAJAM_DIR + "/assets/NO_FILE4"] }
+    }
 
 	// preprocessed_reads.view()
 	if (params.ENABLE_KRAKEN_GTDB == "enable" || workflow_entry_point == "MAPPING" || params.OVERRIDE_LIST_KRAKEN ) {
@@ -221,6 +230,8 @@ workflow {
 		//kraken_out2.view()
 		kraken_out1.concat(kraken_out2).unique().set{kraken_out}
 
+	} else {
+		kraken_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE5"] }
 	}
 	//kraken_out.view()
 
@@ -230,11 +241,11 @@ workflow {
 			.splitText { it.strip( ) }
 			.map { it -> 
 			def name = it.tokenize('/')[-1]   // get basename
-			tuple(name, file("${it}*bt2*"))}
+			tuple(name, file("${it}*.bt2*"))}
 			.groupTuple()
 			.map { idx, idxs -> tuple(idx, idxs[0]) }
 			.set { mapping_indexes }
-			// mapping_indexes.view()
+			//mapping_indexes.view()
 
 			if (params.ENABLE_MAPPING == "enable") {
 				kraken_out
@@ -256,12 +267,17 @@ workflow {
 		.map { row -> tuple( row[0], file(row[1]))}
 	} else {bowtie2_out2 = Channel.empty()}
 
-	bowtie2_out1.concat(bowtie2_out2).unique().set{bowtie2_out}
+	// bowtie2_out1.concat(bowtie2_out2).unique().set{bowtie2_out}
+
+	bowtie2_out = bowtie2_out1.concat(bowtie2_out2).unique().ifEmpty {
+		ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE6"] }
+	}
 
 	bowtie2_out.groupTuple().set{mapped_bam}
 
 	MERGE_BAM( mapped_bam )
-
+	MERGE_BAM.out.set{ merged_bam }
+	
 	if (params.ENABLE_MASK_REGIONS == "enable" ) { 
 		if (params.ENABLE_GENERATE_BEDFILE_TO_MASK == "enable"){
 			MASK_MICROBIAL_LIKE_REGION( params.MCWORKFLOW_input_dir, params.MCWORKFLOW_input_list,
@@ -279,7 +295,7 @@ workflow {
 		}
 		// regions_to_mask.view()
 
-		MERGE_BAM.out
+		merged_bam
 		.combine(regions_to_mask)
 		.set{ input_mask }
 		//input_mask.view()
@@ -288,12 +304,12 @@ workflow {
 		MASK_REGIONS.out.set{ bam }
 
 	} else {
-		MERGE_BAM.out.set{ bam }
+		merged_bam.set{ bam }
 	}
 	// if (params.ENABLE_FILTERBAM == "enable") { 
 	// 	FILTERBAM( input )
 	// 	FILTERBAM.out.set{ bam }
-	// 	} else { MERGE_BAM.out.set{ bam } }
+	// 	} else { merged_bam.set{ bam } }
 
 	// bam.map { tuple(it[0], it[1], params.NAMES, params.NODES, params.ACC2TAXID )}.view()
 
@@ -305,19 +321,13 @@ workflow {
 		def acc2taxid_exists = acc2taxid.exists()
 		if ( !acc2taxid.exists() ) {
 
-			Channel.fromPath( params.BOWTIE2_MAPPING_DBs )
-			.splitText { it.strip( ) }
-			.map { it -> 
-			def name = it.tokenize('/')[-1]   // get basename
-			tuple(name, file("${it}*bt2*"))}
-			.groupTuple()
-			.map { idx, idxs -> tuple(idx, idxs[0]) }
-			.set { mapping_indexes }
+			mapping_indexes | GET_ACC2TAXID | collectFile 
+			// .set { mapping_indexes }
 
-			GET_ACC2TAXID( mapping_indexes ) //??
+			// GET_ACC2TAXID( mapping_indexes )
 
-			GET_ACC2TAXID.out.collectFile(name: 'acc2taxid.txt', newLine: true)
-			.set{acc2taxid}
+			// GET_ACC2TAXID.out.collectFile(name: 'acc2taxid.txt', newLine: true).set{acc2taxid}
+
 		}
 
 		NGSLCA( bam.map { tuple(it[0], it[1], params.NAMES, params.NODES, acc2taxid )} )
@@ -339,7 +349,7 @@ workflow {
 
 	if (params.ENABLE_BAMDAM == "enable" ) {
 
-		MERGE_BAM.out
+		merged_bam
 		.combine( lca ,by:0 )
 		.map(it -> tuple(it[0], it[1], it[2],
 		params.BAMDAM_STRANDED,
@@ -434,7 +444,9 @@ workflow {
 		mmseq2_evaluation2 = Channel.empty()
 	} 
 
-	mmseq2_evaluation1.concat(mmseq2_evaluation2).unique().set{mmseq2_evaluation}
+	mmseq2_evaluation = mmseq2_evaluation1.concat(mmseq2_evaluation2).unique().ifEmpty {
+		ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE7"] }
+	}
 
 	if (params.ENABLE_KRONATOOLS == "enable") { 
 
@@ -449,37 +461,49 @@ workflow {
 		//check if any channel does not match the ch_sample_ids in metadata so it does not hang silently
 		paired_reads = paired_reads.combine( ch_sample_ids ,by:0 )
 		.ifEmpty {
-    	    log.error "paired_reads (params.FASTQ_list_path or params.FASTQ_direct_path) does not match with the sample IDs in params.metadata. Please check your input files and metadata."
+    	    log.error "paired_reads (params.FASTQ_list_path or params.FASTQ_direct_path) does not match with the sample IDs in params.metadata, or row in inputs not spaced with tabs. Please check your input files and metadata."
+			paired_reads.view{log.error "Debug paired_reads: ${it}"}
+			ch_sample_ids.view{log.error "Debug ch_sample_ids: ${it}"}
         	System.exit(1)
     	}
 
 		fastp_ch = fastp_ch.combine(ch_sample_ids, by:0)
 		.ifEmpty {
-			log.error "fastp output (params.OVERRIDE_LIST_FASTP) does not match sample IDs in params.metadata"
+			log.error "fastp output (params.OVERRIDE_LIST_FASTP) does not match sample IDs in params.metadata, or row in inputs not spaced with tabs"
+			fastp_ch.view{log.error "Debug fastp_ch: ${it}"}
+			ch_sample_ids.view{log.error "Debug ch_sample_ids: ${it}"}
 			System.exit(1)
 		}
 
 		preprocessed_reads = preprocessed_reads.combine(ch_sample_ids, by:0)
 			.ifEmpty {
-				log.error "preprocessed_reads (params.OVERRIDE_PREPROCESSED) does not match sample IDs in params.metadata"
+				log.error "preprocessed_reads (params.OVERRIDE_PREPROCESSED) does not match sample IDs in params.metadata, or row in inputs not spaced with tabs"
+				preprocessed_reads.view{log.error "Debug preprocessed_reads: ${it}"}
+				ch_sample_ids.view{log.error "Debug ch_sample_ids: ${it}"}
 				System.exit(1)
 			}
 
 		kraken_out = kraken_out.combine(ch_sample_ids, by:0)
 			.ifEmpty {
-				log.error "kraken_out (params.OVERRIDE_LIST_KRAKEN) does not match sample IDs in params.metadata"
+				log.error "kraken_out (params.OVERRIDE_LIST_KRAKEN) does not match sample IDs in params.metadata, or row in inputs not spaced with tabs"
+				kraken_out.view{log.error "Debug kraken_out: ${it}"}
+				ch_sample_ids.view{log.error "Debug ch_sample_ids: ${it}"}
 				System.exit(1)
 			}
 
 		mapped_bam = mapped_bam.combine(ch_sample_ids, by:0)
 			.ifEmpty {
-				log.error "mapped_bam (params.OVERRIDE_LIST_BAM) does not match sample IDs in params.metadata"
+				log.error "mapped_bam (params.OVERRIDE_LIST_BAM) does not match sample IDs in params.metadata, or row in inputs not spaced with tabs"
+				mapped_bam.view{log.error "Debug mapped_bam: ${it}"}
+				ch_sample_ids.view{log.error "Debug ch_sample_ids: ${it}"}
 				System.exit(1)
 			}
 
 		bamdam_bam_lca = bamdam_bam_lca.combine( ch_sample_ids ,by:0 )
 		.ifEmpty {
-    	    log.error "bamdam_bam_lca (params.OVERRIDE_LIST_BAMDAM) does not match with the sample IDs in params.metadata. Please check your input files and metadata."
+    	    log.error "bamdam_bam_lca (params.OVERRIDE_LIST_BAMDAM) does not match with the sample IDs in params.metadata, or row in inputs not spaced with tabs"
+        	bamdam_bam_lca.view{log.error "Debug bamdam_bam_lca: ${it}"}
+        	ch_sample_ids.view{log.error "Debug ch_sample_ids: ${it}"}
         	System.exit(1)
     	}
 
@@ -496,7 +520,6 @@ workflow {
 		//METRICS.out.collect().view()
 		CONCAT_METRICS( METRICS.out.collect() )
 
-
 		CONCAT_METRICS.out.set{ metrics1 }
 
 	} else {metrics1 = Channel.empty()}
@@ -505,7 +528,10 @@ workflow {
 		Channel.fromPath(params.OVERRIDE_LIST_METRICS)
 		.set{ metrics2 }
 	} else {metrics2 = Channel.empty()}
-	metrics1.concat(metrics2).unique().set{metrics}
+
+	metrics = metrics1.concat(metrics2).unique().ifEmpty {
+		ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE8"] }
+	}
 
 	if (params.ENABLE_PLOTS == "enable") {
 
