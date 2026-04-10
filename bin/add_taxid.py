@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 import sys
 
-# input_contig = sys.argv[1]
-# species_taxid_file = sys.argv[2]
-
-input_contig = "mammals_birds_fish.contig"
-species_taxid_file = "species_taxid"
+input_contig = sys.argv[1]
+species_taxid_file = sys.argv[2]
 
 # read species_taxid into dict: species -> taxid
 species_taxid = {}
