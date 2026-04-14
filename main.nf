@@ -320,14 +320,7 @@ workflow {
 		def acc2taxid = file(params.ACC2TAXID) 
 		def acc2taxid_exists = acc2taxid.exists()
 		if ( !acc2taxid.exists() ) {
-
-			mapping_indexes | GET_ACC2TAXID | collectFile 
-			// .set { mapping_indexes }
-
-			// GET_ACC2TAXID( mapping_indexes )
-
-			// GET_ACC2TAXID.out.collectFile(name: 'acc2taxid.txt', newLine: true).set{acc2taxid}
-
+			mapping_indexes | GET_ACC2TAXID | collectFile // it requires species name just after contig name in ref, also could generate NA for some species
 		}
 
 		NGSLCA( bam.map { tuple(it[0], it[1], params.NAMES, params.NODES, acc2taxid )} )

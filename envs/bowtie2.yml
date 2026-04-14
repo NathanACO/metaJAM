@@ -5,3 +5,4 @@ channels:
 dependencies:
   - bowtie2
   - samtools
+  - pigz 

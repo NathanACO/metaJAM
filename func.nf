@@ -72,14 +72,16 @@ process SGA {
 
 
 process PRINSEQ {
-    label 'small_memory'
-	conda 'bioconda::prinseq'
-	input:
+
+    errorStrategy 'retry' // duplicate removal could oom without nextflow registering it as oom
+
+    conda 'bioconda::prinseq'
+    input:
     tuple val(ID), path(merged_reads), val(PRINSEQ_COMPLEXITY_METHOD), val(PRINSEQ_COMPLEXITY_THRESHOLD), val(PRINSEQ_MIN_LEN), val(PRINSEQ_DEREP)
 
     output:
-    tuple val(ID), path("*_merged.complexity_filtered.duplicatesremoved*"), emit: "rm_low_complexity"    
-    tuple path("*_merged.complexity_filtered*"), path("*_merged.low_complexity*")
+    tuple val(ID), path("*_merged.complexity_filtered.duplicatesremoved.fastq.gz"), emit: "rm_low_complexity"    
+    tuple path("*_merged.complexity_filtered.fastq.gz"), path("*_merged.low_complexity.fastq.gz")
 
     publishDir "${params.OUTPUT_Dir}/02_prinseq", mode: "copy" 
 
@@ -100,7 +102,7 @@ process PRINSEQ {
 		-min_len "${PRINSEQ_MIN_LEN}" \
 		-line_width 0
 
-		gzip -f "\${BAD}.fastq"
+        echo "low complexity filter finished"
 
 		# 3) Remove exact fwd/rev duplicates
 		prinseq-lite.pl \
@@ -111,7 +113,9 @@ process PRINSEQ {
 		-derep "${PRINSEQ_DEREP}" \
 		-line_width 0
 
-		gzip -f "\${DEREP_OUT}.fastq"
+        echo "duplicate removal finished"
+
+		gzip -f *.fastq
 		"""
 }
 
@@ -161,37 +165,7 @@ output:
         
     script:
     """
-        if bowtie2 --sensitive -p "${task.cpus}" -k $n_allow_multimapper -x $idx -U $reads | \
-            samtools view -@ "${task.cpus}" -Sb -q 0 -F 4 - > $ID.$idx.bam; then
-            echo "mapping directly" >&2
-        else
-            #generate headers file:
-            bowtie2-inspect "$idx" > "${idx}.fa"
-            samtools dict "${idx}.fa" | LC_ALL=C grep "^@SQ" | cut -f1-3 > "${idx}.headers"
-
-            bowtie2 --very-sensitive -p "${task.cpus}" -k $n_allow_multimapper -x $idx -U $reads | \
-                samtools view -@ "${task.cpus}" -Sb -q 0 -F 4 - > ${ID}.${idx}.bam
-
-            bowtie2 -x $idx -U $reads --time --sensitive --threads "${task.cpus}" -k $n_allow_multimapper --no-sq --no-unal -S ${ID}_${idx}_noheader.sam --un ${ID}_${idx}_unclass.fq
-            echo \$(date -u) "1. Headerless ${ID} .sam file made, unclassified reads .fq made."  >&2
-
-            #By default, the read header portion of .sam files processed from PhyloNorway is too large to coerce into a .bam format, but the header is still required. We need to add in header lines that are relevant to the specific .sam file.
-            #Extract unique AP_* patterns from column 3 of .sam file, then find matching lines in column 2 of ${idx}.headers
-            awk '\$3 ~ /^AP_/' ${ID}_${idx}_noheader.sam | awk '{print \$3}' | uniq > ${ID}_ap_patterns.txt
-            awk 'NR==FNR{pat[\$1]; next} {match(\$2, /^SN:(.*)/, arr); if(arr[1] in pat) print}' "${ID}_ap_patterns.txt" "${idx}.headers"  > ${ID}_header_matches.txt"
-
-            #Combine first line of the .sam file, then header_matches, then rest of .sam file, write a new .sam file with headers
-            {
-                head -n 1 ${ID}_${idx}_noheader.sam
-                cat ${ID}_header_matches.txt
-                tail -n +2 ${ID}_${idx}_noheader.sam
-            } > 0_sam/${ID}_${idx}_aln.sam
-            echo \$(date -u) "2. Headers added to ${ID} .sam file (${ID}_${idx}_aln.sam)"  >&2
-
-            #-----------BAM----------------
-            #Convert output to output.bam, sort and index for downstream analyses (need to include -n for sorting by name, required for bamdam)
-            samtools view -@ "${task.cpus}" -b 0_sam/${ID}_${idx}_aln.sam | samtools sort -n -@ "${task.cpus}" -o 1_aln_bam/${ID}_${idx}_aln.bam
-            echo \$(date -u) "3. .bam file for ${ID} created and sorted by name (${ID}_${idx}_aln.bam)."  >&2
+    mapping.sh $ID $idx $reads "${task.cpus}" $n_allow_multimapper
     """
 }
 
@@ -243,7 +217,7 @@ output:
 
 
 process GET_ACC2TAXID {
-    label 'little_memory'
+    label 'small_memory'
 
     conda './envs/acc2taxid.yml'
 
@@ -257,7 +231,7 @@ process GET_ACC2TAXID {
 
     script:
     """
-        bowtie2-inspect $idx_ID | grep ">" | cut -f 1,2,3 -d" "| sed 's/>//' > ${idx_ID}.contigs
+        bowtie2-inspect --names $idx_ID | cut -f 1,2,3 -d" " > ${idx_ID}.contigs
 
         cut -f 2,3 -d' ' ${idx_ID}.contigs | sort | uniq > species
 
