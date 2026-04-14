@@ -161,7 +161,7 @@ process BOWTIE2 {
 output:
     tuple val(ID), path("*.bam")
 
-    publishDir "${params.OUTPUT_Dir}/04_mapping", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/04_parallel_mapping", mode: "copy"
         
     script:
     """

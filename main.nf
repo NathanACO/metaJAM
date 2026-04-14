@@ -4,6 +4,7 @@ nextflow.enable.dsl = 2
 // include the subworkflow
 include { FASTP; SGA; PRINSEQ; KRAKEN2; BOWTIE2; MERGE_BAM; CONCATENATE_BEDFILES; MASK_REGIONS; FILTERBAM; NGSLCA;  BAMDAM; MMSEQ2 ; PLOTS_KRONA_BY_SAMPLE; METRICS; CONCAT_METRICS; PLOTS; PLOTS_KRONA_BY_SITE; GET_ACC2TAXID } from './func.nf'
 include { MASK_MICROBIAL_LIKE_REGION } from './subworkflows/mcworkflow.nf'
+include { SEQUENTIAL_MAP; BOWTIE2_DB1; BOWTIE2_DB2; BOWTIE2_DB3; BOWTIE2_DB4; BOWTIE2_DB5; BOWTIE2_DB6; BOWTIE2_DB7; BOWTIE2_DB8; BOWTIE2_DB9; BOWTIE2_DB10 } from './subworkflows/sequential_map.nf'
 
 def validate_pipeline() {
 
@@ -27,6 +28,9 @@ def validate_pipeline() {
 		[name: 'MAPPING',  toggle: params.ENABLE_MAPPING,  req: {
 			if (!params.BOWTIE2_MAPPING_DBs) error "Missing required file parameter: BOWTIE2_MAPPING_DBs"
 			if (params.BOWTIE2_N_ALLOW_MULTIMAPPER == "" || params.BOWTIE2_N_ALLOW_MULTIMAPPER == null) error "Missing required value parameter: BOWTIE2_N_ALLOW_MULTIMAPPER"
+			if (params.ENABLE_PARALLEL_MAPPING != "enable" && params.USE_MAPPING == "PARALLEL_MAPPING") error "params.USE_MAPPING == \"PARALLEL_MAPPING\" requires ENABLE_PARALLEL_MAPPING to be enabled."
+			if (params.ENABLE_SEQUENTIAL_MAPPING != "enable" && params.USE_MAPPING == "SEQUENTIAL_MAPPING") error "params.USE_MAPPING == \"SEQUENTIAL_MAPPING\" requires ENABLE_SEQUENTIAL_MAPPING to be enabled."
+			if (params.ENABLE_PARALLEL_MAPPING != "enable" && params.ENABLE_SEQUENTIAL_MAPPING != "enable") error "As mapping is enabled with params.ENABLE_MAPPING, you need to enable at least one of ENABLE_PARALLEL_MAPPING or ENABLE_SEQUENTIAL_MAPPING."
 		}],
 		[name: 'MASKING',  toggle: params.ENABLE_MASK_REGIONS, req: {
 			if (params.ENABLE_GENERATE_BEDFILE_TO_MASK == "enable") {
@@ -248,14 +252,22 @@ workflow {
 			//mapping_indexes.view()
 
 			if (params.ENABLE_MAPPING == "enable") {
-				kraken_out
-				.map { it -> tuple(it[0], it[1], params.BOWTIE2_N_ALLOW_MULTIMAPPER) }
-				.combine( mapping_indexes )
-				.set{input_bowtie2}
-				// input_bowtie2.view()
-				BOWTIE2( input_bowtie2 )
 
-				BOWTIE2.out.set { bowtie2_out1 }
+				if (params.ENABLE_PARALLEL_MAPPING == "enable") {
+					kraken_out
+					.map { it -> tuple(it[0], it[1], params.BOWTIE2_N_ALLOW_MULTIMAPPER) }
+					.combine( mapping_indexes )
+					.set{input_bowtie2}
+					// input_bowtie2.view()
+					BOWTIE2( input_bowtie2 )
+					if (params.USE_MAPPING == "PARALLEL_MAPPING") { BOWTIE2.out.set { bowtie2_out1 } }
+				} 
+
+				if (params.ENABLE_PARALLEL_MAPPING != "enable") {
+					SEQUENTIAL_MAP( mapping_indexes, kraken_out, params.BOWTIE2_N_ALLOW_MULTIMAPPER )
+					
+					if (params.USE_MAPPING == "SEQUENTIAL_MAPPING") { SEQUENTIAL_MAP.out.set { bowtie2_out1 } }
+				} 
 			}
 	} else {bowtie2_out1 = Channel.empty()}
 	
