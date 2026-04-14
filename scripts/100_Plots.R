@@ -321,6 +321,7 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
       rank    = ranks,
       reads   = as.numeric(x$TotalReads),
       damage_p1 = as.numeric(x$`Damage+1`),
+      damage_m1 = as.numeric(x$`Damage-1`),
       taxpath = as.character(x$taxpath)
     ) %>%
       filter(rank %in% c("genus", "family"))
@@ -363,11 +364,11 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
   n_samples <- length(sample_order)
 
   sample_name_size <- dplyr::case_when(
-    n_samples <= 20 ~ 1.4,
-    n_samples <= 30 ~ 1.2,
-    n_samples <= 40 ~ 1.0,
-    n_samples <= 60 ~ 0.7,
-    TRUE            ~ 0.4
+    n_samples <= 20 ~ 2.8,
+    n_samples <= 30 ~ 2.4,
+    n_samples <= 40 ~ 2.0,
+    n_samples <= 60 ~ 1.4,
+    TRUE            ~ 0.8
   )
   sample_age_size <- dplyr::case_when(
     n_samples <= 20 ~ 2.6,
@@ -432,18 +433,9 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
     dplyr::distinct(sample, .keep_all = TRUE) %>%
     dplyr::transmute(sample, age = .data[[age_col]])
 
-  plot_name_col <- intersect(c("sample_plot_name", "sample_plot", "plot_name", "sample_label"), names(meta_filt))[1]
-  if (!is.na(plot_name_col)) {
-    plot_labels <- meta_filt[[plot_name_col]][match(sample_order, meta_filt$sample)]
-    plot_labels <- as.character(plot_labels)
-    plot_labels[is.na(plot_labels) | !nzchar(trimws(plot_labels)) | trimws(toupper(plot_labels)) == "NA"] <- sample_order[is.na(plot_labels) | !nzchar(trimws(plot_labels)) | trimws(toupper(plot_labels)) == "NA"]
-  } else {
-    plot_labels <- sample_order
-  }
-
   label_df_name <- tibble(
     sample = factor(sample_order, levels = sample_order),
-    label  = plot_labels,
+    label  = sample_order,
     sample_type = sample_types
   )
   age_labels <- ages$age[match(sample_order, ages$sample)]
@@ -510,7 +502,7 @@ damage_cell <- dat_rank %>%
   group_by(taxon, sample) %>%
   summarise(
     reads = sum(reads, na.rm = TRUE),
-    dmg   = dplyr::first(damage_p1),
+    dmg   = mean(c(dplyr::first(damage_p1), dplyr::first(damage_m1)), na.rm = TRUE),
     .groups = "drop"
   ) %>%
   mutate(dmg_pct = 100 * dmg)
@@ -1106,11 +1098,11 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
   n_samples <- length(sample_order)
 
   sample_name_size <- dplyr::case_when(
-    n_samples <= 20 ~ 1.4,
-    n_samples <= 30 ~ 1.2,
-    n_samples <= 40 ~ 1.0,
-    n_samples <= 60 ~ 0.7,
-    TRUE            ~ 0.4
+    n_samples <= 20 ~ 2.8,
+    n_samples <= 30 ~ 2.4,
+    n_samples <= 40 ~ 2.0,
+    n_samples <= 60 ~ 1.4,
+    TRUE            ~ 0.8
   )
   sample_age_size <- dplyr::case_when(
     n_samples <= 20 ~ 2.6,
@@ -1162,18 +1154,9 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
   base_cols <- RColorBrewer::brewer.pal(base_n, "Set2")
   sample_type_cols <- if (ntypes <= length(base_cols)) base_cols[seq_len(ntypes)] else grDevices::colorRampPalette(base_cols)(ntypes)
 
-  plot_name_col <- intersect(c("sample_plot_name", "sample_plot", "plot_name", "sample_label"), names(meta_filt))[1]
-  if (!is.na(plot_name_col)) {
-    plot_labels <- meta_filt[[plot_name_col]][match(sample_order, meta_filt$sample)]
-    plot_labels <- as.character(plot_labels)
-    plot_labels[is.na(plot_labels) | !nzchar(trimws(plot_labels)) | trimws(toupper(plot_labels)) == "NA"] <- sample_order[is.na(plot_labels) | !nzchar(trimws(plot_labels)) | trimws(toupper(plot_labels)) == "NA"]
-  } else {
-    plot_labels <- sample_order
-  }
-
   label_df_name <- tibble(
     sample = factor(sample_order, levels = sample_order),
-    label  = plot_labels,
+    label  = sample_order,
     sample_type = sample_types
   )
   label_df_age <- tibble(
@@ -1580,11 +1563,11 @@ make_taxa_evolution_plots <- function(bamdam_dir, samples_path, metadata_path, m
   n_samples <- length(sample_order)
 
   sample_name_size <- dplyr::case_when(
-    n_samples <= 20 ~ 1.4,
-    n_samples <= 30 ~ 1.2,
-    n_samples <= 40 ~ 1.0,
-    n_samples <= 60 ~ 0.7,
-    TRUE            ~ 0.4
+    n_samples <= 20 ~ 2.8,
+    n_samples <= 30 ~ 2.4,
+    n_samples <= 40 ~ 2.0,
+    n_samples <= 60 ~ 1.4,
+    TRUE            ~ 0.8
   )
   sample_age_size <- dplyr::case_when(
     n_samples <= 20 ~ 2.6,
@@ -1623,18 +1606,9 @@ make_taxa_evolution_plots <- function(bamdam_dir, samples_path, metadata_path, m
   age_vec <- ages$age
   names(age_vec) <- ages$sample
 
-  plot_name_col <- intersect(c("sample_plot_name", "sample_plot", "plot_name", "sample_label"), names(meta_filt))[1]
-  if (!is.na(plot_name_col)) {
-    plot_labels <- meta_filt[[plot_name_col]][match(sample_order, meta_filt$sample)]
-    plot_labels <- as.character(plot_labels)
-    plot_labels[is.na(plot_labels) | !nzchar(trimws(plot_labels)) | trimws(toupper(plot_labels)) == "NA"] <- sample_order[is.na(plot_labels) | !nzchar(trimws(plot_labels)) | trimws(toupper(plot_labels)) == "NA"]
-  } else {
-    plot_labels <- sample_order
-  }
-
   label_df_name <- tibble(
     sample = factor(sample_order, levels = sample_order),
-    label  = plot_labels
+    label  = sample_order
   )
   label_df_age <- tibble(
     sample = factor(sample_order, levels = sample_order),
