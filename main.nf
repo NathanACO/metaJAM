@@ -1,10 +1,9 @@
-// --- PARAMETER VALIDATION (nf-core/eager style) ---
 nextflow.enable.dsl = 2
 
 // include the subworkflow
 include { FASTP; SGA; PRINSEQ; KRAKEN2; BOWTIE2; MERGE_BAM; CONCATENATE_BEDFILES; MASK_REGIONS; FILTERBAM; NGSLCA;  BAMDAM; MMSEQ2 ; PLOTS_KRONA_BY_SAMPLE; METRICS; CONCAT_METRICS; PLOTS; PLOTS_KRONA_BY_SITE; GET_ACC2TAXID } from './func.nf'
 include { MASK_MICROBIAL_LIKE_REGION } from './subworkflows/mcworkflow.nf'
-include { SEQUENTIAL_MAP; BOWTIE2_DB1; BOWTIE2_DB2; BOWTIE2_DB3; BOWTIE2_DB4; BOWTIE2_DB5; BOWTIE2_DB6; BOWTIE2_DB7; BOWTIE2_DB8; BOWTIE2_DB9; BOWTIE2_DB10 } from './subworkflows/sequential_map.nf'
+include { SEQUENTIAL_MAP } from './subworkflows/sequential_map.nf'
 
 def validate_pipeline() {
 
@@ -26,7 +25,7 @@ def validate_pipeline() {
 			if (!params.KRAKEN2_FILTER_DATABASE) error "Missing required file parameter: KRAKEN2_FILTER_DATABASE"
 		}],
 		[name: 'MAPPING',  toggle: params.ENABLE_MAPPING,  req: {
-			if (!params.BOWTIE2_MAPPING_DBs) error "Missing required file parameter: BOWTIE2_MAPPING_DBs"
+			if (!params.BOWTIE2_MAPPING_DB1) error "Missing required file parameter: BOWTIE2_MAPPING_DB1"
 			if (params.BOWTIE2_N_ALLOW_MULTIMAPPER == "" || params.BOWTIE2_N_ALLOW_MULTIMAPPER == null) error "Missing required value parameter: BOWTIE2_N_ALLOW_MULTIMAPPER"
 			if (params.ENABLE_PARALLEL_MAPPING != "enable" && params.USE_MAPPING == "PARALLEL_MAPPING") error "params.USE_MAPPING == \"PARALLEL_MAPPING\" requires ENABLE_PARALLEL_MAPPING to be enabled."
 			if (params.ENABLE_SEQUENTIAL_MAPPING != "enable" && params.USE_MAPPING == "SEQUENTIAL_MAPPING") error "params.USE_MAPPING == \"SEQUENTIAL_MAPPING\" requires ENABLE_SEQUENTIAL_MAPPING to be enabled."
@@ -34,7 +33,7 @@ def validate_pipeline() {
 		}],
 		[name: 'MASKING',  toggle: params.ENABLE_MASK_REGIONS, req: {
 			if (params.ENABLE_GENERATE_BEDFILE_TO_MASK == "enable") {
-				if (!params.BOWTIE2_MAPPING_DBs && (!params.MCWORKFLOW_input_dir && !params.MCWORKFLOW_input_list)) error "Missing required file parameter: MCWORKFLOW_input_list/MCWORKFLOW_input_dir or BOWTIE2_MAPPING_DBs. At least one of them is required to generate mapping indexes for masking."
+				if (!params.BOWTIE2_MAPPING_DB1 && (!params.MCWORKFLOW_input_dir && !params.MCWORKFLOW_input_list)) error "Missing required file parameter: MCWORKFLOW_input_list/MCWORKFLOW_input_dir or BOWTIE2_MAPPING_DB1. At least one of them is required to generate mapping indexes for masking."
 				if (!params.MCWORKFLOW_pseudo_reads_file_dir) error "Missing required file parameter: MCWORKFLOW_pseudo_reads_file_dir"
 				if (params.MCWORKFLOW_type_of_pseudo_reads == "" || params.MCWORKFLOW_type_of_pseudo_reads == null) error "Missing required value parameter: MCWORKFLOW_type_of_pseudo_reads"
 				if (params.MCWORKFLOW_n_allowed_multimappers == "" || params.MCWORKFLOW_n_allowed_multimappers == null) error "Missing required value parameter: MCWORKFLOW_n_allowed_multimappers"
@@ -45,7 +44,7 @@ def validate_pipeline() {
 		[name: 'NGSLCA',   toggle: params.ENABLE_NGSLCA,   req: {
 			if (!params.NAMES) error "Missing required file parameter: NAMES"
 			if (!params.NODES) error "Missing required file parameter: NODES"
-			if (!params.ACC2TAXID && !params.BOWTIE2_MAPPING_DBs) error "NGSLCA requires ACC2TAXID or BOWTIE2_MAPPING_DBs."
+			if (!params.ACC2TAXID && !params.BOWTIE2_MAPPING_DB1) error "NGSLCA requires ACC2TAXID or BOWTIE2_MAPPING_DB1."
 		}],
         [name: 'BAMDAM',   toggle: params.ENABLE_BAMDAM,   req: { 
 			if ((params.ENABLE_MAPPING != "enable" && !params.OVERRIDE_LIST_BAM) || (params.ENABLE_NGSLCA != "enable" && !params.OVERRIDE_LIST_NGSLCA)) error "BAMDAM requires either mapping or NGSLCA to be enabled or overridden."		
@@ -71,7 +70,7 @@ def validate_pipeline() {
     	]
 	]
 
-  // 2. Identify the Start Point (The first "enable" in the list)
+	// 2. Identify the Start Point (The first "enable" in the list)
     def first_idx = process_order.findIndexOf { it.toggle == "enable" }
     
     if (first_idx == -1) {
@@ -239,21 +238,43 @@ workflow {
 	}
 	//kraken_out.view()
 
+	bowtie2_out1 = Channel.empty()
 	if (params.ENABLE_MAPPING == "enable") { 
 
-			Channel.fromPath( params.BOWTIE2_MAPPING_DBs )
-			.splitText { it.strip( ) }
-			.map { it -> 
-			def name = it.tokenize('/')[-1]   // get basename
-			tuple(name, file("${it}*.bt2*"))}
-			.groupTuple()
-			.map { idx, idxs -> tuple(idx, idxs[0]) }
-			.set { mapping_indexes }
-			//mapping_indexes.view()
+			// Channel.fromPath( params.BOWTIE2_MAPPING_DBs )
+			// .splitText { it.strip( ) }
+			// .map { it -> 
+			// def name = it.tokenize('/')[-1]   // get basename
+			// tuple(name, file("${it}*.bt2*"))}
+			// .groupTuple()
+			// .map { idx, idxs -> tuple(idx, idxs[0]) }
+			// .set { mapping_indexes }
+
+			// read mapping indexes for debugging
 
 			if (params.ENABLE_MAPPING == "enable") {
 
 				if (params.ENABLE_PARALLEL_MAPPING == "enable") {
+
+					mapping_index1  = params.BOWTIE2_MAPPING_DB1  ? Channel.value(params.BOWTIE2_MAPPING_DB1).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+					mapping_index2  = params.BOWTIE2_MAPPING_DB2  ? Channel.value(params.BOWTIE2_MAPPING_DB2).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+					mapping_index3  = params.BOWTIE2_MAPPING_DB3  ? Channel.value(params.BOWTIE2_MAPPING_DB3).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+					mapping_index4  = params.BOWTIE2_MAPPING_DB4  ? Channel.value(params.BOWTIE2_MAPPING_DB4).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+					mapping_index5  = params.BOWTIE2_MAPPING_DB5  ? Channel.value(params.BOWTIE2_MAPPING_DB5).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+					mapping_index6  = params.BOWTIE2_MAPPING_DB6  ? Channel.value(params.BOWTIE2_MAPPING_DB6).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+					mapping_index7  = params.BOWTIE2_MAPPING_DB7  ? Channel.value(params.BOWTIE2_MAPPING_DB7).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+					mapping_index8  = params.BOWTIE2_MAPPING_DB8  ? Channel.value(params.BOWTIE2_MAPPING_DB8).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+					mapping_index9  = params.BOWTIE2_MAPPING_DB9  ? Channel.value(params.BOWTIE2_MAPPING_DB9).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+					mapping_index10 = params.BOWTIE2_MAPPING_DB10 ? Channel.value(params.BOWTIE2_MAPPING_DB10).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) } : Channel.empty()
+
+					mapping_indexes= Channel.empty()
+					.concat(mapping_index1).concat(mapping_index2).concat(mapping_index3)
+					.concat(mapping_index4).concat(mapping_index5).concat(mapping_index6)
+					.concat(mapping_index7).concat(mapping_index8).concat(mapping_index9)
+					.concat(mapping_index10)
+
+					mapping_indexes.view{"Debug mapping_indexes in parallel mapping: ${it}"}
+
 					kraken_out
 					.map { it -> tuple(it[0], it[1], params.BOWTIE2_N_ALLOW_MULTIMAPPER) }
 					.combine( mapping_indexes )
@@ -263,29 +284,45 @@ workflow {
 					if (params.USE_MAPPING == "PARALLEL_MAPPING") { BOWTIE2.out.set { bowtie2_out1 } }
 				} 
 
-				if (params.ENABLE_PARALLEL_MAPPING != "enable") {
-					SEQUENTIAL_MAP( mapping_indexes, kraken_out, params.BOWTIE2_N_ALLOW_MULTIMAPPER )
+				if (params.ENABLE_SEQUENTIAL_MAPPING == "enable") {
+					SEQUENTIAL_MAP( kraken_out, params.BOWTIE2_N_ALLOW_MULTIMAPPER )
 					
 					if (params.USE_MAPPING == "SEQUENTIAL_MAPPING") { SEQUENTIAL_MAP.out.set { bowtie2_out1 } }
 				} 
 			}
-	} else {bowtie2_out1 = Channel.empty()}
+	} //else {bowtie2_out1 = Channel.empty()} 
 	
+	bowtie2_out2 = Channel.empty()
 	if (workflow_entry_point == "NGSLCA" || workflow_entry_point == "MASKING" || params.OVERRIDE_LIST_BAM ) {
 		if (workflow_entry_point == "NGSLCA"){mapping_indexes = Channel.empty()}
 		bowtie2_out2 = Channel
 		.fromPath(params.OVERRIDE_LIST_BAM)
 		.splitCsv(header: false, sep: '\t', strip: true)
 		.map { row -> tuple( row[0], file(row[1]))}
-	} else {bowtie2_out2 = Channel.empty()}
+	} //else {bowtie2_out2 = Channel.empty()}
 
 	// bowtie2_out1.concat(bowtie2_out2).unique().set{bowtie2_out}
 
-	bowtie2_out = bowtie2_out1.concat(bowtie2_out2).unique().ifEmpty {
+	bowtie2_out = bowtie2_out1.concat(bowtie2_out2).unique()
+	.map{id, bams -> tuple(id, bams)}
+	.ifEmpty {
 		ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE6"] }
 	}
 
-	bowtie2_out.groupTuple().set{mapped_bam}
+	bowtie2_out.view()
+
+	// bowtie2_out
+    // .map { id, files -> tuple(id, files) }
+    // .groupBy()
+	// .map { key, bams -> tuple(key, bams.toSorted()) }
+	// .set{mapped_bam}
+
+	bowtie2_out
+    .collect()
+    .groupBy()
+	.set{mapped_bam}
+	
+	mapped_bam.view()
 
 	MERGE_BAM( mapped_bam )
 	MERGE_BAM.out.set{ merged_bam }
@@ -293,7 +330,11 @@ workflow {
 	if (params.ENABLE_MASK_REGIONS == "enable" ) { 
 		if (params.ENABLE_GENERATE_BEDFILE_TO_MASK == "enable"){
 			MASK_MICROBIAL_LIKE_REGION( params.MCWORKFLOW_input_dir, params.MCWORKFLOW_input_list,
-			params.BOWTIE2_MAPPING_DBs, params.MCWORKFLOW_pseudo_reads_file_dir,
+			params.BOWTIE2_MAPPING_DB1,params.BOWTIE2_MAPPING_DB2,params.BOWTIE2_MAPPING_DB3,
+			params.BOWTIE2_MAPPING_DB4,params.BOWTIE2_MAPPING_DB5,params.BOWTIE2_MAPPING_DB6,
+			params.BOWTIE2_MAPPING_DB7,params.BOWTIE2_MAPPING_DB8,params.BOWTIE2_MAPPING_DB9,
+			params.BOWTIE2_MAPPING_DB10, 
+			params.MCWORKFLOW_pseudo_reads_file_dir,
 			params.MCWORKFLOW_type_of_pseudo_reads, params.MCWORKFLOW_n_allowed_multimappers,
 			"${params.METAJAM_DIR}", "${params.METAJAM_DIR}/assets/GTDB_fna2name.txt", params.ENABLE_MASK_FASTA
 			)
@@ -326,6 +367,7 @@ workflow {
 	// bam.map { tuple(it[0], it[1], params.NAMES, params.NODES, params.ACC2TAXID )}.view()
 
 	// lca = Channel.empty()
+	lca1 = Channel.empty()
 	if (params.ENABLE_NGSLCA == "enable") { 
 		
 		// acc2taxid is only needed by ngsLCA
@@ -337,26 +379,27 @@ workflow {
 
 		NGSLCA( bam.map { tuple(it[0], it[1], params.NAMES, params.NODES, acc2taxid )} )
 		NGSLCA.out.lca.set{lca1}
-	} else {
-		lca1 = Channel.empty()
 	}
 	
+	lca2 = Channel.empty()
 	if (workflow_entry_point == "BAMDAM" || params.OVERRIDE_LIST_NGSLCA ) {
 		Channel.fromPath(params.OVERRIDE_LIST_NGSLCA)
 		.splitCsv(header: false, sep: '\t', strip: true)
 		.map { row -> tuple( row[0], file(row[1]))}
 		.set{lca2}
-	} else {
-		lca2 = Channel.empty()
 	}
 	lca1.concat(lca2).unique().set{lca}
 	// lca.view()
 
+	bamdam_bam_lca2 = Channel.empty()
+	bamdam_xml2 = Channel.empty()
+	bamdam_bam_lca1 = Channel.empty()
+	bamdam_xml1 = Channel.empty()
 	if (params.ENABLE_BAMDAM == "enable" ) {
 
 		merged_bam
 		.combine( lca ,by:0 )
-		.map(it -> tuple(it[0], it[1], it[2],
+		.map{it -> tuple(it[0], it[1], it[2],
 		params.BAMDAM_STRANDED,
 		params.BAMDAM_MINREADS,
 		params.BAMDAM_MAXDAMAGE,
@@ -364,7 +407,7 @@ workflow {
 		params.BAMDAM_MINCOUNT,
         params.BAMDAM_MINSIM,
         params.BAMDAM_MODE
-		))
+		)}
 		.set{ input_bamdam }
 		//input_bamdam.view()
 
@@ -378,9 +421,6 @@ workflow {
 		.set{bamdam_xml1}
 		// bamdam_bam_lca.view()
 			
-	} else {
-		bamdam_bam_lca1 = Channel.empty()
-		bamdam_xml1 = Channel.empty()
 	}
 	
 	if (workflow_entry_point == "MMSEQS2" || params.OVERRIDE_LIST_BAMDAM ) {
@@ -400,18 +440,16 @@ workflow {
 		.set{bamdam_xml2}
 
 		// bamdam_bam_lca.view()
-	} else {
-		bamdam_bam_lca2 = Channel.empty()
-		bamdam_xml2 = Channel.empty()
 	}
 
 	bamdam_bam_lca1.concat(bamdam_bam_lca2).unique().set{bamdam_bam_lca}
 
+	mmseq2_evaluation1 = Channel.empty()
 	if (params.ENABLE_MMSEQS2 == "enable") {
 		MMSEQS2_GENERA_FILE = Channel.fromPath(params.MMSEQS2_GENERA_FILE, checkIfExists:true)
 
 		bamdam_bam_lca
-		.map(it -> tuple(it[0], it[1], it[2], it[3],
+		.map{it -> tuple(it[0], it[1], it[2], it[3],
 		params.MMSEQS2_MIN_DMG,
 		params.MMSEQS2_TOP_GENERA,
 		params.MMSEQS2_MAX_READS,
@@ -429,15 +467,16 @@ workflow {
 		params.MMSEQS2_SEED,
 		params.MMSEQS2_MIN_BITS,
 		params.MMSEQS2_TAXADB_SQLITE
-		))
+		)}
 		.combine(MMSEQS2_GENERA_FILE) //optional input
 		.set{ input_mmseq2 }
 		//input_mmseq2.view()
 		
 		MMSEQ2( input_mmseq2 )
 		MMSEQ2.out.evaluation.collect().set{mmseq2_evaluation1}
-	} else {mmseq2_evaluation1 = Channel.empty()}
+	}
 	
+	mmseq2_evaluation2 = Channel.empty()
 	if ( params.OVERRIDE_LIST_MMSEQ2 ) {
 		Channel
 		.fromPath(params.OVERRIDE_LIST_MMSEQ2)
@@ -445,9 +484,7 @@ workflow {
 		.map { row -> 
 			tuple( row[0], file(row[1]))}
 		.set{mmseq2_evaluation2}
-	} else {
-		mmseq2_evaluation2 = Channel.empty()
-	} 
+	}
 
 	mmseq2_evaluation = mmseq2_evaluation1.concat(mmseq2_evaluation2).unique().ifEmpty {
 		ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE7"] }
@@ -541,9 +578,9 @@ workflow {
 	if (params.ENABLE_PLOTS == "enable") {
 
 		metrics
-		.combine(bamdam_bam_lca.map{it -> it[3]}.collect().map{[it]})
-		.combine(mmseq2_evaluation.map{it -> it[1]}.collect().map{[it]})
-		.map(it -> tuple(it[0], it[1], it[2],
+		.combine(bamdam_bam_lca.map{it[3]}.collect())
+		.combine(mmseq2_evaluation.map{it[1]}.collect())
+		.map{it -> tuple(it[0], it[1], it[2],
 			params.metadata,
 			params.PLOTS_SAMPLES_FOR_PLOTS,
 			params.PLOTS_MIN_READS,
@@ -554,7 +591,7 @@ workflow {
 			params.PLOTS_TAXA_PER_PLOT,
 			params.PLOTS_LIST_TAXA_EVOLUTION_FILE,
 			params.MAP_LAST_DB_TAG
-		))
+		)}
 		.set{ input_plots }
 
 		//input_plots.view{"Debug input_plots: ${it}"}
@@ -562,10 +599,10 @@ workflow {
 		PLOTS( input_plots )
         //PLOTS_KRONA_BY_SITE seperated from PLOTS for a cleaner conda env
 		PLOTS_KRONA_BY_SITE(
-			bamdam_bam_lca.map(it -> it[3]).collect(), 
+			bamdam_bam_lca.map{it -> it[3]}.collect(), 
 			params.metadata, 
 			params.BAMDAM_MINREADS,
 			params.BAMDAM_MAXDAMAGE
 		)
-	}	
+	}
 }

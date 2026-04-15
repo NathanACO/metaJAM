@@ -45,7 +45,6 @@ else
         -S "${ID}_${idx}_noheader.sam" \
         --un "${ID}_${idx}_unclass.fq"
 
-    pigz "${ID}_${idx}_unclass.fq"
 
     echo "$(date -u) 1. Headerless SAM created" >&2
 
@@ -93,3 +92,5 @@ else
 
     echo "$(date -u) 3. BAM created and sorted" >&2
 fi
+
+pigz "${ID}_${idx}_unclass.fq"
