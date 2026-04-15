@@ -287,7 +287,7 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
   bam_list <- purrr::map(files, function(f) {
     x <- suppressMessages(read_tsv(f, show_col_types = FALSE))
 
-    needed <- c("TaxName", "TotalReads", "taxpath", "Damage+1")
+    needed <- c("TaxName", "TotalReads", "taxpath", "Damage+1", "Damage-1")
     missing <- setdiff(needed, names(x))
     if (length(missing) > 0) {
       stop("Bamdam file ", f, " is missing columns: ", paste(missing, collapse = ", "))
@@ -433,9 +433,18 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
     dplyr::distinct(sample, .keep_all = TRUE) %>%
     dplyr::transmute(sample, age = .data[[age_col]])
 
+  plot_name_col <- intersect(c("sample_plot_name", "sample_plot", "plot_name", "sample_label"), names(meta_filt))[1]
+  if (!is.na(plot_name_col)) {
+    plot_labels <- meta_filt[[plot_name_col]][match(sample_order, meta_filt$sample)]
+    plot_labels <- as.character(plot_labels)
+    plot_labels[is.na(plot_labels) | !nzchar(trimws(plot_labels)) | trimws(toupper(plot_labels)) == "NA"] <- sample_order[is.na(plot_labels) | !nzchar(trimws(plot_labels)) | trimws(toupper(plot_labels)) == "NA"]
+  } else {
+    plot_labels <- sample_order
+  }
+
   label_df_name <- tibble(
     sample = factor(sample_order, levels = sample_order),
-    label  = sample_order,
+    label  = plot_labels,
     sample_type = sample_types
   )
   age_labels <- ages$age[match(sample_order, ages$sample)]
@@ -533,12 +542,12 @@ damage_cell <- damage_cell %>%
       TRUE ~ "red"
     )
   ) %>%
-  select(taxon, sample, damage_class)
+  select(taxon, sample, dmg_pct, damage_class)
 
 df_long <- df_long %>%
   mutate(taxon_chr = as.character(taxon), sample_chr = as.character(sample)) %>%
   left_join(
-    damage_cell %>% transmute(taxon_chr = taxon, sample_chr = sample, damage_class),
+    damage_cell %>% transmute(taxon_chr = taxon, sample_chr = sample, damage_pct = dmg_pct, damage_class),
     by = c("taxon_chr", "sample_chr")
   ) %>%
   mutate(
@@ -899,6 +908,36 @@ plot_bubble_reads <- function(df_long, max_log, out_prefix) {
     max_log <- built$max_log
     taxon_max_damage <- built$taxon_max_damage
 
+    # ---- NEW: export tables used for bamdam plots ----
+    bamdam_plot_input_tsv <- file.path(outdir, paste0("bamdam_", rank_sel, "_plot_input.tsv"))
+    df_long %>%
+      mutate(
+        sample = as.character(sample),
+        taxon = as.character(taxon),
+        age = ages$age[match(sample, ages$sample)],
+        sample_plot_name = plot_labels[match(sample, sample_order)]
+      ) %>%
+      write_tsv(bamdam_plot_input_tsv)
+    message("[bamdam] wrote plot input table: ", bamdam_plot_input_tsv)
+
+    bamdam_heatmap_input_tsv <- file.path(outdir, paste0("bamdam_", rank_sel, "_heatmap_input.tsv"))
+    keep_taxa_export <- taxon_max_damage %>%
+      filter(max_dmg_pct >= damage_threshold) %>%
+      pull(taxon) %>%
+      as.character()
+
+    df_long %>%
+      mutate(
+        sample = as.character(sample),
+        taxon = as.character(taxon),
+        age = ages$age[match(sample, ages$sample)],
+        sample_plot_name = plot_labels[match(sample, sample_order)]
+      ) %>%
+      filter(taxon %in% keep_taxa_export) %>%
+      { if (length(exclude_taxa) > 0) filter(., !(taxon %in% exclude_taxa)) else . } %>%
+      write_tsv(bamdam_heatmap_input_tsv)
+    message("[bamdam] wrote heatmap input table: ", bamdam_heatmap_input_tsv)
+
     # ---- split taxa into multiple panels if requested ----
     tax_levels <- levels(df_long$taxon)
     if (is.null(tax_levels) || length(tax_levels) == 0L) {
@@ -1154,9 +1193,18 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
   base_cols <- RColorBrewer::brewer.pal(base_n, "Set2")
   sample_type_cols <- if (ntypes <= length(base_cols)) base_cols[seq_len(ntypes)] else grDevices::colorRampPalette(base_cols)(ntypes)
 
+  plot_name_col <- intersect(c("sample_plot_name", "sample_plot", "plot_name", "sample_label"), names(meta_filt))[1]
+  if (!is.na(plot_name_col)) {
+    plot_labels <- meta_filt[[plot_name_col]][match(sample_order, meta_filt$sample)]
+    plot_labels <- as.character(plot_labels)
+    plot_labels[is.na(plot_labels) | !nzchar(trimws(plot_labels)) | trimws(toupper(plot_labels)) == "NA"] <- sample_order[is.na(plot_labels) | !nzchar(trimws(plot_labels)) | trimws(toupper(plot_labels)) == "NA"]
+  } else {
+    plot_labels <- sample_order
+  }
+
   label_df_name <- tibble(
     sample = factor(sample_order, levels = sample_order),
-    label  = sample_order,
+    label  = plot_labels,
     sample_type = sample_types
   )
   label_df_age <- tibble(
@@ -1563,11 +1611,11 @@ make_taxa_evolution_plots <- function(bamdam_dir, samples_path, metadata_path, m
   n_samples <- length(sample_order)
 
   sample_name_size <- dplyr::case_when(
-    n_samples <= 20 ~ 2.8,
-    n_samples <= 30 ~ 2.4,
-    n_samples <= 40 ~ 2.0,
+    n_samples <= 20 ~ 2.2,
+    n_samples <= 30 ~ 1.8,
+    n_samples <= 40 ~ 1.6,
     n_samples <= 60 ~ 1.4,
-    TRUE            ~ 0.8
+    TRUE            ~ 1.0
   )
   sample_age_size <- dplyr::case_when(
     n_samples <= 20 ~ 2.6,
@@ -1606,9 +1654,18 @@ make_taxa_evolution_plots <- function(bamdam_dir, samples_path, metadata_path, m
   age_vec <- ages$age
   names(age_vec) <- ages$sample
 
+  plot_name_col <- intersect(c("sample_plot_name", "sample_plot", "plot_name", "sample_label"), names(meta_filt))[1]
+  if (!is.na(plot_name_col)) {
+    plot_labels <- meta_filt[[plot_name_col]][match(sample_order, meta_filt$sample)]
+    plot_labels <- as.character(plot_labels)
+    plot_labels[is.na(plot_labels) | !nzchar(trimws(plot_labels)) | trimws(toupper(plot_labels)) == "NA"] <- sample_order[is.na(plot_labels) | !nzchar(trimws(plot_labels)) | trimws(toupper(plot_labels)) == "NA"]
+  } else {
+    plot_labels <- sample_order
+  }
+
   label_df_name <- tibble(
     sample = factor(sample_order, levels = sample_order),
-    label  = sample_order
+    label  = plot_labels
   )
   label_df_age <- tibble(
     sample = factor(sample_order, levels = sample_order),
