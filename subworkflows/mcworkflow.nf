@@ -6,7 +6,16 @@ workflow MASK_MICROBIAL_LIKE_REGION {
   take:
     input_dir 
     input_list
-    BOWTIE2_MAPPING_DBs
+    BOWTIE2_MAPPING_DB1
+    BOWTIE2_MAPPING_DB2
+    BOWTIE2_MAPPING_DB3
+    BOWTIE2_MAPPING_DB4
+    BOWTIE2_MAPPING_DB5
+    BOWTIE2_MAPPING_DB6
+    BOWTIE2_MAPPING_DB7
+    BOWTIE2_MAPPING_DB8
+    BOWTIE2_MAPPING_DB9
+    BOWTIE2_MAPPING_DB10
     pseudo_reads_file_dir
     type_of_pseudo_reads 
     n_allowed_multimappers
@@ -16,25 +25,23 @@ workflow MASK_MICROBIAL_LIKE_REGION {
   
   main:
 
-    // pseudo_reads_file = Channel.fromPath("${pseudo_reads_file_dir}/*", glob: true)
-    pseudo_reads_file = Channel
-    .fromPath(pseudo_reads_file_dir, type: 'dir')
-    .flatMap { dir -> dir.listFiles() }
-    .filter { 
-        it.name.endsWith('.fna') ||
-        it.name.endsWith('.fa') ||
-        it.name.endsWith('.fasta') ||
-        it.name.endsWith('.fna.gz') ||
-        it.name.endsWith('.fa.gz') ||
-        it.name.endsWith('.fasta.gz')
-    }
+    pseudo_reads_file = Channel.fromPath(pseudo_reads_file_dir, type: 'dir')
+        .flatMap { dir -> dir.listFiles() }
+        .filter {
+            it.name.endsWith('.fna') ||
+            it.name.endsWith('.fa') ||
+            it.name.endsWith('.fasta') ||
+            it.name.endsWith('.fna.gz') ||
+            it.name.endsWith('.fa.gz') ||
+            it.name.endsWith('.fasta.gz')
+        }
     .ifEmpty {
         log.error "No input files found in ${pseudo_reads_file_dir}"
         System.exit(1)
     }
 
     // prioritize reading mapping indexes if provided, otherwise generate them from input fasta files
-    if (!BOWTIE2_MAPPING_DBs) {
+    if (!params.BOWTIE2_MAPPING_DB1) {
 
       input1 = Channel.empty()
       if (input_dir != ""){
@@ -81,15 +88,33 @@ workflow MASK_MICROBIAL_LIKE_REGION {
       index_reference.out.set{mapping_indexes}
 
     } else {
-      Channel.fromPath( BOWTIE2_MAPPING_DBs )
-			.splitText { it.strip( ) }
-			.map { it -> 
-			def name = it.tokenize('/')[-1]   // get basename
-			tuple(name, file("${it}*bt2*"))}
-			.groupTuple()
-			.map { idx, idxs -> tuple(idx, idxs[0]) }
-			.set { mapping_indexes }
+      // Channel.fromPath( BOWTIE2_MAPPING_DBs )
+			// .splitText { it.strip( ) }
+			// .map { it -> 
+			// def name = it.tokenize('/')[-1]   // get basename
+			// tuple(name, file("${it}*bt2*"))}
+			// .groupTuple()
+			// .map { idx, idxs -> tuple(idx, idxs[0]) }
+			// .set { mapping_indexes }
 
+      mapping_index1  = params.BOWTIE2_MAPPING_DB1  ? Channel.value(params.BOWTIE2_MAPPING_DB1).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+      mapping_index2  = params.BOWTIE2_MAPPING_DB2  ? Channel.value(params.BOWTIE2_MAPPING_DB2).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+      mapping_index3  = params.BOWTIE2_MAPPING_DB3  ? Channel.value(params.BOWTIE2_MAPPING_DB3).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+      mapping_index4  = params.BOWTIE2_MAPPING_DB4  ? Channel.value(params.BOWTIE2_MAPPING_DB4).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+      mapping_index5  = params.BOWTIE2_MAPPING_DB5  ? Channel.value(params.BOWTIE2_MAPPING_DB5).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+      mapping_index6  = params.BOWTIE2_MAPPING_DB6  ? Channel.value(params.BOWTIE2_MAPPING_DB6).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+      mapping_index7  = params.BOWTIE2_MAPPING_DB7  ? Channel.value(params.BOWTIE2_MAPPING_DB7).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+      mapping_index8  = params.BOWTIE2_MAPPING_DB8  ? Channel.value(params.BOWTIE2_MAPPING_DB8).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+      mapping_index9  = params.BOWTIE2_MAPPING_DB9  ? Channel.value(params.BOWTIE2_MAPPING_DB9).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+      mapping_index10 = params.BOWTIE2_MAPPING_DB10 ? Channel.value(params.BOWTIE2_MAPPING_DB10).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) } : Channel.empty()
+
+      mapping_indexes= Channel.empty()
+      .concat(mapping_index1).concat(mapping_index2).concat(mapping_index3)
+      .concat(mapping_index4).concat(mapping_index5).concat(mapping_index6)
+      .concat(mapping_index7).concat(mapping_index8).concat(mapping_index9)
+      .concat(mapping_index10)
+
+      mapping_indexes.view{"Debug mapping_indexes in parallel mapping: ${it}"}
     }
     
     input_for_align = mapping_indexes
@@ -165,11 +190,21 @@ process align_pseudo_reads {
 
     input_pseudo_reads_name=\$(basename "$input_pseudo_reads" | sed -E 's/\\.(fna|fa|fasta)(\\.gz)?\$//')
 
-    bowtie2 --large-index -f -k ${n_allowed_multimappers} -x \${ref_name} \
+    if bowtie2 --large-index -f -k ${n_allowed_multimappers} -x \${ref_name} \
+        --end-to-end --quiet --threads "${task.cpus}" --very-sensitive \
+        -U ${input_pseudo_reads} | \
+        samtools view -bS -F 4 -h -@ "${task.cpus}" - | \
+        samtools sort -@ "${task.cpus}" - > PseudoReads_aligned_to_\${input_pseudo_reads_name}.bam; then
+		echo "map successfully with large index"
+    else
+	#in case of small index .bt2
+	bowtie2 -f -k ${n_allowed_multimappers} -x \${ref_name} \
         --end-to-end --quiet --threads "${task.cpus}" --very-sensitive \
         -U ${input_pseudo_reads} | \
         samtools view -bS -F 4 -h -@ "${task.cpus}" - | \
         samtools sort -@ "${task.cpus}" - > PseudoReads_aligned_to_\${input_pseudo_reads_name}.bam
+	echo "map successfully with small index"
+    fi
     
     input_ref_name=\$(echo \$index1 | sed 's/.1.bt2l//' | sed -E 's/.fasta|.fa|.fna//' | sed 's/.gz//')
     """

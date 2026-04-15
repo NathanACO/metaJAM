@@ -273,7 +273,7 @@ workflow {
 					.concat(mapping_index7).concat(mapping_index8).concat(mapping_index9)
 					.concat(mapping_index10)
 
-					mapping_indexes.view{"Debug mapping_indexes in parallel mapping: ${it}"}
+					// mapping_indexes.view{"Debug mapping_indexes in parallel mapping: ${it}"}
 
 					kraken_out
 					.map { it -> tuple(it[0], it[1], params.BOWTIE2_N_ALLOW_MULTIMAPPER) }
@@ -308,21 +308,13 @@ workflow {
 	.ifEmpty {
 		ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE6"] }
 	}
-
-	bowtie2_out.view()
-
-	// bowtie2_out
-    // .map { id, files -> tuple(id, files) }
-    // .groupBy()
-	// .map { key, bams -> tuple(key, bams.toSorted()) }
-	// .set{mapped_bam}
+	// bowtie2_out.view()
 
 	bowtie2_out
-    .collect()
-    .groupBy()
+    .map { id, files -> tuple(id, files) }
+    .groupTuple()
 	.set{mapped_bam}
-	
-	mapped_bam.view()
+	// mapped_bam.view()
 
 	MERGE_BAM( mapped_bam )
 	MERGE_BAM.out.set{ merged_bam }
