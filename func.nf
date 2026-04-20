@@ -151,7 +151,7 @@ process KRAKEN2 {
 }
 
 process BOWTIE2 {
-    label 'mapping'
+    label 'BOWTIE2'
     conda './envs/bowtie2.yml'
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 

@@ -160,7 +160,7 @@ workflow SEQUENTIAL_MAP {
 
 
 process BOWTIE2_DB1 {
-    label 'mapping'
+    label 'BOWTIE2'
     conda './envs/bowtie2.yml'
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
@@ -179,7 +179,7 @@ process BOWTIE2_DB1 {
 
 
 process BOWTIE2_DB2 {
-    label 'mapping'
+    label 'BOWTIE2'
     conda './envs/bowtie2.yml'
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
@@ -199,7 +199,7 @@ process BOWTIE2_DB2 {
 }
 
 process BOWTIE2_DB3 {
-    label 'mapping'
+    label 'BOWTIE2'
     conda './envs/bowtie2.yml'
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
@@ -219,7 +219,7 @@ process BOWTIE2_DB3 {
 }
 
 process BOWTIE2_DB4 {
-    label 'mapping'
+    label 'BOWTIE2'
     conda './envs/bowtie2.yml'
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
@@ -239,7 +239,7 @@ process BOWTIE2_DB4 {
 }
 
 process BOWTIE2_DB5 {
-    label 'mapping'
+    label 'BOWTIE2'
     conda './envs/bowtie2.yml'
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
@@ -259,7 +259,7 @@ process BOWTIE2_DB5 {
 }
 
 process BOWTIE2_DB6 {
-    label 'mapping'
+    label 'BOWTIE2'
     conda './envs/bowtie2.yml'
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
@@ -279,7 +279,7 @@ process BOWTIE2_DB6 {
 }
 
 process BOWTIE2_DB7 {
-    label 'mapping'
+    label 'BOWTIE2'
     conda './envs/bowtie2.yml'
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
@@ -299,7 +299,7 @@ process BOWTIE2_DB7 {
 }
 
 process BOWTIE2_DB8 {
-    label 'mapping'
+    label 'BOWTIE2'
     conda './envs/bowtie2.yml'
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
@@ -319,7 +319,7 @@ process BOWTIE2_DB8 {
 }
 
 process BOWTIE2_DB9 {
-    label 'mapping'
+    label 'BOWTIE2'
     conda './envs/bowtie2.yml'
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
@@ -339,7 +339,7 @@ process BOWTIE2_DB9 {
 }
 
 process BOWTIE2_DB10 {
-    label 'mapping'
+    label 'BOWTIE2'
     conda './envs/bowtie2.yml'
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
