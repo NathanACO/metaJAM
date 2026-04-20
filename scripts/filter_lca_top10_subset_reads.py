@@ -4,7 +4,7 @@ import csv
 import random
 import sys
 import re
-from collections import defaultdict, Counter
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -147,39 +147,19 @@ def load_bamdam_mean_damage_by_taxid(path: str) -> Dict[int, float]:
     return dmg
 
 
-def sample_reads_without_expanding(entries: List[LcaRecord], target_n: int, rng: random.Random) -> List[LcaRecord]:
+def sample_unique_reads(entries: List[LcaRecord], target_n: int, rng: random.Random) -> List[LcaRecord]:
     """
-    Sample up to target_n reads accounting for record.count without expanding huge lists.
-    We sample without replacement from the total multiplicity mass:
-      - each draw selects an entry proportional to remaining count
-      - decrement that entry's remaining count
-    Returns a list (length <= target_n) of LcaRecord references
-    (same record may appear multiple times if count > 1).
+    Sample up to target_n unique LCA records without replacement.
+
+    Each line in the LCA file is treated as a single read entry, regardless of
+    the value stored in its count field. This avoids blasting the same original
+    read multiple times when a record has count > 1.
     """
-    remaining = [max(0, e.count) for e in entries]
-    total = sum(remaining)
-    if total <= 0 or target_n <= 0:
+    if target_n <= 0 or not entries:
         return []
 
-    out: List[LcaRecord] = []
-    for _ in range(min(target_n, total)):
-        r = rng.randint(1, total)
-        cum = 0
-        chosen_idx = None
-        for i, c in enumerate(remaining):
-            if c <= 0:
-                continue
-            cum += c
-            if cum >= r:
-                chosen_idx = i
-                break
-        if chosen_idx is None:
-            break
-        out.append(entries[chosen_idx])
-        remaining[chosen_idx] -= 1
-        total -= 1
-
-    return out
+    n_take = min(target_n, len(entries))
+    return rng.sample(entries, n_take)
 
 
 def main():
@@ -366,23 +346,20 @@ def main():
             k_taxid, _group_taxid = key
             entries = taxon_group[key]
 
-            total_reads_in_group = sum(max(0, e.count) for e in entries)
+            total_reads_in_group = len(entries)
             if total_reads_in_group < args.min_reads:
                 skipped_low_support += 1
                 continue
 
-            sampled = sample_reads_without_expanding(entries, args.max_reads, rng)
+            sampled = sample_unique_reads(entries, args.max_reads, rng)
             if len(sampled) < args.min_reads:
                 skipped_low_support += 1
                 continue
 
             k_name, _dummy_g_name, _k_rank_used = genus_meta.get(key, ("unknown", "NA", "unknown"))
-            rep_counter: Counter[str] = Counter()
-
             for rec in sampled:
-                rep_counter[rec.read_id] += 1
-                rep_i = rep_counter[rec.read_id]
-                query_id = f"{rec.read_id}__rep{rep_i}"
+                query_id = rec.read_id
+                rep_i = 1
 
                 g_taxid_real, g_name_real = get_rank(rec.ranks, "genus")
                 fam_taxid, fam_name = get_rank(rec.ranks, "family")
