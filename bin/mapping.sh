@@ -51,9 +51,7 @@ else
     # ----------------------------
     # Extract reference names (robust)
     # ----------------------------
-    awk '!/^@/ {print $3}' "${ID}_${idx}_noheader.sam" \
-        | sort -u \
-        > "${ID}_refnames.txt"
+    awk '!/^@/ && !seen[$3]++ {print $3}' "${ID}_${idx}_noheader.sam" > "${ID}_refnames.txt"
 
     # ----------------------------
     # Match headers (robust awk)

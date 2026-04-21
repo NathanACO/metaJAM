@@ -120,7 +120,7 @@ process PRINSEQ {
 }
 
 process KRAKEN2 {
-    conda 'bioconda::kraken2'
+    conda './envs/kraken2.yml'
 
     publishDir "${params.OUTPUT_Dir}/03_kraken2_filter", mode: "copy" 
 
@@ -145,8 +145,8 @@ process KRAKEN2 {
             --unclassified-out "${ID}_\${DB_LABEL}_unclas.fastq" \
             --memory-mapping "${reads}"
 
-        gzip *.fastq
-        gzip "${ID}_\${DB_LABEL}_output.txt"
+        pigz *.fastq
+        pigz "${ID}_\${DB_LABEL}_output.txt"
     """
 }
 
