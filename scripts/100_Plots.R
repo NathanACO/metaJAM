@@ -1266,7 +1266,7 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
         TotalReads  = suppressWarnings(as.numeric(TotalReads)),
         rank        = vapply(taxpath, extract_rank, character(1))
       ) %>%
-      filter(rank == "genus") %>%
+      filter(rank %in% c("genus", "family")) %>%
       transmute(
         sample = sample_id,
         exp_genus_taxid = TaxNodeID,
