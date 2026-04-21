@@ -106,18 +106,6 @@ read_sample_list <- function(path) {
   unique(vapply(samp, normalize_one, character(1)))
 }
 
-format_sample_debug <- function(samples) {
-  samples <- unique(as.character(samples))
-  samples <- samples[!is.na(samples) & nzchar(samples)]
-
-  if (length(samples) == 0) {
-    return("NONE")
-  }
-
-  paste(sort(samples), collapse = ", ")
-}
-
-
 # ================================================================
 # 1) METRICS DOT PLOT (always)
 # ================================================================
@@ -255,15 +243,12 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
 
   # bamdam files: *.tsv with TaxName / TotalReads / taxpath
   files <- list.files(bamdam_dir, pattern = "\\.tsv$", full.names = TRUE, recursive = TRUE)
-  files <- files[!grepl("\\.evaluation\\.", files)]
-  
+
   # If MAP_LAST_DB_TAG is set, pre-filter to files inside <SAMPLE>_<TAG>/ to avoid mixing runs
   if (nzchar(map_tag)) {
     tag_needle <- paste0("_", map_tag, .Platform$file.sep)
     files <- files[grepl(tag_needle, files, fixed = TRUE)]
   }
-
-  message("line266: ", files)
 
   message("[bamdam] found ", length(files), " bamdam *.tsv files")
   if (length(files) > 0) {
@@ -299,19 +284,34 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
   }
 
   # ---- read bamdam tsvs ----
-  message("line302: files to read: ", files)
   bam_list <- purrr::map(files, function(f) {
     x <- suppressMessages(read_tsv(f, show_col_types = FALSE))
 
-    needed <- c("TaxName", "TotalReads", "taxpath", "Damage+1")
+    needed <- c("TaxName", "TotalReads", "taxpath", "Damage+1", "Damage-1")
     missing <- setdiff(needed, names(x))
     if (length(missing) > 0) {
       stop("Bamdam file ", f, " is missing columns: ", paste(missing, collapse = ", "))
     }
 
-    # All files are in a flat directory; derive sample from filename and db_tag from MAP_LAST_DB_TAG
-    sample_id <- sub("\\.tsv$", "", basename(f))
-    db_tag    <- map_tag
+    # Derive sample + database tag from the folder structure:
+    # bamdam_dir/<sample>/<sample>_<tag>/.../*.tsv
+    f_norm  <- normalizePath(f, winslash = "/", mustWork = FALSE)
+    bd_norm <- normalizePath(bamdam_dir, winslash = "/", mustWork = FALSE)
+    rel     <- sub(paste0("^", bd_norm, "/?"), "", f_norm)
+    parts   <- strsplit(rel, "/", fixed = TRUE)[[1]]
+
+    sample_id <- if (length(parts) >= 1) parts[1] else NA_character_
+    tag_dir   <- if (length(parts) >= 2) parts[2] else NA_character_
+
+    db_tag <- NA_character_
+    if (!is.na(sample_id) && !is.na(tag_dir) && startsWith(tag_dir, paste0(sample_id, "_"))) {
+      db_tag <- sub(paste0("^", sample_id, "_"), "", tag_dir)
+    }
+
+    # If MAP_LAST_DB_TAG is set, keep only matching-tag files
+    if (nzchar(map_tag) && (is.na(db_tag) || db_tag != map_tag)) {
+      return(tibble())
+    }
 
     ranks <- vapply(x$taxpath, get_rank, character(1))
 
@@ -321,6 +321,7 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
       rank    = ranks,
       reads   = as.numeric(x$TotalReads),
       damage_p1 = as.numeric(x$`Damage+1`),
+      damage_m1 = as.numeric(x$`Damage-1`),
       taxpath = as.character(x$taxpath)
     ) %>%
       filter(rank %in% c("genus", "family"))
@@ -332,8 +333,6 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
     message("[bamdam] all counts are zero; skipping.")
     return(invisible(NULL))
   }
-  message("line348 [bamdam] samples read from bam_list: ", format_sample_debug(bam_list))
-  message("line349 [bamdam] samples read from dat_all: ", format_sample_debug(dat_all))
 
   # ---- sample matching ----
   bam_samples  <- unique(dat_all$sample)
@@ -350,9 +349,6 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
     used_samples <- bam_samples
   }
 
-  message("[bamdam] samples read from bamdam.tsv: ", format_sample_debug(bam_samples))
-  message("[bamdam] samples read from metadata: ", format_sample_debug(meta_samples))
-
   meta_filt <- meta %>% filter(sample %in% used_samples)
   if (nrow(meta_filt) == 0L) {
     message("[bamdam] WARNING: no metadata rows match bamdam samples; proceeding without ages (sample-only ordering).")
@@ -368,11 +364,11 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
   n_samples <- length(sample_order)
 
   sample_name_size <- dplyr::case_when(
-    n_samples <= 20 ~ 1.4,
-    n_samples <= 30 ~ 1.2,
-    n_samples <= 40 ~ 1.0,
-    n_samples <= 60 ~ 0.7,
-    TRUE            ~ 0.4
+    n_samples <= 20 ~ 2.8,
+    n_samples <= 30 ~ 2.4,
+    n_samples <= 40 ~ 2.0,
+    n_samples <= 60 ~ 1.4,
+    TRUE            ~ 0.8
   )
   sample_age_size <- dplyr::case_when(
     n_samples <= 20 ~ 2.6,
@@ -515,7 +511,7 @@ damage_cell <- dat_rank %>%
   group_by(taxon, sample) %>%
   summarise(
     reads = sum(reads, na.rm = TRUE),
-    dmg   = dplyr::first(damage_p1),
+    dmg   = mean(c(dplyr::first(damage_p1), dplyr::first(damage_m1)), na.rm = TRUE),
     .groups = "drop"
   ) %>%
   mutate(dmg_pct = 100 * dmg)
@@ -546,12 +542,12 @@ damage_cell <- damage_cell %>%
       TRUE ~ "red"
     )
   ) %>%
-  select(taxon, sample, damage_class)
+  select(taxon, sample, dmg_pct, damage_class)
 
 df_long <- df_long %>%
   mutate(taxon_chr = as.character(taxon), sample_chr = as.character(sample)) %>%
   left_join(
-    damage_cell %>% transmute(taxon_chr = taxon, sample_chr = sample, damage_class),
+    damage_cell %>% transmute(taxon_chr = taxon, sample_chr = sample, damage_pct = dmg_pct, damage_class),
     by = c("taxon_chr", "sample_chr")
   ) %>%
   mutate(
@@ -912,6 +908,36 @@ plot_bubble_reads <- function(df_long, max_log, out_prefix) {
     max_log <- built$max_log
     taxon_max_damage <- built$taxon_max_damage
 
+    # ---- NEW: export tables used for bamdam plots ----
+    bamdam_plot_input_tsv <- file.path(outdir, paste0("bamdam_", rank_sel, "_plot_input.tsv"))
+    df_long %>%
+      mutate(
+        sample = as.character(sample),
+        taxon = as.character(taxon),
+        age = ages$age[match(sample, ages$sample)],
+        sample_plot_name = plot_labels[match(sample, sample_order)]
+      ) %>%
+      write_tsv(bamdam_plot_input_tsv)
+    message("[bamdam] wrote plot input table: ", bamdam_plot_input_tsv)
+
+    bamdam_heatmap_input_tsv <- file.path(outdir, paste0("bamdam_", rank_sel, "_heatmap_input.tsv"))
+    keep_taxa_export <- taxon_max_damage %>%
+      filter(max_dmg_pct >= damage_threshold) %>%
+      pull(taxon) %>%
+      as.character()
+
+    df_long %>%
+      mutate(
+        sample = as.character(sample),
+        taxon = as.character(taxon),
+        age = ages$age[match(sample, ages$sample)],
+        sample_plot_name = plot_labels[match(sample, sample_order)]
+      ) %>%
+      filter(taxon %in% keep_taxa_export) %>%
+      { if (length(exclude_taxa) > 0) filter(., !(taxon %in% exclude_taxa)) else . } %>%
+      write_tsv(bamdam_heatmap_input_tsv)
+    message("[bamdam] wrote heatmap input table: ", bamdam_heatmap_input_tsv)
+
     # ---- split taxa into multiple panels if requested ----
     tax_levels <- levels(df_long$taxon)
     if (is.null(tax_levels) || length(tax_levels) == 0L) {
@@ -1111,11 +1137,11 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
   n_samples <- length(sample_order)
 
   sample_name_size <- dplyr::case_when(
-    n_samples <= 20 ~ 1.4,
-    n_samples <= 30 ~ 1.2,
-    n_samples <= 40 ~ 1.0,
-    n_samples <= 60 ~ 0.7,
-    TRUE            ~ 0.4
+    n_samples <= 20 ~ 2.8,
+    n_samples <= 30 ~ 2.4,
+    n_samples <= 40 ~ 2.0,
+    n_samples <= 60 ~ 1.4,
+    TRUE            ~ 0.8
   )
   sample_age_size <- dplyr::case_when(
     n_samples <= 20 ~ 2.6,
@@ -1240,7 +1266,7 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
         TotalReads  = suppressWarnings(as.numeric(TotalReads)),
         rank        = vapply(taxpath, extract_rank, character(1))
       ) %>%
-      filter(rank == "genus") %>%
+      filter(rank %in% c("genus", "family")) %>%
       transmute(
         sample = sample_id,
         exp_genus_taxid = TaxNodeID,
@@ -1585,11 +1611,11 @@ make_taxa_evolution_plots <- function(bamdam_dir, samples_path, metadata_path, m
   n_samples <- length(sample_order)
 
   sample_name_size <- dplyr::case_when(
-    n_samples <= 20 ~ 1.4,
-    n_samples <= 30 ~ 1.2,
-    n_samples <= 40 ~ 1.0,
-    n_samples <= 60 ~ 0.7,
-    TRUE            ~ 0.4
+    n_samples <= 20 ~ 2.2,
+    n_samples <= 30 ~ 1.8,
+    n_samples <= 40 ~ 1.6,
+    n_samples <= 60 ~ 1.4,
+    TRUE            ~ 1.0
   )
   sample_age_size <- dplyr::case_when(
     n_samples <= 20 ~ 2.6,
