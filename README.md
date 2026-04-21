@@ -123,18 +123,18 @@ ACC2TAXID="/path/to/acc2taxid.txt" #each line in the format: contig[tab]contig[t
 ```
 NCBI taxonomy files (names.dmp and nodes.dmp downloaded in the `assets/` dir in the preparation script given in this tutorial)
 
-input a bed file with all regions to be masked
-`REGIONS_TO_MASK="/path/to/databaseA.bed"`
+input a bed file with all regions to be masked\
+`REGIONS_TO_MASK="/path/to/databaseA.bed"`\
 - if aiming to mask microbial-like regions without supplying the bed file for masking, we could also generate and use bed file using by specify `ENABLE_GENERATE_BEDFILE_TO_MASK="enable"` and fill in requirement of GENEX workflow
 
-GENEX workflow to generate bedfile for microbial/contamination-like region for reference genomes
-`MCWORKFLOW_input_dir= ""`  // absolute path to the dir containing the reference genome fasta
-`MCWORKFLOW_input_list=""`  // a list with each line as the absolute path to the reference genome fasta
-`MCWORKFLOW_pseudo_reads_file_dir=""` // a directory to store the pseudo reads generated of GTDB/other suspected containmation source
-`MCWORKFLOW_type_of_pseudo_reads="GTDB"` // label of pseudo reads
+GENEX workflow to generate bedfile for microbial/contamination-like region for reference genomes\
+`MCWORKFLOW_input_dir= ""`  // absolute path to the dir containing the reference genome fasta\
+`MCWORKFLOW_input_list=""`  // a list with each line as the absolute path to the reference genome fasta\
+`MCWORKFLOW_pseudo_reads_file_dir=""` // a directory to store the pseudo reads generated of GTDB/other suspected containmation source\
+`MCWORKFLOW_type_of_pseudo_reads="GTDB"` // label of pseudo reads\
 `MCWORKFLOW_n_allowed_multimappers=1000`
 
-MMSeqs2 database
+MMSeqs2 database\
 `MMSEQS2_DB="/sw/data/MMseqs2_data/latest/rackham/NT"`\
 `MMSEQS2_TAXADB_SQLITE="assets/taxadb_nucl.sqlite"` \\ taxadb_nucl.sqlite is in the `assets/` dir in the preparation script given in this tutorial
 
@@ -186,9 +186,22 @@ MMSeqs2 database
 `PLOTS_KRONA`=1                   # Plots the bamdam results for all samples in metadata if enable. 1=enable, 0=disable\
 `PLOTS_LIST_TAXA_EVOLUTION_FILE` # Give a list of taxa with one taxa per line, to produce plot of abundance of each taxa as a line representation\
 `PLOTS_TAXA_PER_PLOT`=50       # Number of taxa passing the filters to plot per graph
-MAP_LAST_DB_TAG = "mam-bird-fish_v2" #specify database name for plotting
+`MAP_LAST_DB_TAG`="mam-bird-fish_v2" #specify database name for plotting
+`PLOTS_SAMPLES_FOR_PLOTS`=params.METAJAM_DIR+"assets/NO_FILE8" // if you want to plot only a subset of samples, then supply a subset of metadata containing the samples that you want to plot. If no subsetting is needed, then use the placeholder "assets/NO_FILE8"
+
 
 ### 5. SBATCH task parameter for memory and time assigned to the processing using tools
+
+The process will automatically retry for 6 times and each time with more cpu and memory. However, if it still fails, you can modify the cpus, memory accordingly and resume with `nextflow run ... -resume`
+
+```
+      withName: PRINSEQ {
+         cpus={check_max(62 * task.attempt, 'cpus' ) }
+         memory={ check_max(50.GB * task.attempt, 'memory' ) }
+         time={ check_max(8.h * task.attempt, 'time' ) }
+     }
+```
+
 To be refine based on samples size and database using
 > [!TIP]
 > We advise to set up at least 650G and 256CPUs for the Kraken step, and to allow at least 20 hours of running time for massive fastq.gz (>60M reads)\
@@ -203,9 +216,9 @@ params {
 ## Required program
 nextflow (developed in v25.10.3)\
 conda\
-taxadb #use to download a file for setup
+taxadb #use to download a file for setup below
 
-run the script once before running anything
+run the tutorial script once before running anything to setup
 ```
 mkdir assets
 cd assets
