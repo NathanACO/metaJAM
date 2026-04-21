@@ -21,22 +21,55 @@ This pipeline performs processing and analysis of metagenomic data, starting fro
 ## Input files specified in the config `nextflow.config` file
 ### 1. If running the pipeline from scratch
 Path of the raw sequencing samples to be processed: 
-`FASTQ_direct_path='/path/to/*_{R1,R2,1,2,R1_001,R2_001}*.{fastq,fq}.gz'` OR/AND `FASTQ_list_path="/path/to/List_fastq.txt"`. Please leave the other as "" when you only use one format. You can also use both formats, and the two sets of fastqs will all be processed.
+`FASTQ_direct_path='/path/to/*_{R1,R2,1,2,R1_001,R2_001}*.{fastq,fq}.gz'` OR/AND `FASTQ_list_path="/path/to/List_fastq.txt" (each row: ID[tab]fastq1[tab]fastq2)`. 
+Please leave the other as "" when you only use one format. You can also use both `FASTQ_direct_path` and `FASTQ_list_path`, and both sets of fastqs will all be processed.
 
-Give absolute path to the overall output directory: `OUTPUT_Dir="\path\to"`. It will creates different folders for the different steps of the pipeline inside your given `OUTPUT_Dir`, where the outputs of each step will be stored correspondingly:
+
+1.2 If you are running after any process or supplement data which has run through the process:
+File containing a list of samples with absolute path to be processed (OVERRIDE_LIST_*). The format of each row in the input file is specified at the end of each line.
+
+specify a file if you are skipping fastq, otherwise use ""
+OVERRIDE_LIST_FASTP="/path/to/file" // sample_ID[tab]merged_fastq
+
+specify a file if you are skipping the preprocesses meant for merging and low-complexity reads removal, otherwise use ""
+OVERRIDE_PREPROCESSED="/path/to/file" // sample_ID[tab]preprocessed_fastq
+
+specify a file if you are skipping filtering out microbial reads mapped against contamination(or microbial) database, otherwise use ""
+OVERRIDE_LIST_KRAKEN="/path/to/file" // sample_ID[tab]unclassified_fastq
+
+specify a file if you are skipping mapping with bowtie2, otherwise use ""
+OVERRIDE_LIST_BAM="/path/to/file" // give a file with each line: sample_ID[tab]absolute_path_to_sample_bam
+    - if you would not like to merge among the mapping result against different databases, make sure sample_ID is sample_ID+database_name for the workflow to differentiate them. 
+    - Otherwise in default all bam of the same sample are always merged and analyzed together later.
+
+specify a file if you are skipping ngsLCA, otherwise use ""
+OVERRIDE_LIST_NGSLCA="/path/to/file" // sample_ID[tab]sample_lca_file
+
+specify a file if you are skipping bamdam, otherwise use ""
+OVERRIDE_LIST_BAMDAM="/path/to/file" // sample_ID[tab]bam[tab]lca[tab]tsv[tab]xml_file
+
+specify a file if you are skipping mmseq2, otherwise use ""
+OVERRIDE_LIST_MMSEQ2="" // ID[tab]mmseq2_output_evaluation_file
+    - here the mmseq2_output_evaluation_file is output by a summary script after running mmseq2 and has suffix *.bamdam_mmseqs.evaluation.summary.tsv
+
+specify a file if you are skipping running the script to generate metrics, otherwise use ""
+OVERRIDE_LIST_METRICS="/path/to/file" // outp
+  - the header is "sample[tab]count_raw_fq1[tab]count_raw_fq2[tab]count_merged_fq[tab]count_rm_low_complex_fq[tab]count_k2_mic_unclas_fq[tab]bam_header[tab]bamdam_bam" and the values in the following rows
+    
+Give absolute path to the overall output directory: `OUTPUT_Dir="\path\to"`. It will create different folders for the different steps of the pipeline inside your given `OUTPUT_Dir`, where the outputs of each step will be stored correspondingly:
 - 01_fastp
-- 02_sga (or 02_prinseq)
+- 02_sga OR 02_prinseq
 - 03_kraken2_filter
-- 04_mapping
+- 04_parallel_mapping OR 04_sequential_mapping
+- acc2taxid
 - 05_merged_bam
-- 06_masked_bam 
+- 06_masked_bam
 - 07_ngslca
 - 08_bamdam
-- 09_kronaTools
-- 99_metrics
+- 09_mmseq2
+- 10_metrics
+- 11_plots
 
-1.2 Or If running a specific tool or the pipeline from any step after preprocessing
-File containing a list of samples with absolute path to be processed (OVERRIDE_LIST_*) [In development]
 
 ### 2. Path to databases
 `BOWTIE2_MAPPING_DBs="/path/to/list" `: each line as the bowtie2 mapping index header (e.g., '/path/to/header' where the header refers to header.*.bt2*)
