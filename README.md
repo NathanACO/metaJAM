@@ -19,44 +19,77 @@ This pipeline performs processing and analysis of metagenomic data, starting fro
 ![alt text](https://github.com/NathanACO/metaJAM/blob/main/metaJAM_diagram.png)
 
 ## Input files specified in the config `nextflow.config` file
-### 1. If running the pipeline from scratch
-Path of the raw sequencing samples to be processed: 
-`FASTQ_direct_path='/path/to/*_{R1,R2,1,2,R1_001,R2_001}*.{fastq,fq}.gz'` OR/AND `FASTQ_list_path="/path/to/List_fastq.txt" (each row: ID[tab]fastq1[tab]fastq2)`. 
+
+### 1. Tools activation with "enable" or "disable"
+Indentation of the process suggest that the process is included in the process at the line above. For example, to enable FASTP you need to enable preprocess. 
+
+`ENABLE_PREPROCESS="enable"`     // If disabled, neither fastp or SGA will run\
+    `ENABLE_FASTP="enable"`\
+    `ENABLE_SGA="enable"`\
+    `ENABLE_PRINSEQ="enable"`        // enable to use PRINSEQ instead of SGA         \
+    `ENABLE_LOW_COMPLEXITY_FILTER="PRINSEQ"` // use 'PRINSEQ' prinseq result for downstream analysis; Use 'SGA' to use SGA result for downstream analysis; Use '' if BOTH are disabled
+
+`ENABLE_KRAKEN_GTDB="enable"`\
+`ENABLE_MAPPING="enable"`\
+    `ENABLE_PARALLEL_MAPPING='enable'`\
+    `ENABLE_SEQUENTIAL_MAPPING='enable'`\
+    `USE_MAPPING='PARALLEL_MAPPING'` // use the output bam files from 'PARALLEL_MAPPING' or 'SEQUENTIAL_MAPPING' for downstream analysis, it cannot be '' when mapping is enabled.\
+
+`ENABL_MERGE_BAM="enable"` // merge the bam of the same sample mapped against different databases
+
+`ENABLE_MASK_REGIONS="enable"`\
+    `ENABLE_GENERATE_BEDFILE_TO_MASK="enable"` // can be enabled only if 'ENABLE_MASK_REGIONS' is enabled\
+        `ENABLE_MASK_FASTA="enable"` // can be enabled only if the subworkflow 'ENABLE_GENERATE_BEDFILE_TO_MASK' is enabled
+
+`ENABLE_NGSLCA="enable"`\
+`ENABLE_BAMDAM="enable"`\
+`ENABLE_KRONATOOLS="enable"`\
+`ENABLE_MMSEQS2="enable"` // enable this requires ENABLE_BAMDAM\
+`ENABLE_METRICS="enable"`\
+`ENABLE_PLOTS="enable"`
+
+### 2. Input files
+2.1 Path of the raw sequencing samples to be processed: 
+`FASTQ_direct_path='/path/to/*_{R1,R2,1,2,R1_001,R2_001}*.{fastq,fq}.gz'` OR/AND `FASTQ_list_path="/path/to/List_fastq.txt" (each row: ID[tab]fastq1[tab]fastq2)`.\ 
 Please leave the other as "" when you only use one format. You can also use both `FASTQ_direct_path` and `FASTQ_list_path`, and both sets of fastqs will all be processed.
 
+Provide `metadata` for plotting, you can see ./test/metadata.txt as an example:\
+`metadata="./test/metadata.txt"`\
+    #the columns are spaced with tab:\
+    sample	age_ka	depth_cm	sample_type	layer	notes	site\
+    X	1	25	    sediment	NA	Good DNA	LakeA
 
-1.2 If you are running after any process or supplement data which has run through the process:
-File containing a list of samples with absolute path to be processed (OVERRIDE_LIST_*). The format of each row in the input file is specified at the end of each line.
+2.2 If you are (1) running after any process (all the previous processes are not 'enable') or (2) supplements data which already run through the process to the new batch of samples you are running, you can input a file containing a list of samples with absolute path to be processed (OVERRIDE_LIST_*). The format of each row in the input file is specified at the end of each line.
 
-specify a file if you are skipping fastq, otherwise use ""
-OVERRIDE_LIST_FASTP="/path/to/file" // sample_ID[tab]merged_fastq
+- specify a file if you are skipping fastq, otherwise use ""\
+`OVERRIDE_LIST_FASTP="/path/to/file"` // sample_ID[tab]merged_fastq
 
-specify a file if you are skipping the preprocesses meant for merging and low-complexity reads removal, otherwise use ""
-OVERRIDE_PREPROCESSED="/path/to/file" // sample_ID[tab]preprocessed_fastq
+- specify a file if you are skipping the preprocessing meant for merging and low-complexity reads removal, otherwise use ""\
+`OVERRIDE_PREPROCESSED="/path/to/file"` // sample_ID[tab]preprocessed_fastq
 
-specify a file if you are skipping filtering out microbial reads mapped against contamination(or microbial) database, otherwise use ""
-OVERRIDE_LIST_KRAKEN="/path/to/file" // sample_ID[tab]unclassified_fastq
+- specify a file if you are skipping filtering out microbial reads mapped against contamination(or microbial) database, otherwise use ""\
+`OVERRIDE_LIST_KRAKEN="/path/to/file"` // sample_ID[tab]unclassified_fastq
 
-specify a file if you are skipping mapping with bowtie2, otherwise use ""
-OVERRIDE_LIST_BAM="/path/to/file" // give a file with each line: sample_ID[tab]absolute_path_to_sample_bam
+- specify a file if you are skipping mapping with bowtie2, otherwise use ""\
+`OVERRIDE_LIST_BAM="/path/to/file"` // give a file with each line: sample_ID[tab]absolute_path_to_sample_bam
     - if you would not like to merge among the mapping result against different databases, make sure sample_ID is sample_ID+database_name for the workflow to differentiate them. 
     - Otherwise in default all bam of the same sample are always merged and analyzed together later.
 
-specify a file if you are skipping ngsLCA, otherwise use ""
-OVERRIDE_LIST_NGSLCA="/path/to/file" // sample_ID[tab]sample_lca_file
+- specify a file if you are skipping ngsLCA, otherwise use ""\
+`OVERRIDE_LIST_NGSLCA="/path/to/file"` // sample_ID[tab]sample_lca_file
 
-specify a file if you are skipping bamdam, otherwise use ""
-OVERRIDE_LIST_BAMDAM="/path/to/file" // sample_ID[tab]bam[tab]lca[tab]tsv[tab]xml_file
+- specify a file if you are skipping bamdam, otherwise use ""\
+`OVERRIDE_LIST_BAMDAM="/path/to/file"` // sample_ID[tab]bam[tab]lca[tab]tsv[tab]xml_file
 
-specify a file if you are skipping mmseq2, otherwise use ""
-OVERRIDE_LIST_MMSEQ2="" // ID[tab]mmseq2_output_evaluation_file
+- specify a file if you are skipping mmseq2, otherwise use ""\
+`OVERRIDE_LIST_MMSEQ2=""` // ID[tab]mmseq2_output_evaluation_file
     - here the mmseq2_output_evaluation_file is output by a summary script after running mmseq2 and has suffix *.bamdam_mmseqs.evaluation.summary.tsv
 
-specify a file if you are skipping running the script to generate metrics, otherwise use ""
-OVERRIDE_LIST_METRICS="/path/to/file" // outp
-  - the header is "sample[tab]count_raw_fq1[tab]count_raw_fq2[tab]count_merged_fq[tab]count_rm_low_complex_fq[tab]count_k2_mic_unclas_fq[tab]bam_header[tab]bamdam_bam" and the values in the following rows
+- specify a file if you are skipping running the script to generate metrics, otherwise use ""\
+`OVERRIDE_LIST_METRICS="/path/to/file"`
+  - the header is "sample[tab]count_raw_fq1[tab]count_raw_fq2[tab]count_merged_fq[tab]count_rm_low_complex_fq[tab]count_k2_mic_unclas_fq[tab]bam_header[tab]bamdam_bam" and the values in the following rows locate correspondingly
     
-Give absolute path to the overall output directory: `OUTPUT_Dir="\path\to"`. It will create different folders for the different steps of the pipeline inside your given `OUTPUT_Dir`, where the outputs of each step will be stored correspondingly:
+2.3 Give absolute path to the overall output directory: `OUTPUT_Dir="\path\to"`. It will create different folders for the different steps of the pipeline inside your given `OUTPUT_Dir`, where the outputs of each step will be stored correspondingly:
 - 01_fastp
 - 02_sga OR 02_prinseq
 - 03_kraken2_filter
@@ -69,11 +102,16 @@ Give absolute path to the overall output directory: `OUTPUT_Dir="\path\to"`. It 
 - 09_mmseq2
 - 10_metrics
 - 11_plots
+note that krona plot of each sample generated by bamdam will be in `08_bamdam/`, while kronaplots of the each site and other summary plots of MMseq2 result or DNA damage are in `11_plots/`.
 
-note that krona plot of each sample generated by bamdam will be in `08_bamdam/`, while kronaplots of the whole sites and summary plots are in `11_plots/`.
+2.4 The path to where you download the metajam:
+`METAJAM_DIR`="/path/to/metaJAM" 
 
-### 2. Path to databases
-`BOWTIE2_MAPPING_DBs="/path/to/list" `: each line as the bowtie2 mapping index header (e.g., '/path/to/header' where the header refers to header.*.bt2*)
+
+### 3. Path to databases
+for DB[1-10], set as "" if not used
+`BOWTIE2_MAPPING_DB1="/path/to/index_name" `: each line as the bowtie2 mapping index header (e.g., '/path/to/header' where the header refers to header.*.bt2*), the first database reads are aligned to if you specified `USE_MAPPING='SEQUENTIAL_MAPPING`, otherwise the order of database does not matter.
+`BOWTIE2_MAPPING_DB2`...`BOWTIE2_MAPPING_DB10`: same format as DB1, maximum 10 databases so far.
 
 `KRAKEN2_FILTER_DATABASE="/path/to/kraken2_db" `: path to Kraken2 database (e.g., GTDB database), the directory containing kraken2 indexes (*.k2d)\
 
@@ -83,19 +121,24 @@ NAMES="assets/names.dmp"
 NODES="assets/nodes.dmp"
 ACC2TAXID="/path/to/acc2taxid.txt" #each line in the format: contig[tab]contig[tab]NCBI_taxonomy_ID
 ```
-NCBI taxonomy files (names.dmp and nodes.dmp downloaded in the assets/ dir in the preparation script given in this tutorial)
+NCBI taxonomy files (names.dmp and nodes.dmp downloaded in the `assets/` dir in the preparation script given in this tutorial)
 
+input a bed file with all regions to be masked
+`REGIONS_TO_MASK="/path/to/databaseA.bed"`
+- if aiming to mask microbial-like regions without supplying the bed file for masking, we could also generate and use bed file using by specify `ENABLE_GENERATE_BEDFILE_TO_MASK="enable"` and fill in requirement of GENEX workflow
 
-`MMSEQS2_DB="/sw/data/MMseqs2_data/latest/rackham/NT"`\
-`MMSEQS2_TAXADB_SQLITE="assets/taxadb_nucl.sqlite"`\
+GENEX workflow to generate bedfile for microbial/contamination-like region for reference genomes
+`MCWORKFLOW_input_dir= ""`  // absolute path to the dir containing the reference genome fasta
+`MCWORKFLOW_input_list=""`  // a list with each line as the absolute path to the reference genome fasta
+`MCWORKFLOW_pseudo_reads_file_dir=""` // a directory to store the pseudo reads generated of GTDB/other suspected containmation source
+`MCWORKFLOW_type_of_pseudo_reads="GTDB"` // label of pseudo reads
+`MCWORKFLOW_n_allowed_multimappers=1000`
+
 MMSeqs2 database
+`MMSEQS2_DB="/sw/data/MMseqs2_data/latest/rackham/NT"`\
+`MMSEQS2_TAXADB_SQLITE="assets/taxadb_nucl.sqlite"` \\ taxadb_nucl.sqlite is in the `assets/` dir in the preparation script given in this tutorial
 
-`METADATA_PATH="test/metadata.txt"`
-- format with the header line:
-        sample[tab]age_ka[tab]depth_cm[tab]sample_type[tab]layer[tab]notes[tab]site
-- example:test/metadata.txt
 
-### 3. Tools activation with "enable" or "disable"
 ### 4. Parameters to precise for specific tools
 1) *fastp*\
 `FASTP_OVERLAP_LEN_REQUIRE`    -overlap_len_require        (default=20)    \
