@@ -122,7 +122,8 @@ PLOTS_DAMAGE_THRESHOLD (default=3.5)   - Minimum percentage of damage for plotti
 ## SBATCH parameters
 To be refine based on samples size and database using
 > [!TIP]
-> We advise to set up at least 650G and 256CPUs for the Kraken step, and to allow at least 20 hours of running time for massive fastq.gz (>60M reads)\
+> We advise to set up at least 650G and 256CPUs for the Kraken step, and to allow at least 20 hours of running time for massive fastq.gz (>60M reads)
+> With the default parameters, you can run samples per batch of 150M of reads in total
 > For smaller datasets (around 10-20M), 15h for 3-4 samples seems a coherent value, depending on your cluster queueing system.
 
 ## Plot output
