@@ -143,7 +143,7 @@ process KRAKEN2 {
             --output "${ID}_\${DB_LABEL}_output.txt" \
             --classified-out "${ID}_\${DB_LABEL}_clas.fastq" \
             --unclassified-out "${ID}_\${DB_LABEL}_unclas.fastq" \
-            "${reads}"
+            --memory-mapping "${reads}"
     """
 }
 
