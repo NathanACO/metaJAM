@@ -128,9 +128,9 @@ process KRAKEN2 {
         tuple val(ID), path(reads), path(DB)
 
     output:
-        tuple val(ID), path("*_unclas.fastq.gz"), emit: not_microbe
+        tuple val(ID), path("*_unclas.fastq"), emit: not_microbe
         path("*_report.txt")
-        path("*_output.txt*")
+        path("*_output.txt")
         
     script:
     """
@@ -143,10 +143,7 @@ process KRAKEN2 {
             --output "${ID}_\${DB_LABEL}_output.txt" \
             --classified-out "${ID}_\${DB_LABEL}_clas.fastq" \
             --unclassified-out "${ID}_\${DB_LABEL}_unclas.fastq" \
-            --memory-mapping "${reads}"
-
-        pigz *.fastq
-        pigz "${ID}_\${DB_LABEL}_output.txt"
+            "${reads}"
     """
 }
 
@@ -670,8 +667,6 @@ process PLOTS {
             
     output:
         path("*.pdf")
-
-    publishDir "${params.OUTPUT_Dir}/plots", mode: "copy"
         
     script:
     """
