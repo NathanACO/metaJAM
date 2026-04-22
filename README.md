@@ -7,10 +7,10 @@ Metagenomic Pipeline for ancient DNA analysis performed at the Centre for Palaeo
 This pipeline performs processing and analysis of metagenomic data, starting from paired-end fastq files or any intermediate files used in the pipeline if not the entire workflow is desired to run. 
 
 > [!NOTE]
-> The newest version of metaJAM in nextflow has been released, up to now, recent updates will be build on nextflow. Ancient version will remain accessible on the Github page.
-> Further developments will be included in metaJAM v1.2.2 in early March:
-> - Extra module to mask databases based on microbial content
-> - Addition of leeHom as an alternative choice to fastp
+> The newest version of metaJAM in nextflow has been released, up to now, recent updates will be build on nextflow. Ancient version will remain accessible on the Github page.\
+> Further developments will be included in metaJAM v1.2.2 in early March:\
+> - Extra module to mask databases based on microbial content\
+> - Addition of leeHom as an alternative choice to fastp\
 > - Choice of the mapping strategy by iteration or not
 
 
@@ -122,8 +122,8 @@ PLOTS_DAMAGE_THRESHOLD (default=3.5)   - Minimum percentage of damage for plotti
 ## SBATCH parameters
 To be refine based on samples size and database using
 > [!TIP]
-> We advise to set up at least 650G and 256CPUs for the Kraken step, and to allow at least 20 hours of running time for massive fastq.gz (>60M reads)
-> With the default parameters, you can run samples per batch of 150M of reads in total
+> We advise to set up at least 650G and 256CPUs for the Kraken step, and to allow at least 20 hours of running time for massive fastq.gz (>60M reads)\
+> With the default parameters, you can run samples per batch of 150M of reads in total\
 > For smaller datasets (around 10-20M), 15h for 3-4 samples seems a coherent value, depending on your cluster queueing system.
 
 ## Plot output
