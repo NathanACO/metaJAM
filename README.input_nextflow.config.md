@@ -140,23 +140,22 @@ MMSeqs2 database\
 `BAMDAM_MAXDAMAGE`    --maxdamage                (default=0.5)    
 `BAMDAM_TOP_GENUS`    TOP_GENUS                   (default=10)         Number of the most abundant genus to plot for damage\
 5.1) *MMSeqs2*\
-`MMSEQS2_MAX_SEQS`            (default=300)\ #--max-seqs INT  Maximum results per query sequence allowed to pass the prefilter (affects sensitivity) [300]
-`MMSEQS2_MIN_LENGTH`          (default=30)\
-`MMSEQS2_MIN_SEQID`                   (default=0.93)\ #--min-seq-id FLOAT List matches above this sequence identity (for clustering) (range 0.0-1.0) [0.000]
+`MMSEQS2_MAX_SEQS`            (default=300) #--max-seqs INT  Maximum results per query sequence allowed to pass the prefilter (affects sensitivity) [300]\
+`MMSEQS2_MIN_SEQID`                   (default=0.93) #--min-seq-id FLOAT List matches above this sequence identity (for clustering) (range 0.0-1.0) [0.000]\
 `MMSEQS2_MIN_BITS`                    (default=50)\
-`MMSEQS2_MIN_QUERY_COV`               (default=0.95)\ #-c FLOAT  List matches above this fraction of aligned (covered) residues (see --cov-mode) [0.000]
-`MMSEQS2_MAX_EVALUE`                  (default="1e-5")\ #-e DOUBLE List matches below this E-value (range 0.0-inf) [1.000E-03]
-`MMSEQS2_S`                   (default=7.5)\ #-s FLOAT  Sensitivity: 1.0 faster; 4.0 fast; 7.5 sensitive [5.700]
-`MMSEQS2_SPACED_KMER_MODE`    (default=1)\ #--spaced-kmer-mode INT  0: use consecutive positions in k-mers; 1: use spaced k-mers [1]
-`MMSEQS2_SPLIT_MEM_LIMIT`     (default=220G)\ #--split-memory-limit BYTE Set max memory per split. E.g. 800B, 5K, 10M, 1G. Default (0) to all available system memory [0]
+`MMSEQS2_MIN_QUERY_COV`               (default=0.95) #-c FLOAT  List matches above this fraction of aligned (covered) residues (see --cov-mode) [0.000]\
+`MMSEQS2_MAX_EVALUE`                  (default="1e-5") #-e DOUBLE List matches below this E-value (range 0.0-inf) [1.000E-03]\
+`MMSEQS2_S`                   (default=7.5) #-s FLOAT  Sensitivity: 1.0 faster; 4.0 fast; 7.5 sensitive [5.700]\
+`MMSEQS2_SPACED_KMER_MODE`    (default=1) #--spaced-kmer-mode INT  0: use consecutive positions in k-mers; 1: use spaced k-mers [1]\
+`MMSEQS2_SPLIT_MEM_LIMIT`     (default=220G) #--split-memory-limit BYTE Set max memory per split. E.g. 800B, 5K, 10M, 1G. Default (0) to all available system memory [0]\
 5.2) *MMSeqs2 evaluation*\
 `MMSEQS2_TOP_GENERA`          (default=10)\
-`MMSEQS2_GENERA_FILE`         # path to a file containing genera of interst at each line (?); otherwise use 'assets/NO_FILE' 
+`MMSEQS2_GENERA_FILE`         # path to a file containing genera of interest at each line (?); otherwise use 'assets/NO_FILE' \
 `MMSEQS2_MIN_DMG`             (default=3.5)\
 `MMSEQS2_MAX_READS`           (default=100)\
 `MMSEQS2_MIN_READS`           (default=30\
 `MMSEQS2_SEED`                (default=42)            # Leave empty to have different reads each run, othewise set an integer (e.g. 42)\
-`MMSEQS2_AMBIG_FRAC`          (default=0.05)\         # Percent of e-value difference for the second best hit for a different genera than the mmseqs2 best hit 
+`MMSEQS2_AMBIG_FRAC`          (default=0.05)         # Percent of e-value difference for the second best hit for a different genera than the mmseqs2 best hit 
 
 7) *Plots*\
 `PLOTS_BAMDAM_MIN_READS` (default=50)    - Minimum reads per sample to include in bamdam plots\
