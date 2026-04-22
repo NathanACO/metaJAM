@@ -8,9 +8,9 @@ This pipeline performs processing and analysis of metagenomic data, starting fro
 
 > [!NOTE]
 > The newest version of metaJAM in nextflow has been released, up to now, recent updates will be build on nextflow. Ancient version will remain accessible on the Github page.\
-> Further developments will be included in metaJAM v1.2.2 in early March:\
-> - Extra module to mask databases based on microbial content\
-> - Addition of leeHom as an alternative choice to fastp\
+> Further developments will be included in metaJAM v1.2.2 in early March:
+> - Extra module to mask databases based on microbial content
+> - Addition of leeHom as an alternative choice to fastp
 > - Choice of the mapping strategy by iteration or not
 
 
