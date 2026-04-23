@@ -4,7 +4,8 @@
 
 Metagenomic Pipeline for ancient DNA analysis performed at the Centre for Palaeogenetics, Stockholm University.
 
-This pipeline performs processing and analysis of metagenomic data, starting from paired-end fastq files or any intermediate files used in the pipeline if not the entire workflow is desired to run.\ 
+This pipeline performs processing and analysis of metagenomic data, starting from paired-end fastq files or any intermediate files used in the pipeline if not the entire workflow is desired to run.
+
 This local version is specifically designed for user of Dardel, at CPG.
 
 > [!NOTE]
