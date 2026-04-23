@@ -9,28 +9,26 @@
 #                                Required modules
 ###################################################################################
 
-#CONDA_INIT="eval \"\$(conda shell.bash hook)\""
-CONDA_INIT=':'
-CONDA_ENV_SGA="/cfs/klemming/projects/supr/naiss2025-23-301/tools/miniconda3/envs/SGA"             
-FASTP_MODULE="fastp/0.24.0"
-PRINSEQ_LITE="/cfs/klemming/projects/snic/sediment_paleogenomics/tools/prinseq-lite-0.20.4/prinseq-lite.pl"
-KRAKEN2_MODULE="kraken2/2.1.2"
-BOWTIE2_MODULE="bowtie2/2.5.4"
-SAMTOOLS_MODULE="samtools/1.20"
-MMSEQS2_MODULE="MMseqs2/15-6f452"
-MMSEQS2_DATA_MODULE="MMseqs2_data/latest"
-CONDA_ENV_FILTERBAM="/cfs/klemming/projects/supr/naiss2025-23-301/tools/miniconda3/envs/bam-filter"
-CONDA_ENV_ngsLCA="/cfs/klemming/projects/supr/naiss2025-23-301/tools/miniconda3/envs/ngsLCA"
-PDC_MODULE="PDC"                 # only needed for Kraken2 section using $PDC_TMP
-KRONATOOLS_MODULE="kronatools/2.8.1"
-CONDA_ENV_PLOTS="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/plots"
+CONDA_ENV_SGA="Path_conda_env_SGA"             
+FASTP_MODULE="Path_module_fastp"
+PRINSEQ_LITE="Path_prinseq_lite.pl"
+KRAKEN2_MODULE="Path_module_Kraken2"
+BOWTIE2_MODULE="Path_module_bowtie2"
+SAMTOOLS_MODULE="Path_module_samtools"
+MMSEQS2_MODULE="Path_module_MMseqs2"
+MMSEQS2_DATA_MODULE="Path_module_MMseqs2_data"
+CONDA_ENV_FILTERBAM="Path_conda_env_bam-filter"
+CONDA_ENV_ngsLCA="Path_conda_env_ngsLCA"
+PDC_MODULE="PDC"                 
+KRONATOOLS_MODULE="Path_module_kronatools"
+CONDA_ENV_PLOTS="Path_conda_env_plots"
 
 # ---- bamdam from Python venv ----
 # Optional: module to load before activating the venv (kept generic).
 # If bamdam is already in PATH (installed via pip), leave these empty
-BAMDAM_PYTHON_MODULE="python"
-BAMDAM_VENV="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/bamdam-env"
-TAXADB_VENV="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/taxadb" #plus install pandas through pip
+BAMDAM_PYTHON_MODULE="Path_module_python"
+BAMDAM_VENV="Path_python_env_bamdam-env"
+TAXADB_VENV="Path_python_env_taxadb" #plus install pandas through pip
 
 ###################################################################################
 #                        Input files
@@ -39,8 +37,8 @@ TAXADB_VENV="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/taxadb"
 # 1) If you want to run the whole pipeline from raw sequencing data
 # Point the path of your raw sequencing files or to a list containing the path of each samples to be processed
 #If a list is provided, it will perform the samples contained in it preferentially and READS_GLOB won't be perform
-READS_GLOB="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/samples/*.fastq.gz" #e.g. READS_GLOB="/data/project/*_1.fastq.gz" or READS_GLOB="/data/project/*_R1.fastq.gz"
-READS_LIST="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/List_fastq.txt"   # e.g. "/data/project/my_fastqs.list"
+READS_GLOB="Path_samples/*.fastq.gz" #e.g. READS_GLOB="/data/project/*_1.fastq.gz" or READS_GLOB="/data/project/*_R1.fastq.gz"
+READS_LIST="Path_samples/List_fastq.txt"   # e.g. "/data/project/my_fastqs.list"
 
 KRAKEN_REQUIRE_PRIMARY=1  #If you want to run Kraken GTDB on every sga or prinseq files present in the respective folder, set it to 0
 MAP_REQUIRE_PRIMARY=1 #If you want to run mapping on every kraken files present in the kraken folder, set it to 0
@@ -70,16 +68,15 @@ MAPPING_BAM_DIR=""
 #                        Path to scripts and databases
 ###################################################################################
 
-SCRIPTS_DIR="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/scripts"
+SCRIPTS_DIR="Path_scripts_directory"
 
 # NOTE: Please verify your DB versions are current; if DBs are updated, paths likely change.
 #  - PhyloNorway masked bowtie2 index (prefix ending with "_"):
-PHYLONORWAY="/cfs/klemming/projects/supr/sediment_paleogenomics/databases/metagenome/PhyloNorway_masked/PhyloNorway_index/PhyloNorway_index_"
-PHYLONORWAY_HEADER="/cfs/klemming/projects/supr/sediment_paleogenomics/databases/metagenome/PhyloNorway_masked/PhyloNorway_index/PhyloNorway_sq_header.tsv"
-PLASTID="/cfs/klemming/projects/supr/sediment_paleogenomics/tom/CHLOROPLAST/plastids.genomic"
-MITO="/cfs/klemming/projects/snic/sediment_paleogenomics/databases/bowtie2/refseq_mito/mitochondrion.1.1.genomic"
-MAM_BIRD_FISH="/cfs/klemming/projects/supr/archaeogenetics/ernjoh/mam-bird-fish_v2/mam-bird-fish_v2" #"/cfs/klemming/projects/supr/archaeogenetics/ernjoh/mam-bird-fish_v2/mam-bird-fish_v2"
-#MAM_FISH="/cfs/klemming/projects/snic/sediment_paleogenomics/databases/bowtie2/nordic_fish/nordic_fish.index" #"/cfs/klemming/projects/supr/archaeogenetics/ernjoh/mam-bird-fish_v2/mam-bird-fish_v2"
+PHYLONORWAY="Path_DB_PhyloNorway_index"
+PHYLONORWAY_HEADER="Path_DB_PhyloNorway_sq_header.tsv"
+PLASTID="Path_DB_plastids_index"
+MITO="Path_DB_mitochondrion_index"
+MAM_BIRD_FISH="Path_DB_mam-bird-fish_v2"
 
 # Databases to map with Bowtie2 (order matters). Space-separated list of index prefixes.
 # Example:
@@ -97,24 +94,24 @@ MAP_LAST_DB_TAG="mam-bird-fish_v2" #nordic_fish
 SITE_TAG="Orsa"
 
 # Kraken2 GTDB 
-GTDB_SRC="/cfs/klemming/pdc/software/dardel/sw-uppmax/data/Kraken2_data/prebuilt/k2_gtdb_genome_reps_20250609"
+GTDB_SRC="Path_DB_GTDB"
 #"/cfs/klemming/scratch/e/ernjoh/GTDB_KRAKEN2_DB" 
 # NCBI taxonomy files
-NAMES="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/names_NM.dmp"
-NODES="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/nodes_NM.dmp"
-ACC2TAX="/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/acc2taxid_NM_PhyloNorway_MBF_3col_noNA.txt.gz" #"/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/acc2taxid_nordic_fish2.3col.gz" #"/cfs/klemming/projects/supr/naiss2025-23-301/private/NCBI_taxonomy/acc2taxid_NM_PhyloNorway_MBF_3col_noNA.txt.gz"
+NAMES="Path_names_NM.dmp"
+NODES="Path_nodes_NM.dmp"
+ACC2TAX="Path_acc2taxid.txt.gz"
 
 #MMSeqs2 database
-MMSEQS2_DB="/sw/data/MMseqs2_data/latest/rackham/NT"
-TAXADB_SQLITE="/cfs/klemming/projects/supr/sediment_paleogenomics/tools/metaJAM/taxadb_nucl.sqlite"
+MMSEQS2_DB="Path_MMSEQS2_DB_NT"
+TAXADB_SQLITE="Path_taxadb_nucl.sqlite"
 
 #### Path to roots
-OUT_ROOT="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out"
-TMP_ROOT="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/tmp"
-LOG_ROOT="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/pipeline_metage_out/log"
+OUT_ROOT="Path_out"
+TMP_ROOT="Path_tmp"
+LOG_ROOT="Path_log"
 
 #### Path to metadata
-METADATA_PATH="/cfs/klemming/projects/supr/sllstore2017093/sediment/nathan/metadata.txt" #Carefull it needs to be as a tsv tab-delimited
+METADATA_PATH="Path_metadata.txt" #Carefull it needs to be as a tsv tab-delimited
 
 # Fastp outputs by sample will go to:     ${OUT_ROOT}/01_fastp/<sample>/
 # Prinseq outputs by sample will go to:   ${OUT_ROOT}/02_prinsea/<sample>/
@@ -203,12 +200,13 @@ PLOTS_PLOT_LOW_DAMAGE_TAXA=0    # 1 = keep low-damage taxa (default); 0 = drop t
 PLOTS_EXCLUDE_TAXA="Homo;Zea;Canis;Veronica" # comma / semicolon / space separated (exact taxon name matches)
 PLOTS_KRONA=1                   # Plots the bamdam results for all samples in metadata if enable. 1=enable, 0=disable
 PLOTS_LIST_TAXA_EVOLUTION_FILE=taxa_list_reads_single_plot.txt # Give a list of taxa with one taxa per line, to produce plot of abundance of each taxa as a line representation
-###################################################################################
-#                               SBATCH parameters
-###################################################################################
+########################################################################################################
+#                                        SBATCH parameters
+# Note: These paramaters are designed for running ~150 Millions of reads at a time on Dardel PDC cluster
+########################################################################################################
 
 ##### Global SBATCH defaults
-SBATCH_DEFAULT_ACCOUNT="naiss2025-5-78"
+SBATCH_DEFAULT_ACCOUNT="account_project"
 SBATCH_DEFAULT_PARTITION="shared"
 SBATCH_DEFAULT_CPUS="32"
 SBATCH_DEFAULT_MEM="28G"
@@ -218,7 +216,7 @@ SBATCH_DEFAULT_EXTRA=""
 
 ##### Per-step SBATCH overrides (examples shown)
 # FASTP
-FASTP_SBATCH_ACCOUNT="naiss2025-5-78"
+FASTP_SBATCH_ACCOUNT="account_project"
 FASTP_SBATCH_PARTITION="shared"
 FASTP_SBATCH_CPUS="32"
 FASTP_SBATCH_MEM="28G"
@@ -228,7 +226,7 @@ FASTP_SBATCH_EXTRA=""
 FASTP_SBATCH_JOB_NAME="fastp_merge"
 
 # SGA
-SGA_SBATCH_ACCOUNT="naiss2025-5-78"
+SGA_SBATCH_ACCOUNT="account_project"
 SGA_SBATCH_PARTITION="shared"
 SGA_SBATCH_CPUS="32"
 SGA_SBATCH_MEM="28G"
@@ -238,7 +236,7 @@ SGA_SBATCH_EXTRA=""
 SGA_SBATCH_JOB_NAME="SGA"
 
 # SLURM for PRINSEQ array
-PRINSEQ_SBATCH_ACCOUNT="naiss2025-5-78"
+PRINSEQ_SBATCH_ACCOUNT="account_project"
 PRINSEQ_SBATCH_PARTITION="shared"
 PRINSEQ_SBATCH_CPUS="62"
 PRINSEQ_SBATCH_MEM="50G"
@@ -248,57 +246,57 @@ PRINSEQ_SBATCH_EXTRA=""
 PRINSEQ_SBATCH_JOB_NAME="prinseq"
 
 # Kraken2
-KRAKEN_SBATCH_ACCOUNT="naiss2025-5-78"
-KRAKEN_SBATCH_PARTITION="memory" #"memory" 
-KRAKEN_SBATCH_CPUS="256" #"256" 
-KRAKEN_SBATCH_MEM="650G" #650G"         
-KRAKEN_SBATCH_TIME="1-10:00:00" #"0-20:00:00"
+KRAKEN_SBATCH_ACCOUNT="account_project"
+KRAKEN_SBATCH_PARTITION="memory"
+KRAKEN_SBATCH_CPUS="256" 
+KRAKEN_SBATCH_MEM="650G"         
+KRAKEN_SBATCH_TIME="1-10:00:00"
 KRAKEN_SBATCH_QOS=""
 KRAKEN_SBATCH_EXTRA=""
 KRAKEN_SBATCH_JOB_NAME="GTDB"
 
 # Mapping
-MAP_SBATCH_ACCOUNT="naiss2025-5-78" #"naiss2025-5-78" #naiss2025-5-616
-MAP_SBATCH_PARTITION="memory"   #main #memory
-MAP_SBATCH_CPUS="256" #16 #256
-MAP_SBATCH_MEM="550G"   #550G
-MAP_SBATCH_TIME="0-10:00:00" #"0-10:00:00"
+MAP_SBATCH_ACCOUNT="account_project"
+MAP_SBATCH_PARTITION="memory"
+MAP_SBATCH_CPUS="256"
+MAP_SBATCH_MEM="550G"
+MAP_SBATCH_TIME="0-10:00:00"
 MAP_SBATCH_QOS=""
 MAP_SBATCH_EXTRA=""
 MAP_SBATCH_JOB_NAME="bowtie2"
 
 # Filtering / ngsLCA
-FILTER_SBATCH_ACCOUNT="naiss2025-5-78"
-FILTER_SBATCH_PARTITION="shared"   #memory
+FILTER_SBATCH_ACCOUNT="account_project"
+FILTER_SBATCH_PARTITION="memory"
 FILTER_SBATCH_CPUS="32"
-FILTER_SBATCH_MEM="28G"    #"880G"
+FILTER_SBATCH_MEM="28G"
 FILTER_SBATCH_TIME="0-01:00:00"
 FILTER_SBATCH_QOS=""
 FILTER_SBATCH_EXTRA=""
 FILTER_SBATCH_JOB_NAME="filtering_ngslca"
 
 # MMSeqs2
-MMSEQS2_SBATCH_ACCOUNT="naiss2025-5-78"
-MMSEQS2_SBATCH_PARTITION="memory" #memory
-MMSEQS2_SBATCH_CPUS="256" #256
-MMSEQS2_SBATCH_MEM="880G" #880G
-MMSEQS2_SBATCH_TIME="08:10:00" #10:00:00
+MMSEQS2_SBATCH_ACCOUNT="account_project"
+MMSEQS2_SBATCH_PARTITION="memory"
+MMSEQS2_SBATCH_CPUS="256"
+MMSEQS2_SBATCH_MEM="880G"
+MMSEQS2_SBATCH_TIME="08:10:00"
 MMSEQS2_SBATCH_QOS=""
 MMSEQS2_SBATCH_EXTRA=""
 MMSEQS2_SBATCH_JOB_NAME="mmseqs2"
 
 # Metrics
-METRICS_SBATCH_ACCOUNT="naiss2025-5-78"
+METRICS_SBATCH_ACCOUNT="account_project"
 METRICS_SBATCH_PARTITION="shared"
 METRICS_SBATCH_CPUS="8"
 METRICS_SBATCH_MEM="10G"
-METRICS_SBATCH_TIME="01:00:00"
+METRICS_SBATCH_TIME="02:00:00"
 METRICS_SBATCH_QOS=""
 METRICS_SBATCH_EXTRA=""
 METRICS_SBATCH_JOB_NAME="metrics"
 
 # Plots
-PLOTS_SBATCH_ACCOUNT="naiss2025-5-78"
+PLOTS_SBATCH_ACCOUNT="account_project"
 PLOTS_SBATCH_PARTITION="shared"
 PLOTS_SBATCH_CPUS="8"
 PLOTS_SBATCH_MEM="10G"
@@ -311,7 +309,6 @@ PLOTS_SBATCH_JOB_NAME="plots"
 ###                       IMPORTANT TO DO BEFORE TO RUN ANY MAPPING SCRIPT                                 ###
 #------------------------------------------------------------------------------------------------------------#
 #                 Please index all your database with bowtie2 otherwise it won't run                         #
-#             Don't run more than 8-10 samples in the same time as Kraken2 might get killed                  #
 #      Check carefully the disk space, so you don't have any jobs being killed for out of disk space         #
 # Carefull about the input fastq.gz -> Better to add it as Sample_name_1.fastq.gz and Sample_name_2.fastq.gz #
 # Don't forget to precise the MAP_LAST_DB_TAG, especially if you run the filtering or mapping step alone     #
