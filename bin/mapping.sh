@@ -86,7 +86,7 @@ else
     # ----------------------------
     samtools view -@ "${threads}" -b "${ID}_${idx}_aln.sam" \
         | samtools sort -n -@ "${threads}" \
-        -o "${ID}_${idx}_aln.bam"
+        -o "${ID}.${idx}.bam"
 
     echo "$(date -u) 3. BAM created and sorted" >&2
 fi

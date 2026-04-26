@@ -128,9 +128,10 @@ process KRAKEN2 {
         tuple val(ID), path(reads), path(DB)
 
     output:
-        tuple val(ID), path("*_unclas.fastq"), emit: not_microbe
-        path("*_report.txt")
-        path("*_output.txt")
+        tuple val(ID), path("*_unclas.fastq.gz"), emit: not_microbe
+        path("*_clas.fastq.gz")
+        path("*_report.txt.gz")
+        path("*_output.txt.gz")
         
     script:
     """
@@ -144,6 +145,9 @@ process KRAKEN2 {
             --classified-out "${ID}_\${DB_LABEL}_clas.fastq" \
             --unclassified-out "${ID}_\${DB_LABEL}_unclas.fastq" \
             --memory-mapping "${reads}"
+        
+        pigz *clas.fastq
+        pigz *.txt
     """
 }
 
@@ -301,7 +305,6 @@ process NGSLCA {
 
     label 'little_memory'
     conda './envs/ngsLCA2.yml'
-    errorStrategy = { task.exitStatus == 1 ? 'ignore' : 'retry' }
     
     input:    
         tuple val(ID), path(bam), path(NAMES), path(NODES), path(ACC2TAX)
@@ -330,6 +333,8 @@ process NGSLCA {
 
 process BAMDAM {
     conda './envs/bamdam.yml'
+
+    errorStrategy = { task.exitStatus in [143,137,104,134,139,140] ? 'retry' : 'ignore' } 
 
     label 'little_memory'
 
