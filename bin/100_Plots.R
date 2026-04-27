@@ -243,6 +243,11 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
 
   # bamdam files: *.tsv with TaxName / TotalReads / taxpath
   files <- list.files(bamdam_dir, pattern = "\\.tsv$", full.names = TRUE, recursive = TRUE)
+  #get rid of evaluation summary files to not get mixed with bamdam file
+  files <- files[!grepl("\\.evaluation\\.", files)]
+
+  message("bamdam files")
+  message(files)
 
   # If MAP_LAST_DB_TAG is set, pre-filter to files inside <SAMPLE>_<TAG>/ to avoid mixing runs
   if (nzchar(map_tag)) {
@@ -300,8 +305,9 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
     rel     <- sub(paste0("^", bd_norm, "/?"), "", f_norm)
     parts   <- strsplit(rel, "/", fixed = TRUE)[[1]]
 
-    sample_id <- if (length(parts) >= 1) parts[1] else NA_character_
-    tag_dir   <- if (length(parts) >= 2) parts[2] else NA_character_
+    # sample_id <- if (length(parts) >= 1) parts[1] else NA_character_
+    sample_id <- sub("\\.tsv$", "", basename(f))
+    tag_dir   <- map_tag
 
     db_tag <- NA_character_
     if (!is.na(sample_id) && !is.na(tag_dir) && startsWith(tag_dir, paste0(sample_id, "_"))) {
