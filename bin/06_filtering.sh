@@ -166,6 +166,7 @@ if [[ "${ENABLE_BAMDAM}" -eq 1 ]]; then
       --out_bam "${BAMDAM_DIR}/${SAMPLE}.small.bam" \
       --out_lca "${BAMDAM_DIR}/${SAMPLE}.small.lca" \
       --stranded "${BAMDAM_STRANDED}" \
+      --dust_max "${BAMDAM_DUSTMAX}" \
       --show_progress
 
     # compute
