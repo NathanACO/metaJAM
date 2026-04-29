@@ -169,7 +169,7 @@ process BOWTIE2_DB1 {
         tuple val(ID), path("*.bam"), emit: mapped
         tuple val(ID), path("${ID}_${idx}_unclass.fq.gz"), emit: unmapped
 
-    publishDir "${params.OUTPUT_Dir}/04_sequantial_mapping", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/04_sequential_mapping", mode: "copy"
         
     script:
     """
@@ -189,7 +189,7 @@ process BOWTIE2_DB2 {
         tuple val(ID), path("*.bam"), emit: mapped
         tuple val(ID), path("${ID}_${idx}_unclass.fq.gz"), emit: unmapped
 
-    publishDir "${params.OUTPUT_Dir}/04_sequantial_mapping", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/04_sequential_mapping", mode: "copy"
         
     script:
     """
@@ -209,7 +209,7 @@ process BOWTIE2_DB3 {
         tuple val(ID), path("*.bam"), emit: mapped
         tuple val(ID), path("${ID}_${idx}_unclass.fq.gz"), emit: unmapped
 
-    publishDir "${params.OUTPUT_Dir}/04_sequantial_mapping", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/04_sequential_mapping", mode: "copy"
         
     script:
     """
@@ -229,7 +229,7 @@ process BOWTIE2_DB4 {
         tuple val(ID), path("*.bam"), emit: mapped
         tuple val(ID), path("${ID}_${idx}_unclass.fq.gz"), emit: unmapped
 
-    publishDir "${params.OUTPUT_Dir}/04_sequantial_mapping", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/04_sequential_mapping", mode: "copy"
         
     script:
     """
@@ -249,7 +249,7 @@ process BOWTIE2_DB5 {
         tuple val(ID), path("*.bam"), emit: mapped
         tuple val(ID), path("${ID}_${idx}_unclass.fq.gz"), emit: unmapped
 
-    publishDir "${params.OUTPUT_Dir}/04_sequantial_mapping", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/04_sequential_mapping", mode: "copy"
         
     script:
     """
@@ -269,7 +269,7 @@ process BOWTIE2_DB6 {
         tuple val(ID), path("*.bam"), emit: mapped
         tuple val(ID), path("${ID}_${idx}_unclass.fq.gz"), emit: unmapped
 
-    publishDir "${params.OUTPUT_Dir}/04_sequantial_mapping", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/04_sequential_mapping", mode: "copy"
         
     script:
     """
@@ -289,7 +289,7 @@ process BOWTIE2_DB7 {
         tuple val(ID), path("*.bam"), emit: mapped
         tuple val(ID), path("${ID}_${idx}_unclass.fq.gz"), emit: unmapped
 
-    publishDir "${params.OUTPUT_Dir}/04_sequantial_mapping", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/04_sequential_mapping", mode: "copy"
         
     script:
     """
@@ -309,7 +309,7 @@ process BOWTIE2_DB8 {
         tuple val(ID), path("*.bam"), emit: mapped
         tuple val(ID), path("${ID}_${idx}_unclass.fq.gz"), emit: unmapped
 
-    publishDir "${params.OUTPUT_Dir}/04_sequantial_mapping", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/04_sequential_mapping", mode: "copy"
         
     script:
     """
@@ -329,7 +329,7 @@ process BOWTIE2_DB9 {
         tuple val(ID), path("*.bam"), emit: mapped
         tuple val(ID), path("${ID}_${idx}_unclass.fq.gz"), emit: unmapped
 
-    publishDir "${params.OUTPUT_Dir}/04_sequantial_mapping", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/04_sequential_mapping", mode: "copy"
         
     script:
     """
@@ -349,7 +349,7 @@ process BOWTIE2_DB10 {
         tuple val(ID), path("*.bam"), emit: mapped
         tuple val(ID), path("${ID}_${idx}_unclass.fq.gz"), emit: unmapped
 
-    publishDir "${params.OUTPUT_Dir}/04_sequantial_mapping", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/04_sequential_mapping", mode: "copy"
         
     script:
     """
