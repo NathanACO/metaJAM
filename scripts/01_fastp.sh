@@ -17,6 +17,7 @@ mkdir -p "${output}"
 fastp -i "${r1}" -I "${r2}" -p -c --merge \
       --overlap_len_require "${FASTP_OVERLAP_LEN_REQUIRE}" \
       --overlap_diff_limit 1 \
+      --detect_adapter_for_per \
       --merged_out="${output}/${sample}_merged.fastq.gz" \
       --include_unmerged \
       --trim_poly_x \
