@@ -336,7 +336,7 @@ process BAMDAM {
 
     errorStrategy = { task.exitStatus in [143,137,104,134,139,140] ? 'retry' : 'ignore' } 
 
-    label 'little_memory'
+    label 'small_memory'
 
     publishDir "${params.OUTPUT_Dir}/08_bamdam", mode: "copy"
 
