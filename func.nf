@@ -23,6 +23,7 @@ process FASTP {
         --overlap_diff_limit 1 \
         --merged_out="${ID}_merged.fastq.gz" \
         --include_unmerged \
+        --detect_adapter_for_per \
         --trim_poly_x \
         -h "${ID}.html" -R "${ID} QC Report" \
         -w 10 \
