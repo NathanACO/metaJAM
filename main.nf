@@ -314,7 +314,8 @@ workflow {
     .map { id, files -> tuple(id, files) }
     .groupTuple()
 	.set{mapped_bam}
-	// mapped_bam.view()
+	mapped_bam.view()
+
 
 	MERGE_BAM( mapped_bam )
 	MERGE_BAM.out.set{ merged_bam }
@@ -568,6 +569,10 @@ workflow {
 	}
 
 	if (params.ENABLE_PLOTS == "enable") {
+
+		metrics.view{log.info "Debug metrics files for plots: ${it}"}
+		bamdam_bam_lca.map{it[3]}.collect().view{log.info "Debug bamdam_bam_lca files for plots: ${it}"}
+		mmseq2_evaluation.map{it[1]}.collect().view{log.info "Debug mmseq2_evaluation files for plots: ${it}"}
 
 		metrics
 		.combine(bamdam_bam_lca.map{it[3]}.collect())
