@@ -5,7 +5,7 @@ process FASTP {
 
     label 'small_memory'
 
-    conda 'bioconda::fastp'
+    conda "bioconda::fastp=0.24.0 conda-forge::isa-l"
 
     input:
     tuple val(ID), path(r1), path(r2), val(FASTP_OVERLAP_LEN_REQUIRE), val(FASTP_MIN_LENGTH)
@@ -13,7 +13,7 @@ process FASTP {
     output:
     tuple val(ID), path("*_merged.fastq.gz")
 
-    publishDir "${params.OUTPUT_Dir}/01_fastp", mode: "copy" 
+    publishDir "${params.OUTPUT_Dir}/01_fastp/$ID", mode: "copy" 
 
     script:
     """
@@ -23,7 +23,7 @@ process FASTP {
         --overlap_diff_limit 1 \
         --merged_out="${ID}_merged.fastq.gz" \
         --include_unmerged \
-        --detect_adapter_for_per \
+        --detect_adapter_for_pe \
         --trim_poly_x \
         -h "${ID}.html" -R "${ID} QC Report" \
         -w 10 \
