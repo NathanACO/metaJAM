@@ -13,7 +13,7 @@ process FASTP {
     output:
     tuple val(ID), path("*_merged.fastq.gz")
 
-    publishDir "${params.OUTPUT_Dir}/01_fastp/$ID", mode: "copy" 
+    publishDir "${params.OUTPUT_Dir}/01_fastp/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy" 
 
     script:
     """
@@ -43,7 +43,7 @@ process SGA {
 		tuple val(ID), path("*_merged.dust.rmdup.fastq.gz"), emit: "rm_low_complexity"
 		path("*_merged.dust.fastq.gz")
 
-    publishDir "${params.OUTPUT_Dir}/02_sga", mode: "copy" 
+    publishDir "${params.OUTPUT_Dir}/02_sga/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy" 
 
     script:
     """
@@ -84,7 +84,7 @@ process PRINSEQ {
     tuple val(ID), path("*_merged.complexity_filtered.duplicatesremoved.fastq.gz"), emit: "rm_low_complexity"    
     tuple path("*_merged.complexity_filtered.fastq.gz"), path("*_merged.low_complexity.fastq.gz")
 
-    publishDir "${params.OUTPUT_Dir}/02_prinseq", mode: "copy" 
+    publishDir "${params.OUTPUT_Dir}/02_prinseq/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy" 
 
     script:
     """
@@ -123,7 +123,7 @@ process PRINSEQ {
 process KRAKEN2 {
     conda './envs/kraken2.yml'
 
-    publishDir "${params.OUTPUT_Dir}/03_kraken2_filter", mode: "copy" 
+    publishDir "${params.OUTPUT_Dir}/03_kraken2_filter/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy" 
 
     input:    
         tuple val(ID), path(reads), path(DB)
@@ -162,7 +162,7 @@ process BOWTIE2 {
 output:
     tuple val(ID), path("*.bam")
 
-    publishDir "${params.OUTPUT_Dir}/04_parallel_mapping", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/04_parallel_mapping/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy"
         
     script:
     """
@@ -209,7 +209,7 @@ process MERGE_BAM {
     output:
         tuple val(ID), path("*_merged.sorted.bam")
     
-    publishDir "${params.OUTPUT_Dir}/05_merged_bam", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/05_merged_bam/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy"
         
     script:
     """
@@ -240,7 +240,7 @@ process CONCATENATE_BEDFILES {
     output:
         path("concatenated.bed")
 
-    publishDir "${params.OUTPUT_Dir}/06_masked_bam", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/06_masked_bam/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy"
         
     script:
     """
@@ -259,7 +259,7 @@ process MASK_REGIONS {
     output:
         tuple val(ID), path("*.mic_masked.bam")
     
-    publishDir "${params.OUTPUT_Dir}/06_masked_bam", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/06_masked_bam/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy"
         
     script:
     """
@@ -278,7 +278,7 @@ process FILTERBAM {
     output:
         tuple val(ID), path("*.b2.k1000.all.filtered.bam")
 
-    publishDir "${params.OUTPUT_Dir}/filterbam", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/filterbam/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy"
         
     script:
     """
@@ -314,7 +314,7 @@ process NGSLCA {
         tuple val(ID), path("*.lca"), emit: lca
 	path("*.log")
 
-    publishDir "${params.OUTPUT_Dir}/07_ngslca", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/07_ngslca/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy"
 
     errorStrategy 'ignore'
         
@@ -339,7 +339,7 @@ process BAMDAM {
 
     label 'small_memory'
 
-    publishDir "${params.OUTPUT_Dir}/08_bamdam", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/08_bamdam/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy"
 
     input:    
         tuple val(ID), path(bam), path(lca), 
@@ -441,7 +441,7 @@ process MMSEQ2 {
         path("*.besthit.assigned.tsv")
         tuple val(ID), path("*.bamdam_mmseqs.evaluation.summary.tsv"), emit: evaluation
 
-    publishDir "${params.OUTPUT_Dir}/09_mmseq2", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/09_mmseq2/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy"
 
     script:
     def seedArg = SEED ? "--seed ${SEED}" : ""
@@ -636,7 +636,7 @@ process CONCAT_METRICS {
 
     output: path("metrics")
 
-    publishDir "${params.OUTPUT_Dir}/10_metrics", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/10_metrics/${params.MAP_LAST_DB_TAG}", mode: "copy"
 
     script:
 
@@ -654,7 +654,7 @@ process PLOTS {
 
     label 'little_memory'
 
-    publishDir "${params.OUTPUT_Dir}/11_plots", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/11_plots/${params.MAP_LAST_DB_TAG}", mode: "copy"
 
     input:    
         tuple path(METRICS_TSV),
@@ -731,7 +731,7 @@ process PLOTS_KRONA_BY_SITE {
 
     label 'little_memory'
 
-    publishDir "${params.OUTPUT_Dir}/11_plots", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/11_plots/${params.MAP_LAST_DB_TAG}", mode: "copy"
 
     errorStrategy { task.exitStatus == 255 ? 'ignore' : 'retry' } 
 
@@ -781,7 +781,7 @@ process PLOTS_KRONA_BY_SITE {
 process PLOTS_KRONA_BY_SAMPLE {
     label 'small_memory'
     conda 'bioconda::krona'
-    publishDir "${params.OUTPUT_Dir}/08_bamdam", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/08_bamdam/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy"
     input:
         tuple val(ID), path(xml), path(tsv)
             
