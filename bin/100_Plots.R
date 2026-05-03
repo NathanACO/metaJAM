@@ -244,7 +244,7 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
   # bamdam files: *.tsv with TaxName / TotalReads / taxpath
   files <- list.files(bamdam_dir, pattern = "\\.tsv$", full.names = TRUE, recursive = TRUE)
   #get rid of evaluation summary files to not get mixed with bamdam file
-  files <- files[!grepl("\\.evaluation\\.", files)]
+  files <- files[!grepl("bamdam_", files)]
 
   message("bamdam files")
   message(files)
