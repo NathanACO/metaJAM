@@ -6,7 +6,7 @@ dependencies:
   - python=3.9
   - pandas
   - numpy
-  - mmseqs2=17.b804f
+  - mmseqs2
   - pip
   - pip:
-    - taxadb==0.12.1
+    - taxadb
