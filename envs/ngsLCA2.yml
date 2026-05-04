@@ -3,7 +3,7 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
-  - python==3.9
+  - python=3.9
   - sga=0.10.15
   - fastp=1.3.3
   - ngsLCA=1.0.5
