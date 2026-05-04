@@ -1,6 +1,6 @@
 <img src="https://github.com/NathanACO/metaJAM/blob/main/metaJAM_logo.png" width="200" /> 
 
-# metaJAM v1.1.1
+# metaJAM v1.1.1 nf version
 
 Metagenomic Pipeline for ancient DNA analysis performed at the Centre for Palaeogenetics, Stockholm University.
 
