@@ -1,2 +1,0 @@
-/pipeline_metage_out/03_kraken_gtdb/Test_Sample_GTDB_unclas.fastq.gz
-/pipeline_metage_out/03_kraken_gtdb/Test_Sample_GTDB_unclas.fastq.gz
