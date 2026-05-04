@@ -1,1 +1,0 @@
-/pipeline_metage_out/01_fastp/Test_Sample_merged.fq.gz
