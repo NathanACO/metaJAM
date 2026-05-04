@@ -1,2 +1,0 @@
-test/Test_Sample_R1_001.fastq.gz
-test/Test_Sample_R2_001.fastq.gz
