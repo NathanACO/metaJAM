@@ -6,10 +6,8 @@ Metagenomic Pipeline for ancient DNA analysis performed at the Centre for Palaeo
 
 This pipeline performs processing and analysis of metagenomic data, starting from paired-end fastq files or any intermediate files used in the pipeline if not the entire workflow is desired to run.
 
-This local version is specifically designed for user of Dardel, at CPG.
 
 > [!NOTE]
-> The newest version of metaJAM in nextflow has been released, future updates will be build on nextflow. The local version will remain accessible on the Github page.\
 > Further developments will be included in metaJAM v1.2.2 in mid 2026:
 > - Microbial version of the pipeline to investigate the microbial signal, notably using a parallel competitive mapping against the GTDB database
 
