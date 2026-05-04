@@ -35,7 +35,7 @@ process FASTP {
 
 process SGA {
     label 'small_memory'
-	conda ' bioconda::sga'
+	conda 'bioconda::sga=0.10.15'
 	input:
     	tuple val(ID), path(merged_reads), val(SGA_DUST_THRESHOLD)
 
@@ -76,7 +76,7 @@ process PRINSEQ {
 
     errorStrategy 'retry' // duplicate removal could oom without nextflow registering it as oom
 
-    conda 'bioconda::prinseq'
+    conda 'bioconda::prinseq=0.20.4'
     input:
     tuple val(ID), path(merged_reads), val(PRINSEQ_COMPLEXITY_METHOD), val(PRINSEQ_COMPLEXITY_THRESHOLD), val(PRINSEQ_MIN_LEN), val(PRINSEQ_DEREP)
 
