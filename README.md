@@ -16,7 +16,7 @@ This pipeline performs processing and analysis of metagenomic data, starting fro
 
 
 ## Overview of the pipeline
-![alt text](https://github.com/NathanACO/metaJAM/blob/main/metaJAM_diagram.png)
+![alt text](https://github.com/NathanACO/metaJAM/blob/metaJAM-nf/metaJAM_diagram_v1.1.1.png)
 
 ## To specify input and parameter setting in `nextflow.config`, please refer to [this link](https://github.com/NathanACO/metaJAM/blob/ae8b5cfbb4d81ccd059c7ae82d2ea0aeb371e042/README.input_nextflow.config.md)
 
