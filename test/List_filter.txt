@@ -1,1 +1,0 @@
-/pipeline_metage_out/04_mapping/Test_Sample/Test_Sample.b2.k1000.all.sorted.bam
