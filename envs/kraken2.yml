@@ -5,5 +5,5 @@ channels:
   - defaults
 
 dependencies:
-  - bioconda::kraken2
-  - conda-forge::pigz
+  - kraken2=2.17.1
+  - pigz=2.8
