@@ -4,28 +4,28 @@
 ### 1. Tools activation with "enable" or "disable"
 Indentation of the process suggest that the process is included in the process at the line above. For example, to enable FASTP you need to enable preprocess. 
 ```
-ENABLE_PREPROCESS="enable"     // If disabled, neither fastp or SGA will run\
+ENABLE_PREPROCESS="enable"     # If disabled, neither fastp or SGA will run\
     ENABLE_FASTP="enable"\
     ENABLE_SGA="enable"\
-    ENABLE_PRINSEQ="enable"        // enable to use PRINSEQ instead of SGA         \
-    ENABLE_LOW_COMPLEXITY_FILTER="PRINSEQ" // use 'PRINSEQ' prinseq result for downstream analysis; Use 'SGA' to use SGA result for downstream analysis; Use '' if BOTH are disabled
+    ENABLE_PRINSEQ="enable"        # enable to use PRINSEQ instead of SGA         \
+    ENABLE_LOW_COMPLEXITY_FILTER="PRINSEQ" # use 'PRINSEQ' prinseq result for downstream analysis; Use 'SGA' to use SGA result for downstream analysis; Use '' if BOTH are disabled
 
 ENABLE_KRAKEN_GTDB="enable"\
 ENABLE_MAPPING="enable"\
     ENABLE_PARALLEL_MAPPING='enable'\
     ENABLE_SEQUENTIAL_MAPPING='enable'\
-    USE_MAPPING='PARALLEL_MAPPING' // use the output bam files from 'PARALLEL_MAPPING' or 'SEQUENTIAL_MAPPING' for downstream analysis, it cannot be '' when mapping is enabled.\
+    USE_MAPPING='PARALLEL_MAPPING' # use the output bam files from 'PARALLEL_MAPPING' or 'SEQUENTIAL_MAPPING' for downstream analysis, it cannot be '' when mapping is enabled.\
 
-ENABL_MERGE_BAM="enable" // merge the bam of the same sample mapped against different databases
+ENABL_MERGE_BAM="enable" # merge the bam of the same sample mapped against different databases
 
 ENABLE_MASK_REGIONS="enable"\
-    ENABLE_GENERATE_BEDFILE_TO_MASK="enable" // can be enabled only if 'ENABLE_MASK_REGIONS' is enabled\
-        ENABLE_MASK_FASTA="enable" // can be enabled only if the subworkflow 'ENABLE_GENERATE_BEDFILE_TO_MASK' is enabled
+    ENABLE_GENERATE_BEDFILE_TO_MASK="enable" # can be enabled only if 'ENABLE_MASK_REGIONS' is enabled\
+        ENABLE_MASK_FASTA="enable" # can be enabled only if the subworkflow 'ENABLE_GENERATE_BEDFILE_TO_MASK' is enabled
 
 ENABLE_NGSLCA="enable"\
 ENABLE_BAMDAM="enable"\
 ENABLE_KRONATOOLS="enable"\
-ENABLE_MMSEQS2="enable" // enable this requires ENABLE_BAMDAM\
+ENABLE_MMSEQS2="enable" # enable this requires ENABLE_BAMDAM\
 ENABLE_METRICS="enable"\
 ENABLE_PLOTS="enable"
 ```
@@ -41,30 +41,32 @@ Provide `metadata` for plotting, you can see ./test/metadata.txt as an example:\
     sample	age_ka	depth_cm	sample_type	layer	notes	site\
     X	1	25	    sediment	NA	Good DNA	LakeA
 
+`MAP_LAST_DB_TAG`="mam-bird-fish_v2" #specify database/run name for plotting and for output directory structuring as sampleID_MAP_LAST_DB_TAG 
+
 2.2 If you are (1) running after any process (all the previous processes are not 'enable') or (2) supplements data which already run through the process to the new batch of samples you are running, you can input a file containing a list of samples with absolute path to be processed (OVERRIDE_LIST_*). The format of each row in the input file is specified at the end of each line.
 
 - specify a file if you are skipping fastq, otherwise use ""\
-`OVERRIDE_LIST_FASTP="/path/to/file"` // sample_ID[tab]merged_fastq
+`OVERRIDE_LIST_FASTP="/path/to/file"` # sample_ID[tab]merged_fastq
 
 - specify a file if you are skipping the preprocessing meant for merging and low-complexity reads removal, otherwise use ""\
-`OVERRIDE_PREPROCESSED="/path/to/file"` // sample_ID[tab]preprocessed_fastq
+`OVERRIDE_PREPROCESSED="/path/to/file"` # sample_ID[tab]preprocessed_fastq
 
 - specify a file if you are skipping filtering out microbial reads mapped against contamination(or microbial) database, otherwise use ""\
-`OVERRIDE_LIST_KRAKEN="/path/to/file"` // sample_ID[tab]unclassified_fastq
+`OVERRIDE_LIST_KRAKEN="/path/to/file"` # sample_ID[tab]unclassified_fastq
 
 - specify a file if you are skipping mapping with bowtie2, otherwise use ""\
-`OVERRIDE_LIST_BAM="/path/to/file"` // give a file with each line: sample_ID[tab]absolute_path_to_sample_bam
+`OVERRIDE_LIST_BAM="/path/to/file"` # give a file with each line: sample_ID[tab]absolute_path_to_sample_bam
     - if you would not like to merge among the mapping result against different databases, make sure sample_ID is sample_ID+database_name for the workflow to differentiate them. 
     - Otherwise in default all bam of the same sample are always merged and analyzed together later.
 
 - specify a file if you are skipping ngsLCA, otherwise use ""\
-`OVERRIDE_LIST_NGSLCA="/path/to/file"` // sample_ID[tab]sample_lca_file
+`OVERRIDE_LIST_NGSLCA="/path/to/file"` # sample_ID[tab]sample_lca_file
 
 - specify a file if you are skipping bamdam, otherwise use ""\
-`OVERRIDE_LIST_BAMDAM="/path/to/file"` // sample_ID[tab]bam[tab]lca[tab]tsv[tab]xml_file
+`OVERRIDE_LIST_BAMDAM="/path/to/file"` # sample_ID[tab]bam[tab]lca[tab]tsv[tab]xml_file
 
 - specify a file if you are skipping mmseq2, otherwise use ""\
-`OVERRIDE_LIST_MMSEQ2=""` // ID[tab]mmseq2_output_evaluation_file
+`OVERRIDE_LIST_MMSEQ2=""` # ID[tab]mmseq2_output_evaluation_file
     - here the mmseq2_output_evaluation_file is output by a summary script after running mmseq2 and has suffix *.bamdam_mmseqs.evaluation.summary.tsv
 
 - specify a file if you are skipping running the script to generate metrics, otherwise use ""\
@@ -110,10 +112,10 @@ input a bed file with all regions to be masked\
 - if aiming to mask microbial-like regions without supplying the bed file for masking, we could also generate and use bed file using by specify `ENABLE_GENERATE_BEDFILE_TO_MASK="enable"` and fill in requirement of GENEX workflow
 
 GENEX workflow to generate bedfile for microbial/contamination-like region for reference genomes\
-`MCWORKFLOW_input_dir= ""`  // absolute path to the dir containing the reference genome fasta\
-`MCWORKFLOW_input_list=""`  // a list with each line as the absolute path to the reference genome fasta\
-`MCWORKFLOW_pseudo_reads_file_dir=""` // a directory to store the pseudo reads generated of GTDB/other suspected containmation source\
-`MCWORKFLOW_type_of_pseudo_reads="GTDB"` // label of pseudo reads\
+`MCWORKFLOW_input_dir= ""`  # absolute path to the dir containing the reference genome fasta\
+`MCWORKFLOW_input_list=""`  # a list with each line as the absolute path to the reference genome fasta\
+`MCWORKFLOW_pseudo_reads_file_dir=""` # a directory to store the pseudo reads generated of GTDB/other suspected containmation source\
+`MCWORKFLOW_type_of_pseudo_reads="GTDB"` # label of pseudo reads\
 `MCWORKFLOW_n_allowed_multimappers=1000`
 
 MMSeqs2 database\
@@ -165,9 +167,8 @@ MMSeqs2 database\
 `PLOTS_EXCLUDE_TAXA` # e.g., "Homo;Zea;Canis;Veronica" in the format of comma / semicolon / space separated (exact taxon name matches)\
 `PLOTS_KRONA`=1                   # Plots the bamdam results for all samples in metadata if enable. 1=enable, 0=disable\
 `PLOTS_LIST_TAXA_EVOLUTION_FILE` # Give a list of taxa with one taxa per line, to produce plot of abundance of each taxa as a line representation\
-`PLOTS_TAXA_PER_PLOT`=50       # Number of taxa passing the filters to plot per graph
-`MAP_LAST_DB_TAG`="mam-bird-fish_v2" #specify database name for plotting
-`PLOTS_SAMPLES_FOR_PLOTS`=params.METAJAM_DIR+"assets/NO_FILE8" // if you want to plot only a subset of samples, then supply a subset of metadata containing the samples that you want to plot. If no subsetting is needed, then use the placeholder "assets/NO_FILE8"
+`PLOTS_TAXA_PER_PLOT`=50       # Number of taxa passing the filters to plot per graph\
+`PLOTS_SAMPLES_FOR_PLOTS`=params.METAJAM_DIR+"assets/NO_FILE8" # if you want to plot only a subset of samples, then supply a subset of metadata containing the samples that you want to plot. If no subsetting is needed, then use the placeholder "assets/NO_FILE8"
 
 
 ### 5. SBATCH task parameter for memory and time assigned to the processing using tools
@@ -191,5 +192,5 @@ Apart from the memory and time for each process, you also need to change the pro
 
 ```
 params {
-    project                    = "naiss2025-xx-xxx" // for example for Naiss project allocation
+    project                    = "naiss2025-xx-xxx" # for example for Naiss project allocation
 ```
