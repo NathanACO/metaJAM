@@ -15,7 +15,7 @@ This local version is specifically designed for user of Dardel, at CPG.
 
 
 ## Overview of the pipeline
-![alt text](https://github.com/NathanACO/metaJAM/blob/main/metaJAM_diagram.png)
+![alt text](https://github.com/NathanACO/metaJAM/blob/main/metaJAM_diagram_v1.1.1.png)
 
 ## How to launch it:
 sbatch -x Run_pipeline_metage.sh config_pipeline_metage.sh\
