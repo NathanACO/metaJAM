@@ -233,8 +233,11 @@ workflow {
 		//kraken_out2.view()
 		kraken_out1.concat(kraken_out2).unique().set{kraken_out}
 
+		kraken_out.set{kraken_out_metrics}
+
 	} else {
-		kraken_out = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE5"] }
+		preprocessed_reads.set{kraken_out}
+		kraken_out_metrics = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE5"] }
 	}
 	//kraken_out.view()
 
@@ -438,50 +441,52 @@ workflow {
 	bamdam_bam_lca1.concat(bamdam_bam_lca2).unique().set{bamdam_bam_lca}
 
 	mmseq2_evaluation1 = Channel.empty()
-	if (params.ENABLE_MMSEQS2 == "enable") {
-		MMSEQS2_GENERA_FILE = Channel.fromPath(params.MMSEQS2_GENERA_FILE, checkIfExists:true)
 
-		bamdam_bam_lca
-		.map{it -> tuple(it[0], it[1], it[2], it[3],
-		params.MMSEQS2_MIN_DMG,
-		params.MMSEQS2_TOP_GENERA,
-		params.MMSEQS2_MAX_READS,
-		params.MMSEQS2_MIN_READS,
-		params.MMSEQS2_SPACED_KMER_MODE,
-		params.MMSEQS2_S,
-		params.MMSEQS2_MAX_EVALUE,
-		params.MMSEQS2_MIN_SEQID,
-		params.MMSEQS2_MAX_SEQS,
-		params.MMSEQS2_MIN_QUERY_COV,
-		params.MMSEQS2_SPLIT_MEM_LIMIT,
-		params.MMSEQS2_AMBIG_FRAC,
-		params.MMSEQS2_DATABASE_NAME,
-		params.MMSEQS2_DB,
-		params.MMSEQS2_SEED,
-		params.MMSEQS2_MIN_BITS,
-		params.MMSEQS2_TAXADB_SQLITE
-		)}
-		.combine(MMSEQS2_GENERA_FILE) //optional input
-		.set{ input_mmseq2 }
-		//input_mmseq2.view()
+	if (params.ENABLE_MMSEQS2 == "enable" || workflow_entry_point == "MMSEQS2") {
+
+		if (params.ENABLE_MMSEQS2 == "enable") {
+			MMSEQS2_GENERA_FILE = Channel.fromPath(params.MMSEQS2_GENERA_FILE, checkIfExists:true)
+
+			bamdam_bam_lca
+			.map{it -> tuple(it[0], it[1], it[2], it[3],
+			params.MMSEQS2_MIN_DMG,
+			params.MMSEQS2_TOP_GENERA,
+			params.MMSEQS2_MAX_READS,
+			params.MMSEQS2_MIN_READS,
+			params.MMSEQS2_SPACED_KMER_MODE,
+			params.MMSEQS2_S,
+			params.MMSEQS2_MAX_EVALUE,
+			params.MMSEQS2_MIN_SEQID,
+			params.MMSEQS2_MAX_SEQS,
+			params.MMSEQS2_MIN_QUERY_COV,
+			params.MMSEQS2_SPLIT_MEM_LIMIT,
+			params.MMSEQS2_AMBIG_FRAC,
+			params.MMSEQS2_DATABASE_NAME,
+			params.MMSEQS2_DB,
+			params.MMSEQS2_SEED,
+			params.MMSEQS2_MIN_BITS,
+			params.MMSEQS2_TAXADB_SQLITE
+			)}
+			.combine(MMSEQS2_GENERA_FILE) //optional input
+			.set{ input_mmseq2 }
+			//input_mmseq2.view()
+			
+			MMSEQ2( input_mmseq2 )
+			MMSEQ2.out.evaluation.collect().set{mmseq2_evaluation1}
+		}
 		
-		MMSEQ2( input_mmseq2 )
-		MMSEQ2.out.evaluation.collect().set{mmseq2_evaluation1}
-	}
-	
-	mmseq2_evaluation2 = Channel.empty()
-	if ( params.OVERRIDE_LIST_MMSEQ2 ) {
-		Channel
-		.fromPath(params.OVERRIDE_LIST_MMSEQ2)
-		.splitCsv(header: false, sep: '\t', strip: true)
-		.map { row -> 
-			tuple( row[0], file(row[1]))}
-		.set{mmseq2_evaluation2}
-	}
+		mmseq2_evaluation2 = Channel.empty()
+		if ( params.OVERRIDE_LIST_MMSEQ2 ) {
+			Channel
+			.fromPath(params.OVERRIDE_LIST_MMSEQ2)
+			.splitCsv(header: false, sep: '\t', strip: true)
+			.map { row -> 
+				tuple( row[0], file(row[1]))}
+			.set{mmseq2_evaluation2}
+		}
 
-	mmseq2_evaluation = mmseq2_evaluation1.concat(mmseq2_evaluation2).unique().ifEmpty {
-		ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE7"] }
-	}
+		mmseq2_evaluation = mmseq2_evaluation1.concat(mmseq2_evaluation2).unique()
+	} else {mmseq2_evaluation = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE7"]}}
 
 	if (params.ENABLE_KRONATOOLS == "enable") { 
 
@@ -545,7 +550,7 @@ workflow {
 		paired_reads
 		.combine( fastp_ch ,by:0 )
 		.combine( preprocessed_reads ,by:0 )
-		.combine( kraken_out, by:0 )
+		.combine( kraken_out_metrics, by:0 )
 		.combine( mapped_bam, by:0 )
 		.combine( bamdam_bam_lca.map{it -> tuple(it[0], it[1])}, by:0 )
 		.set{ input_metrics }
@@ -570,9 +575,9 @@ workflow {
 
 	if (params.ENABLE_PLOTS == "enable") {
 
-		metrics.view{log.info "Debug metrics files for plots: ${it}"}
-		bamdam_bam_lca.map{it[3]}.collect().view{log.info "Debug bamdam_bam_lca files for plots: ${it}"}
-		mmseq2_evaluation.map{it[1]}.collect().view{log.info "Debug mmseq2_evaluation files for plots: ${it}"}
+		// metrics.view{log.info "Debug metrics files for plots: ${it}"}
+		// bamdam_bam_lca.map{it[3]}.collect().view{log.info "Debug bamdam_bam_lca files for plots: ${it}"}
+		// mmseq2_evaluation.map{it[1]}.collect().view{log.info "Debug mmseq2_evaluation files for plots: ${it}"}
 
 		metrics
 		.combine(bamdam_bam_lca.map{it[3]}.collect())
