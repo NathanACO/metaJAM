@@ -35,8 +35,8 @@ tar -xzf taxdump.tar.gz names.dmp nodes.dmp
 python -m venv taxadb
 source taxadb/bin/activate
 pip3 install taxadb
-taxadb download -o taxadb -t full
-taxadb create -i taxadb --dbname taxadb.sqlite --fast
+taxadb download -o taxadb -t nucl
+taxadb create -i taxadb --dbname assets/taxadb.sqlite -d nucl --fast
 cd ../ 
 ```
 
