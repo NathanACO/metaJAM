@@ -36,7 +36,7 @@ python -m venv taxadb
 source taxadb/bin/activate
 pip3 install taxadb
 taxadb download -o taxadb -t nucl
-taxadb create -i taxadb --dbname assets/taxadb.sqlite -d nucl --fast
+taxadb create -i taxadb --dbname taxadb.sqlite -d nucl --fast
 cd ../ 
 ```
 
