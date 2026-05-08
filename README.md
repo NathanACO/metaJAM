@@ -35,14 +35,14 @@ tar -xzf taxdump.tar.gz names.dmp nodes.dmp
 python -m venv taxadb
 source taxadb/bin/activate
 pip3 install taxadb
-taxadb download -o taxadb -t full
-taxadb create -i taxadb --dbname taxadb.sqlite --fast
+taxadb download -o taxadb -t nucl
+taxadb create -i taxadb --dbname taxadb.sqlite -d nucl --fast
 cd ../ 
 ```
 
 ## How to launch it:
-`nextflow run main.nf -profile conda`\
-if you want to resume, add also `-resume`, and `--with-trace` for output a trace*.txt reporting memory and time for each process.
+`nextflow run main.nf -profile conda -c other_name_nextflow.config`\
+if you want to resume, add also `-resume`, and `--with-trace` for output a trace*.txt reporting memory and time for each process. You can omit the  `-c nextflow.config`, if you are running exactly nextflow.config. Else if your nextflow.config is named in other way, you need to specify with the config name `-c other_name_nextflow.config`.
 
 > [!TIP]
 > You can run it with the Test samples present in the test folder of this github.
