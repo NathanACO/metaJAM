@@ -114,7 +114,7 @@ workflow MASK_MICROBIAL_LIKE_REGION {
       .concat(mapping_index7).concat(mapping_index8).concat(mapping_index9)
       .concat(mapping_index10)
 
-      mapping_indexes.view{"Debug mapping_indexes in parallel mapping: ${it}"}
+      // mapping_indexes.view{"Debug mapping_indexes in parallel mapping: ${it}"}
     }
     
     input_for_align = mapping_indexes
@@ -256,7 +256,7 @@ process detect_exogenous {
   publishDir "${params.OUTPUT_Dir}/06_masked_bam", 
         mode: "copy"
 
-  container 'docker://quay.io/biocontainers/mulled-v2-0697a5880de9863c66cba89c8310687052a940fc:c72ea422cf70582757ae5648f79b19857320259b-0'
+  conda './envs/samtools_R.yml'
 
   input:
     tuple val(input_ref), path(bam), path(bai), val(type_of_pseudo_reads), val(work_dir), path(fna2name)
