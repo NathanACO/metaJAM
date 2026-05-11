@@ -31,15 +31,15 @@ def validate_pipeline() {
 			if (params.ENABLE_SEQUENTIAL_MAPPING != "enable" && params.USE_MAPPING == "SEQUENTIAL_MAPPING") error "params.USE_MAPPING == \"SEQUENTIAL_MAPPING\" requires ENABLE_SEQUENTIAL_MAPPING to be enabled."
 			if (params.ENABLE_PARALLEL_MAPPING != "enable" && params.ENABLE_SEQUENTIAL_MAPPING != "enable") error "As mapping is enabled with params.ENABLE_MAPPING, you need to enable at least one of ENABLE_PARALLEL_MAPPING or ENABLE_SEQUENTIAL_MAPPING."
 		}],
-		[name: 'MASKING',  toggle: params.ENABLE_MASK_REGIONS, req: {
-			if (params.ENABLE_GENERATE_BEDFILE_TO_MASK == "enable") {
+		[name: 'MCworkflow',  toggle: params.ENABLE_GENERATE_BEDFILE_TO_MASK, req: {
 				if (!params.BOWTIE2_MAPPING_DB1 && (!params.MCWORKFLOW_input_dir && !params.MCWORKFLOW_input_list)) error "Missing required file parameter: MCWORKFLOW_input_list/MCWORKFLOW_input_dir or BOWTIE2_MAPPING_DB1. At least one of them is required to generate mapping indexes for masking."
 				if (!params.MCWORKFLOW_pseudo_reads_file_dir) error "Missing required file parameter: MCWORKFLOW_pseudo_reads_file_dir"
 				if (params.MCWORKFLOW_type_of_pseudo_reads == "" || params.MCWORKFLOW_type_of_pseudo_reads == null) error "Missing required value parameter: MCWORKFLOW_type_of_pseudo_reads"
 				if (params.MCWORKFLOW_n_allowed_multimappers == "" || params.MCWORKFLOW_n_allowed_multimappers == null) error "Missing required value parameter: MCWORKFLOW_n_allowed_multimappers"
-			} else {
-				if (!params.REGIONS_TO_MASK) error "Masking enabled but required file parameter REGIONS_TO_MASK is missing while ENABLE_GENERATE_BEDFILE_TO_MASK is not enabled."
-			}
+
+		}],
+		[name: 'MASKING',  toggle: params.ENABLE_MASK_REGIONS, req: {
+			if (params.ENABLE_GENERATE_BEDFILE_TO_MASK != "enable" && !params.REGIONS_TO_MASK) error "Masking enabled but required either enable running mcworkflow with ENABLE_GENERATE_BEDFILE_TO_MASK or supply REGIONS_TO_MASK file"
 		}],
 		[name: 'NGSLCA',   toggle: params.ENABLE_NGSLCA,   req: {
 			if (!params.NAMES) error "Missing required file parameter: NAMES"
@@ -322,27 +322,30 @@ workflow {
 
 	MERGE_BAM( mapped_bam )
 	MERGE_BAM.out.set{ merged_bam }
-	
+
+	// use MCworkflow to generate bedfile for microbial-like regions
+	if (params.ENABLE_GENERATE_BEDFILE_TO_MASK == "enable"){
+		MASK_MICROBIAL_LIKE_REGION( params.MCWORKFLOW_input_dir, params.MCWORKFLOW_input_list,
+		params.BOWTIE2_MAPPING_DB1,params.BOWTIE2_MAPPING_DB2,params.BOWTIE2_MAPPING_DB3,
+		params.BOWTIE2_MAPPING_DB4,params.BOWTIE2_MAPPING_DB5,params.BOWTIE2_MAPPING_DB6,
+		params.BOWTIE2_MAPPING_DB7,params.BOWTIE2_MAPPING_DB8,params.BOWTIE2_MAPPING_DB9,
+		params.BOWTIE2_MAPPING_DB10, 
+		params.MCWORKFLOW_pseudo_reads_file_dir,
+		params.MCWORKFLOW_type_of_pseudo_reads, params.MCWORKFLOW_n_allowed_multimappers,
+		"${params.METAJAM_DIR}", "${params.METAJAM_DIR}/assets/GTDB_fna2name.txt", params.ENABLE_MASK_FASTA
+		)
+
+		CONCATENATE_BEDFILES( MASK_MICROBIAL_LIKE_REGION.out.map{ it -> it[1]}.collect() )
+
+		CONCATENATE_BEDFILES.out.set{regions_to_mask}
+
+	} else {
+		Channel.fromPath( params.REGIONS_TO_MASK ).set{regions_to_mask}
+	}
+	// regions_to_mask.view()
+
+	// microbial-like regions
 	if (params.ENABLE_MASK_REGIONS == "enable" ) { 
-		if (params.ENABLE_GENERATE_BEDFILE_TO_MASK == "enable"){
-			MASK_MICROBIAL_LIKE_REGION( params.MCWORKFLOW_input_dir, params.MCWORKFLOW_input_list,
-			params.BOWTIE2_MAPPING_DB1,params.BOWTIE2_MAPPING_DB2,params.BOWTIE2_MAPPING_DB3,
-			params.BOWTIE2_MAPPING_DB4,params.BOWTIE2_MAPPING_DB5,params.BOWTIE2_MAPPING_DB6,
-			params.BOWTIE2_MAPPING_DB7,params.BOWTIE2_MAPPING_DB8,params.BOWTIE2_MAPPING_DB9,
-			params.BOWTIE2_MAPPING_DB10, 
-			params.MCWORKFLOW_pseudo_reads_file_dir,
-			params.MCWORKFLOW_type_of_pseudo_reads, params.MCWORKFLOW_n_allowed_multimappers,
-			"${params.METAJAM_DIR}", "${params.METAJAM_DIR}/assets/GTDB_fna2name.txt", params.ENABLE_MASK_FASTA
-			)
-
-			CONCATENATE_BEDFILES( MASK_MICROBIAL_LIKE_REGION.out.map{ it -> it[1]}.collect() )
-
-			CONCATENATE_BEDFILES.out.set{regions_to_mask}
-
-		} else {
-			Channel.fromPath( params.REGIONS_TO_MASK ).set{regions_to_mask}
-		}
-		// regions_to_mask.view()
 
 		merged_bam
 		.combine(regions_to_mask)
