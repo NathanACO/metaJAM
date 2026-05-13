@@ -21,7 +21,7 @@ nextflow (developed in v25.10.3)\
 conda\
 python3\
 pip3\
-git\ #optional, as for downloading the repository from github with git. No need for git if you download zip of this repository directly
+git #optional, as for downloading the repository from github with git. No need for git if you download zip of this repository directly \
 taxadb #this can be downloaded with pip3 with the tutorial script below
 
 ## Download this pipeline
