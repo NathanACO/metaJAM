@@ -16,17 +16,25 @@ This pipeline performs processing and analysis of metagenomic data, starting fro
 ## Overview of the pipeline
 ![alt text](https://github.com/NathanACO/metaJAM/blob/metaJAM-nf/metaJAM_diagram_v1.1.1.png)
 
-## A thorough explaination of the rationale of each process of the workflow is in [wiki](https://github.com/NathanACO/metaJAM/wiki)
-## To specify input and parameter setting in `nextflow.config`, please refer to [this link](https://github.com/NathanACO/metaJAM/blob/ae8b5cfbb4d81ccd059c7ae82d2ea0aeb371e042/README.input_nextflow.config.md)
-
 ## Required program
 nextflow (developed in v25.10.3)\
 conda\
-taxadb #use to download a file for setup below
+python3\
+pip3\
+git\ #optional, as for downloading the repository from github with git. No need for git if you download zip of this repository directly
+taxadb #this can be downloaded with pip3 with the tutorial script below
 
-run the tutorial script once before running anything to setup
+## Download this pipeline
+run in your Linux terminal
 ```
-mkdir assets
+git clone https://github.com/NathanACO/metaJAM.git
+cd metaJAM
+```
+
+## setup script to run before running Nextflow
+
+Run the tutorial script once before running anything to set up the taxonomy files (taxdump.tar.gz names.dmp nodes.dmp), taxadb.sqlite (for MMseqs2) and placeholders for the flexibility of the pipeline (NO_FILE*) in the assets/ directory.
+```
 cd assets
 #prepare NCBI taxonomy information: names.dmp and nodes.dmp
 curl -O https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz
@@ -40,20 +48,25 @@ taxadb create -i taxadb --dbname taxadb.sqlite -d nucl --fast
 cd ../ 
 ```
 
+## A thorough explanation of the rationale of each process of the workflow is in [wiki](https://github.com/NathanACO/metaJAM/wiki)
+## To specify input and parameter setting in `nextflow.config`, please refer to [input readme](https://github.com/NathanACO/metaJAM/blob/ae8b5cfbb4d81ccd059c7ae82d2ea0aeb371e042/README.input_nextflow.config.md)
+
+
 ## How to launch it:
+After running the setup script and having your nextflow.config (or other name) ready, you could run\
 `nextflow run main.nf -profile conda -c other_name_nextflow.config`\
-if you want to resume, add also `-resume`, and `--with-trace` for output a trace*.txt reporting memory and time for each process. You can omit the  `-c nextflow.config`, if you are running exactly nextflow.config. Else if your nextflow.config is named in other way, you need to specify with the config name `-c other_name_nextflow.config`.
+If you want to resume, add also `-resume`, and `--with-trace` for output a trace*.txt reporting memory and time for each process. You can omit the  `-c nextflow.config`, if you are running exactly nextflow.config. Else if your nextflow.config is named in another way, you need to specify with the config name `-c other_name_nextflow.config`.
 
 > [!TIP]
 > You can run it with the Test samples present in the test folder of this github.
 
 ## Plot output
-Different plots are created by metaJAM and required a metadata file (see in test for metadata format and content)[In development].\
-The first plot created is giving an overview of the metrics of the samples processed:
+Different plots are created by metaJAM and require a metadata file (see in test for metadata format and content)[In development].\
+The first plot created gives an overview of the metrics of the samples processed:
 ![alt text](https://github.com/NathanACO/metaJAM/blob/main/reads_per_step_dots.png)
 &copy; Martin et al. 2025 plot, peatbog paper - in revision
 
-The second plot is giving the taxa composition as a bubble plot or a heatmap (can be chosen in the config file).\
+The second plot gives the taxa composition as a bubble plot or a heatmap (can be chosen in the config file).\
 The user can filter the minimum number of reads required to plot a taxa in the config file.\
 It will produce two different plots each time, one for the genus and one for the family, plotting in alphabetical order the Viridiplantae taxa first and then the Opisthokonta taxa.
 
