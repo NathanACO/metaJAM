@@ -124,7 +124,7 @@ workflow {
 
 		CONCATENATE_BEDFILES.out.set{regions_to_mask}
 
-	} else {
+	} else if (params.REGIONS_TO_MASK) {
 		Channel.fromPath( params.REGIONS_TO_MASK ).set{regions_to_mask}
 	}
 
