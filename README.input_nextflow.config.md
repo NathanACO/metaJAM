@@ -32,9 +32,9 @@ ENABLE_PLOTS="enable"
 ```
 
 ### 2. Input files
-2.1 Path of the raw sequencing samples to be processed: 
-`FASTQ_direct_path='/path/to/*_{R1,R2,1,2,R1_001,R2_001}*.{fastq,fq}.gz'` OR/AND `FASTQ_list_path="/path/to/List_fastq.txt" (each row: ID[tab]fastq1[tab]fastq2)`.\ 
-Please leave the other as "" when you only use one format. You can also use both `FASTQ_direct_path` and `FASTQ_list_path`, and both sets of fastqs will all be processed.
+2.1 Path of the raw sequencing samples to be processed: \
+`FASTQ_direct_path='/path/to/*_{R1,R2,1,2,R1_001,R2_001}*.{fastq,fq}.gz'` OR/AND `FASTQ_list_path="/path/to/List_fastq.txt" (Note that each row: ID[tab]fastq1[tab]fastq2)`.\ 
+Please leave the other as "" when you only use one format. You can also use both `FASTQ_direct_path` and `FASTQ_list_path`, and both sets of fastqs will all be processed. The benefit of using `FASTQ_list_path` will be that you could supply corresponding sample ID different from the name of the fastq files. 
 
 Provide `metadata` for plotting, you can see ./test/metadata.txt as an example:\
 `metadata="./test/metadata.txt"`\
