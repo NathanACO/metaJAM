@@ -18,7 +18,7 @@ ENABLE_MAPPING="enable"\
 
 ENABL_MERGE_BAM="enable" # merge the bam files of the same sample mapped against different databases
 
-ENABLE_GENERATE_BEDFILE_TO_MASK="enable"
+ENABLE_GENERATE_BEDFILE_TO_MASK="enable" #run MCworkflow (GENEX) 
         ENABLE_MASK_FASTA="enable" # can be enabled if 'ENABLE_GENERATE_BEDFILE_TO_MASK'=="enable", this requires input fasta files in mcworkflow_parameters (MCWORKFLOW_input_dir or MCWORKFLOW_input_list)
 
 ENABLE_MASK_REGIONS="enable" #use bedfile to mask the microbial-like region on bam
