@@ -2,12 +2,12 @@
 ## Input files specified in the config `nextflow.config` file
 
 ### 1. Tools activation with "enable" or "disable"
-Indentation of the process suggest that the process is included in the process at the line above. For example, to enable FASTP you need to enable preprocess. 
+Indentation of the process suggests that the process is included in the process at the line above. For example, to enable FASTP you need to enable ENABLE_PREPROCESS.
 ```
 ENABLE_PREPROCESS="enable"     # If disabled, neither fastp or SGA will run\
     ENABLE_FASTP="enable"\
     ENABLE_SGA="enable"\
-    ENABLE_PRINSEQ="enable"        # enable to use PRINSEQ instead of SGA         \
+    ENABLE_PRINSEQ="enable"\
     ENABLE_LOW_COMPLEXITY_FILTER="PRINSEQ" # use 'PRINSEQ' prinseq result for downstream analysis; Use 'SGA' to use SGA result for downstream analysis; Use '' if BOTH are disabled
 
 ENABLE_KRAKEN_GTDB="enable"\
@@ -16,24 +16,25 @@ ENABLE_MAPPING="enable"\
     ENABLE_SEQUENTIAL_MAPPING='enable'\
     USE_MAPPING='PARALLEL_MAPPING' # use the output bam files from 'PARALLEL_MAPPING' or 'SEQUENTIAL_MAPPING' for downstream analysis, it cannot be '' when mapping is enabled.\
 
-ENABL_MERGE_BAM="enable" # merge the bam of the same sample mapped against different databases
+ENABL_MERGE_BAM="enable" # merge the bam files of the same sample mapped against different databases
 
-ENABLE_MASK_REGIONS="enable"\
-    ENABLE_GENERATE_BEDFILE_TO_MASK="enable" # can be enabled only if 'ENABLE_MASK_REGIONS' is enabled\
-        ENABLE_MASK_FASTA="enable" # can be enabled only if the subworkflow 'ENABLE_GENERATE_BEDFILE_TO_MASK' is enabled
+ENABLE_GENERATE_BEDFILE_TO_MASK="enable" #run MCworkflow (GENEX) 
+        ENABLE_MASK_FASTA="enable" # can be enabled if 'ENABLE_GENERATE_BEDFILE_TO_MASK'=="enable", this requires input fasta files in mcworkflow_parameters (MCWORKFLOW_input_dir or MCWORKFLOW_input_list)
+
+ENABLE_MASK_REGIONS="enable" #use bedfile to mask the microbial-like region on bam
 
 ENABLE_NGSLCA="enable"\
 ENABLE_BAMDAM="enable"\
 ENABLE_KRONATOOLS="enable"\
-ENABLE_MMSEQS2="enable" # enable this requires ENABLE_BAMDAM\
+ENABLE_MMSEQS2="enable"\
 ENABLE_METRICS="enable"\
 ENABLE_PLOTS="enable"
 ```
 
 ### 2. Input files
-2.1 Path of the raw sequencing samples to be processed: 
-`FASTQ_direct_path='/path/to/*_{R1,R2,1,2,R1_001,R2_001}*.{fastq,fq}.gz'` OR/AND `FASTQ_list_path="/path/to/List_fastq.txt" (each row: ID[tab]fastq1[tab]fastq2)`.\ 
-Please leave the other as "" when you only use one format. You can also use both `FASTQ_direct_path` and `FASTQ_list_path`, and both sets of fastqs will all be processed.
+2.1 Path of the raw sequencing samples to be processed: \
+`FASTQ_direct_path='/path/to/*_{R1,R2,1,2,R1_001,R2_001}*.{fastq,fq}.gz'` OR/AND `FASTQ_list_path="/path/to/List_fastq.txt" (Note that each row: ID[tab]fastq1[tab]fastq2)`.\ 
+Please leave the other as "" when you only use one format. You can also use both `FASTQ_direct_path` and `FASTQ_list_path`, and both sets of fastqs will all be processed. The benefit of using `FASTQ_list_path` will be that you could supply corresponding sample ID different from the name of the fastq files. 
 
 Provide `metadata` for plotting, you can see ./test/metadata.txt as an example:\
 `metadata="./test/metadata.txt"`\
