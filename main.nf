@@ -117,7 +117,7 @@ workflow {
 		params.BOWTIE2_MAPPING_DB10, 
 		params.MCWORKFLOW_pseudo_reads_file_dir,
 		params.MCWORKFLOW_type_of_pseudo_reads, params.MCWORKFLOW_n_allowed_multimappers,
-		"${params.METAJAM_DIR}", "${params.METAJAM_DIR}/assets/GTDB_fna2name.txt", params.ENABLE_MASK_FASTA
+		"${params.METAJAM_DIR}", "${params.MCWORKFLOW_fna2name}", params.ENABLE_MASK_FASTA
 		)
 
 		CONCATENATE_BEDFILES( MASK_MICROBIAL_LIKE_REGION.out.map{ it -> it[1]}.collect() )

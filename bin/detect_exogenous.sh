@@ -36,14 +36,14 @@ sed -i '1s/^/CONTIG\tN_READS\tLENGTH\tBOC\n/' contigs_boc_sorted_${TYPE_OF_PSEUD
 sed -i "1s/^/ORGANISM\t/; 2,\$s/^/${REF_GENOME}\t/" contigs_boc_sorted_${TYPE_OF_PSEUDO_READS}_${REF_GENOME}.txt
 #rm refs_uniq_sorted.txt refs_uniq_sorted_reads.txt total_length_per_ref.txt boc_per_ref.txt
 
-echo COMPUTING LIST OF MOST ABUNDANT MICROBES CONTMAMINATING ${REF_GENOME} REFERENCE GENOME
-if [ ${TYPE_OF_PSEUDO_READS} = RefSeq ]; then
-    samtools view $BAM | cut -f1 | cut -f1,2 -d '_' | sort | uniq -c | sort -nr -k1,1 > microbes_abundant_${TYPE_OF_PSEUDO_READS}_${REF_GENOME}.txt
-elif [ ${TYPE_OF_PSEUDO_READS} = human ]; then
-    echo "NO LIST OF ABUNDANT ORGANISMS GENERATED BECAUSE ALL PSEUDO-READS ARE HUMAN"
-else
-    samtools view $BAM | awk '{gsub("fna_","fna%",$1); split($1,a,"%"); c[a[1]]++} END {for (i in c) print c[i], i}' | 
-	    sort -nr -k1,1 > microbes_abundant_${TYPE_OF_PSEUDO_READS}_${REF_GENOME}.txt
-fi
-
-printf "\n"; echo ANALYSIS FOR ${REF_GENOME} REFERENCE GENOME FINISHED SUCCESSFULLY
+#echo COMPUTING LIST OF MOST ABUNDANT MICROBES CONTMAMINATING ${REF_GENOME} REFERENCE GENOME
+#if [ ${TYPE_OF_PSEUDO_READS} = RefSeq ]; then
+#    samtools view $BAM | cut -f1 | cut -f1,2 -d '_' | sort | uniq -c | sort -nr -k1,1 > microbes_abundant_${TYPE_OF_PSEUDO_READS}_${REF_GENOME}.txt
+#elif [ ${TYPE_OF_PSEUDO_READS} = human ]; then
+#    echo "NO LIST OF ABUNDANT ORGANISMS GENERATED BECAUSE ALL PSEUDO-READS ARE HUMAN"
+#else
+#    samtools view $BAM | awk '{gsub("fna_","fna%",$1); split($1,a,"%"); c[a[1]]++} END {for (i in c) print c[i], i}' | 
+#	    sort -nr -k1,1 > microbes_abundant_${TYPE_OF_PSEUDO_READS}_${REF_GENOME}.txt
+#fi
+#
+#printf "\n"; echo ANALYSIS FOR ${REF_GENOME} REFERENCE GENOME FINISHED SUCCESSFULLY
