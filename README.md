@@ -82,7 +82,9 @@ It will produce two different plots each time, one for the genus and one for the
 > 
 > ![alt text](https://github.com/NathanACO/metaJAM/blob//metaJAM-nf/bamdam_genus_bubbleplot_damage.png)
 >
-> An MMseqs2 evaluation plot can also be produced for supplementary information.
+> An MMseqs2 evaluation plot can also be produced for supplementary information.\
+> A taxon is colored in green if more than 40% of the hits for those reads have the same assignment at the genus level for both MMSeqs2 and bamdam.
+It is colored in yellow if 40% of the hits are correct only to the family level between those detected in MMSeqs2 and bamdam, blue if the percentage of no hits is higher than 50%, and red if all of the conditions are not met. If not investigate it will be colored in grey.
 > ![alt text](https://github.com/NathanACO/metaJAM/blob//metaJAM-nf/mmseqs_evaluation_bubbleplot.png)
 
 ## Citation
