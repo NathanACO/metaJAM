@@ -71,7 +71,7 @@ The user can filter the minimum number of reads required to plot a taxa in the c
 It will produce two different plots each time, one for the genus and one for the family, plotting in alphabetical order the Viridiplantae taxa first and then the Opisthokonta taxa.
 
 ![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_bubbleplot_reads.png)
-![alt text](https://github.com/NathanACO/metaJAM/blob/metaJAM-nf/bamdam_genus_heatmap.pdf)
+![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_genus_heatmap.pdf)
 &copy; Inspired by Tyler Murchie and Scott Cocker plot - in revision
 
 > [!NOTE]
