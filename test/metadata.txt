@@ -1,11 +1,12 @@
-sample	age_ka	depth_cm	sample_type	layer	notes	site
-NS_018	5	25	    sediment	NA	Good DNA	Orsa
-NS_058	5.1	27	    sediment	NA	Good DNA	Orsa
-NS_059	5.2	28	    sediment	NA	Good DNA	Orsa
-NS_060	10	30	    sediment	NA	RLow Sequencing	Orsa
-NS_062	11	35	    sediment	NA	Good DNA	Orsa
-NS_063	12	45	    sediment	NA	Good DNA	Orsa
-NS_065	15	55	    Blank	NA	Good DNA	Orsa
-NM003-1	29	40	    squirrel_coprolite	X	Lower layer	SPM
-NM010-1	36	55	    sediment	        IX	Low biomass	SPM
-BLANK-1	0.0	    NA	    negative_control	NA	Field blank	SPM
+#This is an instance of one metadata format, the first column is optional and here to simplify the plot (Please remove the first line before to add it in the config)
+sample_plot_name  sample	age_ka	depth_cm	sample_type	layer	notes	site
+SAMPLE_NAME_FOR_PLOT_1  SAMPLE_NAME_IN_PIPELINE_1	5	25	    sediment	NA	Good_DNA	Site_1
+SAMPLE_NAME_FOR_PLOT_2  SAMPLE_NAME_IN_PIPELINE_2	5.1	27	    sediment	NA	Good_DNA	Site_1
+SAMPLE_NAME_FOR_PLOT_3  SAMPLE_NAME_IN_PIPELINE_3	5.2	28	    sediment	NA	Good_DNA	Site_1
+SAMPLE_NAME_FOR_PLOT_4  SAMPLE_NAME_IN_PIPELINE_4	10	30	    sediment	NA	Low_Sequencing	Site_1
+SAMPLE_NAME_FOR_PLOT_5  SAMPLE_NAME_IN_PIPELINE_5	11	35	    sediment	NA	Good_DNA	Site_1
+SAMPLE_NAME_FOR_PLOT_6  SAMPLE_NAME_IN_PIPELINE_6	12	45	    sediment	NA	Good_DNA	Site_1
+SAMPLE_NAME_FOR_PLOT_7  SAMPLE_NAME_IN_PIPELINE_7	15	55	    bone	NA	Good_DNA	Site_1
+SAMPLE_NAME_FOR_PLOT_8  SAMPLE_NAME_IN_PIPELINE_8	29	40	    Coprolite	X	Lower_layer	Site_2
+SAMPLE_NAME_FOR_PLOT_9  SAMPLE_NAME_IN_PIPELINE_9	36	55	    Coprolite	        IX	Low_biomass	Site_2
+SAMPLE_NAME_FOR_PLOT_10  SAMPLE_NAME_IN_PIPELINE_10	0.0	    NA	    negative_control	NA	Field_blank	Site_2
