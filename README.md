@@ -63,14 +63,14 @@ If you want to resume, add also `-resume`, and `--with-trace` for output a trace
 ## Plot output
 Different plots are created by metaJAM and require a metadata file (see in test for metadata format and content)[In development].\
 The first plot created gives an overview of the metrics of the samples processed:
-![alt text](https://github.com/NathanACO/metaJAM/blob/main/reads_per_step_dots.png)
+![alt text](https://github.com/NathanACO/metaJAM/blob/metaJAM-nf/reads_per_step_dots.png)
 &copy; Martin et al. 2025 plot, peatbog paper - in revision
 
 The second plot gives the taxa composition as a bubble plot or a heatmap (can be chosen in the config file).\
 The user can filter the minimum number of reads required to plot a taxa in the config file.\
 It will produce two different plots each time, one for the genus and one for the family, plotting in alphabetical order the Viridiplantae taxa first and then the Opisthokonta taxa.
 
-![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_bubbleplot_reads.png)
+![alt text](https://github.com/NathanACO/metaJAM/blob//metaJAM-nf/bamdam_genus_bubbleplot_reads.png)
 ![alt text](https://github.com/NathanACO/metaJAM/blob/metaJAM-nf/bamdam_genus_heatmap.png)
 &copy; Inspired by Tyler Murchie and Scott Cocker plot - in revision
 
@@ -80,7 +80,10 @@ It will produce two different plots each time, one for the genus and one for the
 > Green if for this taxa the damage are superior to 5% and if the damage percent is within the interval (+-5%) of the mean of the damage of the 3 main taxa that have more than 5% damage.\
 > If only one condition is met, the associated damage column will be orange and the user will be invited to investigate deeper this taxa.
 > 
-> ![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_bubbleplot_damage.png)
+> ![alt text](https://github.com/NathanACO/metaJAM/blob//metaJAM-nf/bamdam_genus_bubbleplot_damage.png)
+>
+> An MMseqs2 evaluation plot can also be produced for supplementary information.
+> ![alt text](https://github.com/NathanACO/metaJAM/blob//metaJAM-nf/mmseqs_evaluation_bubbleplot.png)
 
 ## Citation
 
