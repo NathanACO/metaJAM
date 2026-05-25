@@ -245,8 +245,13 @@ workflow {
 		if (params.ENABLE_KRAKEN_GTDB == "enable" || workflow_entry_point == "MAPPING" || params.OVERRIDE_LIST_KRAKEN ) {
 			if (params.ENABLE_KRAKEN_GTDB == "enable") { 
 					KRAKEN2( preprocessed_reads.map { it -> tuple(it[0], it[1], params.KRAKEN2_FILTER_DATABASE) } )
-					KRAKEN2.out.not_microbe
-					.set { kraken_out1 }	
+					if (params.USE_KRAKEN_CLASSIFIED == "disable") {
+						KRAKEN2.out.not_microbe
+						.set { kraken_out1 }	
+					} else {
+						KRAKEN2.out.microbe
+						.set { kraken_out1 }	
+					}
 			} else {
 				kraken_out1 = Channel.empty()
 			} 

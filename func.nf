@@ -130,7 +130,7 @@ process KRAKEN2 {
 
     output:
         tuple val(ID), path("*_unclas.fastq.gz"), emit: not_microbe
-        path("*_clas.fastq.gz")
+        tuple val(ID), path("*_clas.fastq.gz"), emit: microbe
         path("*_report.txt.gz")
         path("*_output.txt.gz")
         
