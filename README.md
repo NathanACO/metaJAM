@@ -82,6 +82,21 @@ It will produce two different plots each time, one for the genus and one for the
 > 
 > ![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_bubbleplot_damage.png)
 
+## Citation
+
+If you use this pipeline in your research, please cite the underlying tools:
+
+- **fastp**: Chen et al.,(2018), *Bioinformatics*
+- **PRINSEQ**: Schmieder and Edwards, (2011) *Bioinformatics*
+- **SGA**: Simpson and Durbin, (2012), *Genome Research*
+- **Kraken2**: Wood et al., (2019), *Genome Biology*
+- **GENEX**: Oskolokov et al. (2025), *GigaScience*
+- **Bowtie 2**: Langmead and Salzberg, (2012), *Nature Methods*
+- **SAMtools**: Li et al., (2009), *Bioinformatics*
+- **ngsLCA**: Wang et al. (2022), *Methods in Ecology and Evolution*
+- **bamdam**: de Sanctis et al. (2025), *Genome Biology*
+- **filterBAM**: https://github.com/genomewalker/bam-filter
+- **MMseqs2**: Steinegger and Söding (2017), *Nature Biotechnology*
 
 _Why metaJAM?_\
 We like to see ancient sediment metagenomic data as a jar of jam:
