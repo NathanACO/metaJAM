@@ -11,6 +11,7 @@ ENABLE_PREPROCESS="enable"     # If disabled, neither fastp or SGA will run\
     ENABLE_LOW_COMPLEXITY_FILTER="PRINSEQ" # use 'PRINSEQ' prinseq result for downstream analysis; Use 'SGA' to use SGA result for downstream analysis; Use '' if BOTH are disabled
 
 ENABLE_KRAKEN_GTDB="enable"\
+    USE_KRAKEN_CLASSIFIED="disable"\ #if disabled, used unclassified data; if input anything but "disable", then use classified data for downstream analysis
 ENABLE_MAPPING="enable"\
     ENABLE_PARALLEL_MAPPING='enable'\
     ENABLE_SEQUENTIAL_MAPPING='enable'\
@@ -39,8 +40,8 @@ Please leave the other as "" when you only use one format. You can also use both
 Provide `metadata` for plotting, you can see ./test/metadata.txt as an example:\
 `metadata="./test/metadata.txt"`\
     #the columns are spaced with tab:\
-    sample	age_ka	depth_cm	sample_type	layer	notes	site\
-    X	1	25	    sediment	NA	Good DNA	LakeA
+    sample	age_ka	depth_cm	sample_type	layer	notes	site	sample_plot_name\
+    X	1	25	    sediment	NA	Good DNA	LakeA    X
 
 `MAP_LAST_DB_TAG`="mam-bird-fish_v2" #specify database/run name for plotting and for output directory structuring as sampleID_MAP_LAST_DB_TAG 
 
