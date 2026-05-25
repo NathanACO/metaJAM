@@ -5,16 +5,16 @@
 Indentation of the process suggests that the process is included in the process at the line above. For example, to enable FASTP you need to enable ENABLE_PREPROCESS.
 ```
 ENABLE_PREPROCESS="enable"     # If disabled, neither fastp or SGA will run\
-    ENABLE_FASTP="enable"\
-    ENABLE_SGA="enable"\
-    ENABLE_PRINSEQ="enable"\
+    ENABLE_FASTP="enable"
+    ENABLE_SGA="enable"
+    ENABLE_PRINSEQ="enable"
     ENABLE_LOW_COMPLEXITY_FILTER="PRINSEQ" # use 'PRINSEQ' prinseq result for downstream analysis; Use 'SGA' to use SGA result for downstream analysis; Use '' if BOTH are disabled
 
-ENABLE_KRAKEN_GTDB="enable"\
-    USE_KRAKEN_CLASSIFIED="disable"\ #if disabled, used unclassified data; if input anything but "disable", then use classified data for downstream analysis
-ENABLE_MAPPING="enable"\
-    ENABLE_PARALLEL_MAPPING='enable'\
-    ENABLE_SEQUENTIAL_MAPPING='enable'\
+ENABLE_KRAKEN_GTDB="enable"
+    USE_KRAKEN_CLASSIFIED="disable" #if disabled, used unclassified data; if input anything but "disable", then use classified data for downstream analysis
+ENABLE_MAPPING="enable"
+    ENABLE_PARALLEL_MAPPING='enable'
+    ENABLE_SEQUENTIAL_MAPPING='enable'
     USE_MAPPING='PARALLEL_MAPPING' # use the output bam files from 'PARALLEL_MAPPING' or 'SEQUENTIAL_MAPPING' for downstream analysis, it cannot be '' when mapping is enabled.\
 
 ENABL_MERGE_BAM="enable" # merge the bam files of the same sample mapped against different databases
@@ -24,11 +24,11 @@ ENABLE_GENERATE_BEDFILE_TO_MASK="enable" #run MCworkflow (GENEX)
 
 ENABLE_MASK_REGIONS="enable" #use bedfile to mask the microbial-like region on bam
 
-ENABLE_NGSLCA="enable"\
-ENABLE_BAMDAM="enable"\
-ENABLE_KRONATOOLS="enable"\
-ENABLE_MMSEQS2="enable"\
-ENABLE_METRICS="enable"\
+ENABLE_NGSLCA="enable"
+ENABLE_BAMDAM="enable"
+ENABLE_KRONATOOLS="enable"
+ENABLE_MMSEQS2="enable"
+ENABLE_METRICS="enable"
 ENABLE_PLOTS="enable"
 ```
 
