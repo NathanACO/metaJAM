@@ -61,7 +61,8 @@ If you want to resume, add also `-resume`, and `--with-trace` for output a trace
 > You can run it with the Test samples present in the test folder of this github.
 
 ## Plot output
-Different plots are created by metaJAM and require a metadata file (see in test for metadata format and content)[In development].\
+Different plots are created by metaJAM and require a metadata file (see in test for metadata format and content).\
+Each plots presented below have been run on the test dataset present in the github, which has been created by generated simulated ancient dataset using gargammel tool (Renaud, G., Hanghøj, K., Willerslev, E., & Orlando, L. (2017). gargammel: a sequence simulator for ancient DNA. Bioinformatics, 33(4), 577-579.).\
 The first plot created gives an overview of the metrics of the samples processed:
 ![alt text](https://github.com/NathanACO/metaJAM/blob/metaJAM-nf/reads_per_step_dots.png)
 &copy; Martin et al. 2025 plot, peatbog paper - in revision
