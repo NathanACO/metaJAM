@@ -65,7 +65,7 @@ Different plots are created by metaJAM and require a metadata file (see in test 
 Each plots presented below have been run on the test dataset present in the github, which has been created by generated simulated ancient dataset using gargammel tool (Renaud, G., Hanghøj, K., Willerslev, E., & Orlando, L. (2017). gargammel: a sequence simulator for ancient DNA. Bioinformatics, 33(4), 577-579.).\
 The first plot created gives an overview of the metrics of the samples processed:
 ![alt text](https://github.com/NathanACO/metaJAM/blob/metaJAM-nf/reads_per_step_dots.png)
-&copy; Martin et al. 2025 plot, peatbog paper - in revision
+&copy; Martin et al. 2026 plot, peatbog paper - draft
 
 The second plot gives the taxa composition as a bubble plot or a heatmap (can be chosen in the config file).\
 The user can filter the minimum number of reads required to plot a taxa in the config file.\
