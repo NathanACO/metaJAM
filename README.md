@@ -17,7 +17,7 @@ This pipeline performs processing and analysis of metagenomic data, starting fro
 ![alt text](https://github.com/NathanACO/metaJAM/blob/metaJAM-nf/metaJAM_diagram_v1.1.1.png)
 
 ## Required program
-nextflow (developed in v25.10.3)\
+nextflow (developed in v25.10.3, Please DO NOT USE v26 due to config file syntax)\
 conda\
 python3\
 pip3\
