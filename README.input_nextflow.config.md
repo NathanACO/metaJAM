@@ -22,7 +22,7 @@ ENABL_MERGE_BAM="enable" # merge the bam files of the same sample mapped against
 ENABLE_GENERATE_BEDFILE_TO_MASK="enable" #run MCworkflow (GENEX) 
         ENABLE_MASK_FASTA="enable" # can be enabled if 'ENABLE_GENERATE_BEDFILE_TO_MASK'=="enable", this requires input fasta files in mcworkflow_parameters (MCWORKFLOW_input_dir or MCWORKFLOW_input_list)
 
-ENABLE_MASK_REGIONS="enable" #use bedfile to mask the microbial-like region on bam
+ENABLE_MASK_REGIONS="enable" # you need to input a bed file `REGIONS_TO_MASK`, or run the genex workflow with `ENABLE_GENERATE_BEDFILE_TO_MASK` to generate the bed file to use
 
 ENABLE_NGSLCA="enable"
 ENABLE_BAMDAM="enable"
@@ -109,7 +109,7 @@ ACC2TAXID="/path/to/acc2taxid.txt" #each line in the format: contig[tab]contig[t
 ```
 NCBI taxonomy files (names.dmp and nodes.dmp downloaded in the `assets/` dir in the preparation script given in this tutorial)
 
-input a bed file with all regions to be masked\
+input a bed file with all regions to be masked, if you have multiple bed files, please concatenate them and use it here\
 `REGIONS_TO_MASK="/path/to/databaseA.bed"`\
 - if aiming to mask microbial-like regions without supplying the bed file for masking, we could also generate and use bed file using by specify `ENABLE_GENERATE_BEDFILE_TO_MASK="enable"` and fill in requirement of GENEX workflow
 
