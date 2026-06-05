@@ -5,15 +5,16 @@
 Indentation of the process suggests that the process is included in the process at the line above. For example, to enable FASTP you need to enable ENABLE_PREPROCESS.
 ```
 ENABLE_PREPROCESS="enable"     # If disabled, neither fastp or SGA will run\
-    ENABLE_FASTP="enable"\
-    ENABLE_SGA="enable"\
-    ENABLE_PRINSEQ="enable"\
+    ENABLE_FASTP="enable"
+    ENABLE_SGA="enable"
+    ENABLE_PRINSEQ="enable"
     ENABLE_LOW_COMPLEXITY_FILTER="PRINSEQ" # use 'PRINSEQ' prinseq result for downstream analysis; Use 'SGA' to use SGA result for downstream analysis; Use '' if BOTH are disabled
 
-ENABLE_KRAKEN_GTDB="enable"\
-ENABLE_MAPPING="enable"\
-    ENABLE_PARALLEL_MAPPING='enable'\
-    ENABLE_SEQUENTIAL_MAPPING='enable'\
+ENABLE_KRAKEN_GTDB="enable"
+    USE_KRAKEN_CLASSIFIED="disable" #if disabled, used unclassified data; if input anything but "disable", then use classified data for downstream analysis
+ENABLE_MAPPING="enable"
+    ENABLE_PARALLEL_MAPPING='enable'
+    ENABLE_SEQUENTIAL_MAPPING='enable'
     USE_MAPPING='PARALLEL_MAPPING' # use the output bam files from 'PARALLEL_MAPPING' or 'SEQUENTIAL_MAPPING' for downstream analysis, it cannot be '' when mapping is enabled.\
 
 ENABL_MERGE_BAM="enable" # merge the bam files of the same sample mapped against different databases
@@ -21,13 +22,13 @@ ENABL_MERGE_BAM="enable" # merge the bam files of the same sample mapped against
 ENABLE_GENERATE_BEDFILE_TO_MASK="enable" #run MCworkflow (GENEX) 
         ENABLE_MASK_FASTA="enable" # can be enabled if 'ENABLE_GENERATE_BEDFILE_TO_MASK'=="enable", this requires input fasta files in mcworkflow_parameters (MCWORKFLOW_input_dir or MCWORKFLOW_input_list)
 
-ENABLE_MASK_REGIONS="enable" #use bedfile to mask the microbial-like region on bam
+ENABLE_MASK_REGIONS="enable" # you need to input a bed file `REGIONS_TO_MASK`, or run the genex workflow with `ENABLE_GENERATE_BEDFILE_TO_MASK` to generate the bed file to use
 
-ENABLE_NGSLCA="enable"\
-ENABLE_BAMDAM="enable"\
-ENABLE_KRONATOOLS="enable"\
-ENABLE_MMSEQS2="enable"\
-ENABLE_METRICS="enable"\
+ENABLE_NGSLCA="enable"
+ENABLE_BAMDAM="enable"
+ENABLE_KRONATOOLS="enable"
+ENABLE_MMSEQS2="enable"
+ENABLE_METRICS="enable"
 ENABLE_PLOTS="enable"
 ```
 
@@ -39,8 +40,8 @@ Please leave the other as "" when you only use one format. You can also use both
 Provide `metadata` for plotting, you can see ./test/metadata.txt as an example:\
 `metadata="./test/metadata.txt"`\
     #the columns are spaced with tab:\
-    sample	age_ka	depth_cm	sample_type	layer	notes	site\
-    X	1	25	    sediment	NA	Good DNA	LakeA
+    sample	age_ka	depth_cm	sample_type	layer	notes	site	sample_plot_name\
+    X	1	25	    sediment	NA	Good DNA	LakeA    X
 
 `MAP_LAST_DB_TAG`="mam-bird-fish_v2" #specify database/run name for plotting and for output directory structuring as sampleID_MAP_LAST_DB_TAG 
 
@@ -71,22 +72,22 @@ Provide `metadata` for plotting, you can see ./test/metadata.txt as an example:\
     - here the mmseq2_output_evaluation_file is output by a summary script after running mmseq2 and has suffix *.bamdam_mmseqs.evaluation.summary.tsv
 
 - specify a file if you are skipping running the script to generate metrics, otherwise use ""\
-`OVERRIDE_LIST_METRICS="/path/to/file"`
+`OVERRIDE_LIST_METRICS="/path/to/file"`\
   - the header is "sample[tab]count_raw_fq1[tab]count_raw_fq2[tab]count_merged_fq[tab]count_rm_low_complex_fq[tab]count_k2_mic_unclas_fq[tab]bam_header[tab]bamdam_bam" and the values in the following rows locate correspondingly
     
-2.3 Give absolute path to the overall output directory: `OUTPUT_Dir="\path\to"`. It will create different folders for the different steps of the pipeline inside your given `OUTPUT_Dir`, where the outputs of each step will be stored correspondingly:
-01_fastp -> Containing trimmed and merged pair-end read files
-02_sga/02_prinseq -> Containing read files where low-complexity sequences have been removed
-03_kraken2_filter -> Containing the unclassified and classified microbial read files
-04_parallel_mapping/04_sequential_mapping -> Containing the mapped and unmapped read files
-acc2taxid (optional) -> all acc2taxid files generated
-05_merged_bam -> bam of sample sample mapped against different databases are merged and output here
-06_masked_bam -> bam with microbial/contamination-like regions masked
-07_ngslca -> ngsLCA output after assigning multimappers to the lowest common ancestor taxonomical node
-08_bamdam -> bamdam output for quality filtering and plot kronaplot for individual sample
-09_mmseq2 -> MMseq2 output after blasting the results
-10_metrics -> Containing metrics that are the number of reads after each process
-11_plots -> kronaplot of samples of each site, heatmap/bubbleplot summarizing the MMseq2 results or DNA damage along with the number of reads
+2.3 Give absolute path to the overall output directory: `OUTPUT_Dir="/path/to"`. It will create different folders for the different steps of the pipeline inside your given `OUTPUT_Dir`, where the outputs of each step will be stored correspondingly:\
+01_fastp -> Containing trimmed and merged pair-end read files\
+02_sga/02_prinseq -> Containing read files where low-complexity sequences have been removed\
+03_kraken2_filter -> Containing the unclassified and classified microbial read files\
+04_parallel_mapping/04_sequential_mapping -> Containing the mapped and unmapped read files\
+acc2taxid (optional) -> all acc2taxid files generated\
+05_merged_bam -> bam of sample sample mapped against different databases are merged and output here\
+06_masked_bam -> bam with microbial/contamination-like regions masked\
+07_ngslca -> ngsLCA output after assigning multimappers to the lowest common ancestor taxonomical node\
+08_bamdam -> bamdam output for quality filtering and plot kronaplot for individual sample\
+09_mmseq2 -> MMseq2 output after blasting the results\
+10_metrics -> Containing metrics that are the number of reads after each process\
+11_plots -> kronaplot of samples of each site, heatmap/bubbleplot summarizing the MMseq2 results or DNA damage along with the number of reads\
 note that krona plot of each sample generated by bamdam will be in `08_bamdam/`, while kronaplots of the each site and other summary plots of MMseq2 result or DNA damage are in `11_plots/`.
 
 2.4 The path to where you download the metajam:
@@ -108,7 +109,7 @@ ACC2TAXID="/path/to/acc2taxid.txt" #each line in the format: contig[tab]contig[t
 ```
 NCBI taxonomy files (names.dmp and nodes.dmp downloaded in the `assets/` dir in the preparation script given in this tutorial)
 
-input a bed file with all regions to be masked\
+input a bed file with all regions to be masked, if you have multiple bed files, please concatenate them and use it here\
 `REGIONS_TO_MASK="/path/to/databaseA.bed"`\
 - if aiming to mask microbial-like regions without supplying the bed file for masking, we could also generate and use bed file using by specify `ENABLE_GENERATE_BEDFILE_TO_MASK="enable"` and fill in requirement of GENEX workflow
 

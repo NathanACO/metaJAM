@@ -1,4 +1,4 @@
-<img src="https://github.com/NathanACO/metaJAM/blob/main/metaJAM_logo.png" width="200" /> 
+![alt text](https://github.com/NathanACO/metaJAM/blob/metaJAM-nf/metaJAM_logo.png) 
 
 # metaJAM v1.1.1 nf version
 
@@ -17,7 +17,7 @@ This pipeline performs processing and analysis of metagenomic data, starting fro
 ![alt text](https://github.com/NathanACO/metaJAM/blob/metaJAM-nf/metaJAM_diagram_v1.1.1.png)
 
 ## Required program
-nextflow (developed in v25.10.3)\
+nextflow (developed in v25.10.3, Please DO NOT USE v26 due to config file syntax)\
 conda\
 python3\
 pip3\
@@ -61,17 +61,18 @@ If you want to resume, add also `-resume`, and `--with-trace` for output a trace
 > You can run it with the Test samples present in the test folder of this github.
 
 ## Plot output
-Different plots are created by metaJAM and require a metadata file (see in test for metadata format and content)[In development].\
+Different plots are created by metaJAM and require a metadata file (see in test for metadata format and content).\
+Each plots presented below have been run on the test dataset present in the github, which has been created by generated simulated ancient dataset using gargammel tool (Renaud, G., Hanghøj, K., Willerslev, E., & Orlando, L. (2017). gargammel: a sequence simulator for ancient DNA. Bioinformatics, 33(4), 577-579.).\
 The first plot created gives an overview of the metrics of the samples processed:
-![alt text](https://github.com/NathanACO/metaJAM/blob/main/reads_per_step_dots.png)
-&copy; Martin et al. 2025 plot, peatbog paper - in revision
+![alt text](https://github.com/NathanACO/metaJAM/blob/metaJAM-nf/reads_per_step_dots.png)
+&copy; Martin et al. 2026 plot, peatbog paper - draft
 
 The second plot gives the taxa composition as a bubble plot or a heatmap (can be chosen in the config file).\
 The user can filter the minimum number of reads required to plot a taxa in the config file.\
 It will produce two different plots each time, one for the genus and one for the family, plotting in alphabetical order the Viridiplantae taxa first and then the Opisthokonta taxa.
 
-![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_bubbleplot_reads.png)
-![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_heatmap.png)
+![alt text](https://github.com/NathanACO/metaJAM/blob/metaJAM-nf/bamdam_genus_bubbleplot_reads.png)
+![alt text](https://github.com/NathanACO/metaJAM/blob/metaJAM-nf/bamdam_genus_heatmap.png)
 &copy; Inspired by Tyler Murchie and Scott Cocker plot - in revision
 
 > [!NOTE]
@@ -80,8 +81,28 @@ It will produce two different plots each time, one for the genus and one for the
 > Green if for this taxa the damage are superior to 5% and if the damage percent is within the interval (+-5%) of the mean of the damage of the 3 main taxa that have more than 5% damage.\
 > If only one condition is met, the associated damage column will be orange and the user will be invited to investigate deeper this taxa.
 > 
-> ![alt text](https://github.com/NathanACO/metaJAM/blob/main/bamdam_family_bubbleplot_damage.png)
+> ![alt text](https://github.com/NathanACO/metaJAM/blob/metaJAM-nf/bamdam_genus_bubbleplot_damage.png)
+>
+> An MMseqs2 evaluation plot can also be produced for supplementary information.\
+> A taxon is colored in green if more than 40% of the hits for those reads have the same assignment at the genus level for both MMSeqs2 and bamdam.
+It is colored in yellow if 40% of the hits are correct only to the family level between those detected in MMSeqs2 and bamdam, blue if the percentage of no hits is higher than 50%, and red if all of the conditions are not met. If not investigate it will be colored in grey.
+> ![alt text](https://github.com/NathanACO/metaJAM/blob/metaJAM-nf/mmseqs_evaluation_bubbleplot.png)
 
+## Citation
+
+If you use this pipeline in your research, please cite the underlying tools:
+
+- **fastp**: Chen et al.,(2018), *Bioinformatics*
+- **PRINSEQ**: Schmieder and Edwards, (2011) *Bioinformatics*
+- **SGA**: Simpson and Durbin, (2012), *Genome Research*
+- **Kraken2**: Wood et al., (2019), *Genome Biology*
+- **GENEX**: Oskolokov et al. (2025), *GigaScience*
+- **Bowtie 2**: Langmead and Salzberg, (2012), *Nature Methods*
+- **SAMtools**: Li et al., (2009), *Bioinformatics*
+- **ngsLCA**: Wang et al. (2022), *Methods in Ecology and Evolution*
+- **bamdam**: de Sanctis et al. (2025), *Genome Biology*
+- **filterBAM**: https://github.com/genomewalker/bam-filter
+- **MMseqs2**: Steinegger and Söding (2017), *Nature Biotechnology*
 
 _Why metaJAM?_\
 We like to see ancient sediment metagenomic data as a jar of jam:
