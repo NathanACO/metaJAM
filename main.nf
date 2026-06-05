@@ -354,9 +354,13 @@ workflow {
 		.set{mapped_bam}
 		mapped_bam.view()
 
-
-		MERGE_BAM( mapped_bam )
-		MERGE_BAM.out.set{ merged_bam }
+		// if enabled when there are multiple bam for the same sample
+		if (params.ENABLE_MERGE_BAM == "enable"){
+			MERGE_BAM( mapped_bam )
+			MERGE_BAM.out.set{ merged_bam }
+		} else {
+			mapped_bam.set{ merged_bam }
+		}
 
 		// regions_to_mask.view()
 
