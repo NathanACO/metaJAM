@@ -17,9 +17,9 @@ ENABLE_MAPPING="enable"
     ENABLE_SEQUENTIAL_MAPPING='enable'
     USE_MAPPING='PARALLEL_MAPPING' # use the output bam files from 'PARALLEL_MAPPING' or 'SEQUENTIAL_MAPPING' for downstream analysis, it cannot be '' when mapping is enabled.\
 
-ENABL_MERGE_BAM="enable" # merge the bam files of the same sample mapped against different databases
+ENABLE_MERGE_BAM="enable" #when there are multiple bam for the same sample, e.g., when the sample samples are mapped against multiple mapping databases
 
-ENABLE_GENERATE_BEDFILE_TO_MASK="enable" #run MCworkflow (GENEX) 
+ENABLE_GENERATE_BEDFILE_TO_MASK="enable" #run MCworkflow (GENEX) to generate bedfile for microbial-like region on the reference genome
         ENABLE_MASK_FASTA="enable" # can be enabled if 'ENABLE_GENERATE_BEDFILE_TO_MASK'=="enable", this requires input fasta files in mcworkflow_parameters (MCWORKFLOW_input_dir or MCWORKFLOW_input_list)
 
 ENABLE_MASK_REGIONS="enable" # you need to input a bed file `REGIONS_TO_MASK`, or run the genex workflow with `ENABLE_GENERATE_BEDFILE_TO_MASK` to generate the bed file to use
