@@ -99,7 +99,7 @@ for DB[1-10], set as "" if not used
 `BOWTIE2_MAPPING_DB1="/path/to/index_name" `: each line as the bowtie2 mapping index header (e.g., '/path/to/header' where the header refers to header.*.bt2*), the first database reads are aligned to if you specified `USE_MAPPING='SEQUENTIAL_MAPPING`, otherwise the order of database does not matter.
 `BOWTIE2_MAPPING_DB2`...`BOWTIE2_MAPPING_DB10`: same format as DB1, maximum 10 databases so far.
 
-`KRAKEN2_FILTER_DATABASE="/path/to/kraken2_db" `: path to Kraken2 database (e.g., GTDB database), the directory containing kraken2 indexes (*.k2d)\
+`KRAKEN2_FILTER_DATABASE="/path/to/kraken2_db" `: path to Kraken2 database (e.g., GTDB database), the directory containing kraken2 indexes (*.k2d). If you want to use memory-mapping (loading database directly from the temporary storage to save the time for loading the database, please supply the path of the database in temporary storage (how to set up explained in wiki section2)\
 
 
 ```
