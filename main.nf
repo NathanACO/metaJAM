@@ -105,6 +105,7 @@ def validate_pipeline() {
 
 workflow_entry_point = validate_pipeline()
 
+
 // --- WORKFLOW START ---
 workflow {
 
@@ -157,9 +158,6 @@ workflow {
 					.fromPath(params.FASTQ_list_path)
 					.splitCsv(header: false, sep: '\t', strip: true)
 					.map { row -> tuple( row[0], file(row[1]), file(row[2]))}
-					// .groupTuple()
-					// .map { id, reads -> tuple(id, reads[0], reads[1]) }
-					//paired_reads1.view{"Debug paired_reads1 from FASTQ_list_path: ${it}"}
 
 				} else {
 					paired_reads1 = Channel.empty()
@@ -244,14 +242,47 @@ workflow {
 		// preprocessed_reads.view()
 		if (params.ENABLE_KRAKEN_GTDB == "enable" || workflow_entry_point == "MAPPING" || params.OVERRIDE_LIST_KRAKEN ) {
 			if (params.ENABLE_KRAKEN_GTDB == "enable") { 
-					KRAKEN2( preprocessed_reads.map { it -> tuple(it[0], it[1], params.KRAKEN2_FILTER_DATABASE) } )
-					if (params.USE_KRAKEN_CLASSIFIED == "disable") {
-						KRAKEN2.out.not_microbe
-						.set { kraken_out1 }	
-					} else {
-						KRAKEN2.out.microbe
-						.set { kraken_out1 }	
+
+				input_kraken2_subsets = preprocessed_reads
+			    .toSortedList()
+				.flatMap { lines ->
+
+					// work on a copy to avoid concurrent modification
+					def copy = new ArrayList(lines)
+
+					copy
+					.collate(2)                 // or 128
+					.withIndex()
+					.collect { batch, idx ->
+						def filename = "input_k2.sub${idx+1}.csv"
+						def content = batch.join('\n') + '\n'
+						return [filename, content]
 					}
+				}
+				.concat(Channel.empty())
+				.collectFile() { filename, content ->
+					[filename, content]
+				}
+
+				input_kraken2_subsets_tuples = input_kraken2_subsets
+				.map { it -> tuple(it, params.KRAKEN2_FILTER_DATABASE) }
+
+				KRAKEN2( input_kraken2_subsets_tuples )
+
+				//parse the list output by KRAKEN2 to again sampleID and unclas or clas pair
+				kraken2_out_list_ext = KRAKEN2.out.out_list
+					.collectFile(name: "output_k2.csv", newLine: true)
+					.splitCsv(header: false, sep: ',', strip: true)
+					.map { row -> tuple(row[0], file(row[1]), file(row[2])) }
+					// .view { "8_kraken2_out_list_ext: $it" }
+
+				kraken_out1 = kraken2_out_list_ext
+				    .map { it ->
+				        params.USE_KRAKEN_CLASSIFIED == "disable"
+				            ? tuple(it[0], it[2])   // unclassified
+				            : tuple(it[0], it[1])   // classified
+				    }
+
 			} else {
 				kraken_out1 = Channel.empty()
 			} 
@@ -266,93 +297,83 @@ workflow {
 				kraken_out2 = Channel.empty()
 			}
 			//kraken_out2.view()
-			kraken_out1.concat(kraken_out2).unique().set{kraken_out}
+			kraken_out = kraken_out1.concat(kraken_out2).unique()
 
-			kraken_out.set{kraken_out_metrics}
+			kraken_out_metrics = kraken_out
 
 		} else {
-			preprocessed_reads.set{kraken_out}
+			kraken_out = preprocessed_reads
 			kraken_out_metrics = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE5"] }
 		}
 		//kraken_out.view()
 
-		bowtie2_out1 = Channel.empty()
-		if (params.ENABLE_MAPPING == "enable") { 
+		if (params.ENABLE_MAPPING == "enable" || params.OVERRIDE_LIST_BAM) {
+			bowtie2_out1 = Channel.empty()
 
-				// Channel.fromPath( params.BOWTIE2_MAPPING_DBs )
-				// .splitText { it.strip( ) }
-				// .map { it -> 
-				// def name = it.tokenize('/')[-1]   // get basename
-				// tuple(name, file("${it}*.bt2*"))}
-				// .groupTuple()
-				// .map { idx, idxs -> tuple(idx, idxs[0]) }
-				// .set { mapping_indexes }
+			if (params.ENABLE_MAPPING == "enable") {
 
-				// read mapping indexes for debugging
+				if (params.ENABLE_PARALLEL_MAPPING == "enable") {
 
-				if (params.ENABLE_MAPPING == "enable") {
+					mapping_index1  = params.BOWTIE2_MAPPING_DB1  ? Channel.value(params.BOWTIE2_MAPPING_DB1).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+					mapping_index2  = params.BOWTIE2_MAPPING_DB2  ? Channel.value(params.BOWTIE2_MAPPING_DB2).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+					mapping_index3  = params.BOWTIE2_MAPPING_DB3  ? Channel.value(params.BOWTIE2_MAPPING_DB3).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+					mapping_index4  = params.BOWTIE2_MAPPING_DB4  ? Channel.value(params.BOWTIE2_MAPPING_DB4).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+					mapping_index5  = params.BOWTIE2_MAPPING_DB5  ? Channel.value(params.BOWTIE2_MAPPING_DB5).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+					mapping_index6  = params.BOWTIE2_MAPPING_DB6  ? Channel.value(params.BOWTIE2_MAPPING_DB6).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+					mapping_index7  = params.BOWTIE2_MAPPING_DB7  ? Channel.value(params.BOWTIE2_MAPPING_DB7).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+					mapping_index8  = params.BOWTIE2_MAPPING_DB8  ? Channel.value(params.BOWTIE2_MAPPING_DB8).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+					mapping_index9  = params.BOWTIE2_MAPPING_DB9  ? Channel.value(params.BOWTIE2_MAPPING_DB9).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
+					mapping_index10 = params.BOWTIE2_MAPPING_DB10 ? Channel.value(params.BOWTIE2_MAPPING_DB10).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) } : Channel.empty()
 
-					if (params.ENABLE_PARALLEL_MAPPING == "enable") {
+					mapping_indexes= Channel.empty()
+					.concat(mapping_index1).concat(mapping_index2).concat(mapping_index3)
+					.concat(mapping_index4).concat(mapping_index5).concat(mapping_index6)
+					.concat(mapping_index7).concat(mapping_index8).concat(mapping_index9)
+					.concat(mapping_index10)
 
-						mapping_index1  = params.BOWTIE2_MAPPING_DB1  ? Channel.value(params.BOWTIE2_MAPPING_DB1).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
-						mapping_index2  = params.BOWTIE2_MAPPING_DB2  ? Channel.value(params.BOWTIE2_MAPPING_DB2).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
-						mapping_index3  = params.BOWTIE2_MAPPING_DB3  ? Channel.value(params.BOWTIE2_MAPPING_DB3).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
-						mapping_index4  = params.BOWTIE2_MAPPING_DB4  ? Channel.value(params.BOWTIE2_MAPPING_DB4).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
-						mapping_index5  = params.BOWTIE2_MAPPING_DB5  ? Channel.value(params.BOWTIE2_MAPPING_DB5).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
-						mapping_index6  = params.BOWTIE2_MAPPING_DB6  ? Channel.value(params.BOWTIE2_MAPPING_DB6).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
-						mapping_index7  = params.BOWTIE2_MAPPING_DB7  ? Channel.value(params.BOWTIE2_MAPPING_DB7).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
-						mapping_index8  = params.BOWTIE2_MAPPING_DB8  ? Channel.value(params.BOWTIE2_MAPPING_DB8).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
-						mapping_index9  = params.BOWTIE2_MAPPING_DB9  ? Channel.value(params.BOWTIE2_MAPPING_DB9).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) }  : Channel.empty()
-						mapping_index10 = params.BOWTIE2_MAPPING_DB10 ? Channel.value(params.BOWTIE2_MAPPING_DB10).map { it -> def name = file(it).name; tuple(name, file("${it}*.bt2*"))}.groupTuple().map { idx, idxs -> tuple(idx, idxs[0]) } : Channel.empty()
+					// mapping_indexes.view{"Debug mapping_indexes in parallel mapping: ${it}"}
 
-						mapping_indexes= Channel.empty()
-						.concat(mapping_index1).concat(mapping_index2).concat(mapping_index3)
-						.concat(mapping_index4).concat(mapping_index5).concat(mapping_index6)
-						.concat(mapping_index7).concat(mapping_index8).concat(mapping_index9)
-						.concat(mapping_index10)
+					kraken_out
+					.map { it -> tuple(it[0], it[1], params.BOWTIE2_N_ALLOW_MULTIMAPPER) }
+					.combine( mapping_indexes )
+					.set{input_bowtie2}
+					// input_bowtie2.view()
+					BOWTIE2( input_bowtie2 )
+					if (params.USE_MAPPING == "PARALLEL_MAPPING") { BOWTIE2.out.set { bowtie2_out1 } }
+				} 
 
-						// mapping_indexes.view{"Debug mapping_indexes in parallel mapping: ${it}"}
+				if (params.ENABLE_SEQUENTIAL_MAPPING == "enable") {
+					SEQUENTIAL_MAP( kraken_out, params.BOWTIE2_N_ALLOW_MULTIMAPPER )
+					
+					if (params.USE_MAPPING == "SEQUENTIAL_MAPPING") { SEQUENTIAL_MAP.out.set { bowtie2_out1 } }
+				} 
+			} //else {bowtie2_out1 = Channel.empty()} 
+			
+			bowtie2_out2 = Channel.empty()
+			if (workflow_entry_point == "NGSLCA" || workflow_entry_point == "MASKING" || params.OVERRIDE_LIST_BAM ) {
+				if (workflow_entry_point == "NGSLCA"){mapping_indexes = Channel.empty()}
+				bowtie2_out2 = Channel
+				.fromPath(params.OVERRIDE_LIST_BAM)
+				.splitCsv(header: false, sep: '\t', strip: true)
+				.map { row -> tuple( row[0], file(row[1]))}
+			} //else {bowtie2_out2 = Channel.empty()}
 
-						kraken_out
-						.map { it -> tuple(it[0], it[1], params.BOWTIE2_N_ALLOW_MULTIMAPPER) }
-						.combine( mapping_indexes )
-						.set{input_bowtie2}
-						// input_bowtie2.view()
-						BOWTIE2( input_bowtie2 )
-						if (params.USE_MAPPING == "PARALLEL_MAPPING") { BOWTIE2.out.set { bowtie2_out1 } }
-					} 
+			// bowtie2_out1.concat(bowtie2_out2).unique().set{bowtie2_out}
 
-					if (params.ENABLE_SEQUENTIAL_MAPPING == "enable") {
-						SEQUENTIAL_MAP( kraken_out, params.BOWTIE2_N_ALLOW_MULTIMAPPER )
-						
-						if (params.USE_MAPPING == "SEQUENTIAL_MAPPING") { SEQUENTIAL_MAP.out.set { bowtie2_out1 } }
-					} 
-				}
-		} //else {bowtie2_out1 = Channel.empty()} 
-		
-		bowtie2_out2 = Channel.empty()
-		if (workflow_entry_point == "NGSLCA" || workflow_entry_point == "MASKING" || params.OVERRIDE_LIST_BAM ) {
-			if (workflow_entry_point == "NGSLCA"){mapping_indexes = Channel.empty()}
-			bowtie2_out2 = Channel
-			.fromPath(params.OVERRIDE_LIST_BAM)
-			.splitCsv(header: false, sep: '\t', strip: true)
-			.map { row -> tuple( row[0], file(row[1]))}
-		} //else {bowtie2_out2 = Channel.empty()}
+			bowtie2_out = bowtie2_out1.concat(bowtie2_out2).unique()
+			.map{id, bams -> tuple(id, bams)}
+			.ifEmpty {
+				ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE6"] }
+			}
+			// bowtie2_out.view()
 
-		// bowtie2_out1.concat(bowtie2_out2).unique().set{bowtie2_out}
-
-		bowtie2_out = bowtie2_out1.concat(bowtie2_out2).unique()
-		.map{id, bams -> tuple(id, bams)}
-		.ifEmpty {
-			ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE6"] }
+			bowtie2_out
+			.map { id, files -> tuple(id, files) }
+			.groupTuple()
+			.set{mapped_bam}
+		} else {
+			mapped_bam = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE9"] }
 		}
-		// bowtie2_out.view()
-
-		bowtie2_out
-		.map { id, files -> tuple(id, files) }
-		.groupTuple()
-		.set{mapped_bam}
-		mapped_bam.view()
 
 		// if enabled when there are multiple bam for the same sample
 		if (params.ENABLE_MERGE_BAM == "enable"){
@@ -361,8 +382,6 @@ workflow {
 		} else {
 			mapped_bam.set{ merged_bam }
 		}
-
-		// regions_to_mask.view()
 
 		// microbial-like regions
 		if (params.ENABLE_MASK_REGIONS == "enable" ) { 

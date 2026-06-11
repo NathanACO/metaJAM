@@ -123,32 +123,43 @@ process PRINSEQ {
 process KRAKEN2 {
     conda './envs/kraken2.yml'
 
-    publishDir "${params.OUTPUT_Dir}/03_kraken2_filter/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy" 
+    publishDir "${params.OUTPUT_Dir}/03_kraken2_filter/${params.MAP_LAST_DB_TAG}", mode: "copy" 
 
     input:    
-        tuple val(ID), path(reads), path(DB)
+        tuple path(sample_ID_fq), path(DB)
 
     output:
-        tuple val(ID), path("*_unclas.fastq.gz"), emit: not_microbe
-        tuple val(ID), path("*_clas.fastq.gz"), emit: microbe
+        path("${sample_ID_fq}.kraken2_out_meta.csv"), emit: out_list
+        path("*_clas.fastq.gz")
+        path("*_unclas.fastq.gz")
         path("*_report.txt.gz")
         path("*_output.txt.gz")
         
     script:
     """
-        DB_LABEL=\$(basename $DB)
-        kraken2 --db "${DB}" \
-            --report "${ID}_\${DB_LABEL}_report.txt" \
-            --report-minimizer-data \
-            --gzip-compressed \
-            --threads ${task.cpus} \
-            --output "${ID}_\${DB_LABEL}_output.txt" \
-            --classified-out "${ID}_\${DB_LABEL}_clas.fastq" \
-            --unclassified-out "${ID}_\${DB_LABEL}_unclas.fastq" \
-            --memory-mapping "${reads}"
-        
-        pigz *clas.fastq
-        pigz *.txt
+    #the number of samples run at the same time
+    n_samples=\$(wc -l < ${sample_ID_fq} | tr -d ' ')
+    n_samples=\$(( \$n_samples > ${task.cpus} ? ${task.cpus} : \$n_samples ))
+    n_threads=\$(( ${task.cpus} / \$n_samples ))
+    
+    label="\$(basename $DB)"
+
+    cut -f 2 -d, "$sample_ID_fq" > "${sample_ID_fq}.fq_path"
+    
+    kraken2_parallele_memory_mapping.sh "${sample_ID_fq}.fq_path" "." "${DB}" "\${label}" "" "\${n_threads}" "\${n_samples}"
+    #kraken2_parallele_memory_mapping.sh <list_fq> <outdir> <k2_db> <label> [old_label] [threads] [parallel_jobs]
+    
+    #collect the output into a list: sample_ID, unclassified, classified
+    while IFS=, read -r sampleID reads; do
+        name=\$(basename "\$reads" \
+        | sed 's/\\.fastq\\.gz\$//' \
+        | sed 's/_unclas\$//' \
+        | sed 's/\\.merged\$//')
+
+        echo "\$sampleID,\$(pwd)/\${name}_\${label}_clas.fastq.gz,\$(pwd)/\${name}_\${label}_unclas.fastq.gz" >> ${sample_ID_fq}.kraken2_out_meta.csv
+
+    done < ${sample_ID_fq}
+
     """
 }
 
@@ -336,8 +347,6 @@ process BAMDAM {
     conda './envs/bamdam.yml'
 
     errorStrategy = { task.exitStatus in [143,137,104,134,139,140] ? 'retry' : 'ignore' } 
-
-    label 'small_memory'
 
     publishDir "${params.OUTPUT_Dir}/08_bamdam/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy"
 
