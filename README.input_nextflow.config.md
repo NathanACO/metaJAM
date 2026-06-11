@@ -100,6 +100,7 @@ for DB[1-10], set as "" if not used
 `BOWTIE2_MAPPING_DB2`...`BOWTIE2_MAPPING_DB10`: same format as DB1, maximum 10 databases so far.
 
 `KRAKEN2_FILTER_DATABASE="/path/to/kraken2_db" `: path to Kraken2 database (e.g., GTDB database), the directory containing kraken2 indexes (*.k2d). If you want to use memory-mapping (loading database directly from the temporary storage to save the time for loading the database, please supply the path of the database in temporary storage (how to set up explained in wiki section2)\
+`KRAKEN2_BATCH_SIZE=128`: give the number as either the number of samples if it's less than the number of cores you gave to KRAKEN2 (see `withName: KRAKEN2 {` in the nextflow.config), or the number of cores required by Kraken2. This means how many samples are processed in a parallelized manner in one Kraken2 job (e.g., 400 reads with 128 as batch size, then 4 batches of samples, each an independent Kraken2 job)
 
 
 ```
