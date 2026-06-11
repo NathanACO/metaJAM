@@ -144,7 +144,11 @@ process KRAKEN2 {
     
     label="\$(basename $DB)"
 
-    cut -f 2 -d, "$sample_ID_fq" > "${sample_ID_fq}.fq_path"
+    #remove [ and ] in "$sample_ID_fq"
+    sed 's/\\[//' $sample_ID_fq | sed 's/\\]//' > "${sample_ID_fq}.clean"
+
+
+    cut -f 2 -d, "${sample_ID_fq}.clean" > "${sample_ID_fq}.fq_path"
     
     kraken2_parallele_memory_mapping.sh "${sample_ID_fq}.fq_path" "." "${DB}" "\${label}" "" "\${n_threads}" "\${n_samples}"
     #kraken2_parallele_memory_mapping.sh <list_fq> <outdir> <k2_db> <label> [old_label] [threads] [parallel_jobs]
@@ -158,7 +162,7 @@ process KRAKEN2 {
 
         echo "\$sampleID,\$(pwd)/\${name}_\${label}_clas.fastq.gz,\$(pwd)/\${name}_\${label}_unclas.fastq.gz" >> ${sample_ID_fq}.kraken2_out_meta.csv
 
-    done < ${sample_ID_fq}
+    done < ${sample_ID_fq}.clean
 
     """
 }
@@ -398,11 +402,26 @@ process BAMDAM {
         --show_progress
 
         # krona + HTML (per-sample)
-        bamdam krona \
+        if bamdam krona \
         --in_tsv "${ID}.tsv" \
         --out_xml "${ID}.xml" \
         --minreads "${MINREADS}" \
-        --maxdamage "${MAXDAMAGE}"
+        --maxdamage "${MAXDAMAGE}" \
+        --aggregate_to "kingdom"; then
+
+            echo "bamdam krona succeeded for ${ID}"
+            
+        else    
+
+            #if it's fungi or other taxa in different domain
+            bamdam krona \
+            --in_tsv "${ID}.tsv" \
+            --out_xml "${ID}.xml" \
+            --minreads "${MINREADS}" \
+            --maxdamage "${MAXDAMAGE}" \
+            --aggregate_to "domain"
+
+        fi
 
         while read -r count taxid genus; do
         bamdam plotdamage \
