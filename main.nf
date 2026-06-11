@@ -251,7 +251,7 @@ workflow {
 					def copy = new ArrayList(lines)
 
 					copy
-					.collate(2)                 // or 128
+					.collate(params.KRAKEN2_BATCH_SIZE)                 // or 128
 					.withIndex()
 					.collect { batch, idx ->
 						def filename = "input_k2.sub${idx+1}.csv"
