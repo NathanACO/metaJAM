@@ -93,15 +93,25 @@ process PRINSEQ {
 		BAD="${ID}_merged.low_complexity"
 		DEREP_OUT="${ID}_merged.complexity_filtered.duplicatesremoved"
 
-		# 1) Low complexity filter
-		zcat "${merged_reads}" | prinseq-lite.pl \
+		# 1) Low complexity filter 
+		if zcat "${merged_reads}" | prinseq-lite.pl \
 		-fastq stdin \
 		-out_good "\${GOOD}" \
 		-out_bad "\${BAD}" \
 		-lc_method "${PRINSEQ_COMPLEXITY_METHOD}" \
 		-lc_threshold "${PRINSEQ_COMPLEXITY_THRESHOLD}" \
 		-min_len "${PRINSEQ_MIN_LEN}" \
-		-line_width 0
+		-line_width 0; then
+		
+		cat "${merged_reads}" | prinseq-lite.pl \
+                -fastq stdin \
+                -out_good "\${GOOD}" \
+                -out_bad "\${BAD}" \
+                -lc_method "${PRINSEQ_COMPLEXITY_METHOD}" \
+                -lc_threshold "${PRINSEQ_COMPLEXITY_THRESHOLD}" \
+                -min_len "${PRINSEQ_MIN_LEN}" \
+                -line_width 0
+		fi
 
         echo "low complexity filter finished"
 
