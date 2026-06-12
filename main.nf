@@ -232,12 +232,7 @@ workflow {
 			preprocessed_reads2 = Channel.empty()
 		}
 		
-		preprocessed_reads = preprocessed_reads1
-		.concat(preprocessed_reads2)
-		.unique()
-		.ifEmpty {
-			ch_sample_ids.map { id -> [id, params.METAJAM_DIR + "/assets/NO_FILE4"] }
-		}
+		preprocessed_reads = preprocessed_reads1.concat(preprocessed_reads2).unique() ? preprocessed_reads1.concat(preprocessed_reads2).unique() :  ch_sample_ids.map { id -> [id, params.METAJAM_DIR + "/assets/NO_FILE4"] }
 
 		// preprocessed_reads.view()
 		if (params.ENABLE_KRAKEN_GTDB == "enable" || workflow_entry_point == "MAPPING" || params.OVERRIDE_LIST_KRAKEN ) {
@@ -347,7 +342,7 @@ workflow {
 					
 					if (params.USE_MAPPING == "SEQUENTIAL_MAPPING") { SEQUENTIAL_MAP.out.set { bowtie2_out1 } }
 				} 
-			} //else {bowtie2_out1 = Channel.empty()} 
+			} else {bowtie2_out1 = Channel.empty()} 
 			
 			bowtie2_out2 = Channel.empty()
 			if (workflow_entry_point == "NGSLCA" || workflow_entry_point == "MASKING" || params.OVERRIDE_LIST_BAM ) {
@@ -356,16 +351,18 @@ workflow {
 				.fromPath(params.OVERRIDE_LIST_BAM)
 				.splitCsv(header: false, sep: '\t', strip: true)
 				.map { row -> tuple( row[0], file(row[1]))}
-			} //else {bowtie2_out2 = Channel.empty()}
+			} else {bowtie2_out2 = Channel.empty()}
 
 			// bowtie2_out1.concat(bowtie2_out2).unique().set{bowtie2_out}
 
-			bowtie2_out = bowtie2_out1.concat(bowtie2_out2).unique()
-			.map{id, bams -> tuple(id, bams)}
-			.ifEmpty {
-				ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE6"] }
-			}
+			// bowtie2_out = bowtie2_out1.concat(bowtie2_out2).unique()
+			// .map{id, bams -> tuple(id, bams)}
+			// IfEmpty { 
+			// 	ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE6"] }
+			// }
 			// bowtie2_out.view()
+
+			bowtie2_out = bowtie2_out1.concat(bowtie2_out2).unique() ? bowtie2_out1.concat(bowtie2_out2).unique() : ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE6"] }
 
 			bowtie2_out
 			.map { id, files -> tuple(id, files) }
@@ -614,9 +611,7 @@ workflow {
 			.set{ metrics2 }
 		} else {metrics2 = Channel.empty()}
 
-		metrics = metrics1.concat(metrics2).unique().ifEmpty {
-			ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE8"] }
-		}
+		metrics = metrics1.concat(metrics2).unique() ? metrics1.concat(metrics2).unique() : ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE8"] }
 
 		if (params.ENABLE_PLOTS == "enable") {
 
