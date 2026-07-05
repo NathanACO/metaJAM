@@ -34,10 +34,10 @@ run_kraken2() {
     | sed 's/_unclas$//' \
     | sed 's/\.merged$//')
 
-    local tmp_db="/tmp/$(basename "$k2_db")"
+    # local tmp_db="/tmp/$(basename "$k2_db")"
 
     kraken2 \
-        --db "$tmp_db" \
+        --db "$k2_db" \
         --report "$outdir/${name}_${label}_report.txt" \
         --report-minimizer-data \
         --gzip-compressed \
@@ -56,9 +56,9 @@ run_kraken2() {
 export -f run_kraken2
 
 # --- Copy DB to /tmp (once, before parallel jobs) ---
-tmp_db="/tmp/$(basename "$k2_db")"
-mkdir -p "$tmp_db"
-cp -r "$k2_db"/*.k2d "$tmp_db/"
+# tmp_db="/tmp/$(basename "$k2_db")"
+# mkdir -p "$tmp_db"
+# cp -r "$k2_db"/*.k2d "$tmp_db/"
 
 mkdir -p "$outdir"
 
