@@ -1,6 +1,34 @@
 #!/usr/bin/env nextflow
 nextflow.enable.dsl = 2
 
+process leeHom {
+
+    label 'small_memory'
+
+    conda " bioconda::leehom"
+
+    input:
+    tuple val(ID), path(r1), path(r2)
+
+    output:
+    tuple val(ID), path("*.merged.fq.gz")
+
+    publishDir "${params.OUTPUT_Dir}/01_fastp/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy" 
+
+    script:
+    """
+    #--auto require at least 1M reasd and do not support UMIs
+        leeHom \
+            --ancientdna \
+            --auto \
+            -fq1 $r1 \
+            -fq2 $r2 \
+            -fqo ${ID}.merged \
+            --log ${ID}.log
+
+    """
+}
+
 process FASTP {
 
     label 'small_memory'
@@ -694,19 +722,19 @@ process PLOTS {
 
     publishDir "${params.OUTPUT_Dir}/11_plots/${params.MAP_LAST_DB_TAG}", mode: "copy"
 
-    input:    
-        tuple path(METRICS_TSV),
-        path(BAMDAM_LCA), 
-        path(mmseq2_evaluation),
-        path(METADATA_PATH),
-	    path(SAMPLES_FOR_PLOTS),
-        val(MIN_READS),
-        val(PLOTS_MODE),
-        val(PLOTS_DAMAGE_THRESHOLD),
-        val(PLOTS_PLOT_LOW_DAMAGE_TAXA),
-        val(PLOTS_EXCLUDE_TAXA),
-        val(PLOTS_TAXA_PER_PLOT),
-        val(PLOTS_LIST_TAXA_EVOLUTION_FILE),
+    input:
+        path(METRICS_TSV)
+        path(BAMDAM_LCA) 
+        path(mmseq2_evaluation)
+        path(METADATA_PATH)
+	    path(SAMPLES_FOR_PLOTS)
+        val(MIN_READS)
+        val(PLOTS_MODE)
+        val(PLOTS_DAMAGE_THRESHOLD)
+        val(PLOTS_PLOT_LOW_DAMAGE_TAXA)
+        val(PLOTS_EXCLUDE_TAXA)
+        val(PLOTS_TAXA_PER_PLOT)
+        val(PLOTS_LIST_TAXA_EVOLUTION_FILE)
         val(MAP_LAST_DB_TAG)
             
     output:

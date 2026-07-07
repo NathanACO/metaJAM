@@ -511,7 +511,7 @@ workflow {
 				//input_mmseq2.view()
 				
 				MMSEQ2( input_mmseq2 )
-				MMSEQ2.out.evaluation.collect().set{mmseq2_evaluation1}
+				MMSEQ2.out.evaluation.map{it -> [it]}.collect().set{mmseq2_evaluation1}
 			}
 			
 			mmseq2_evaluation2 = Channel.empty()
@@ -525,6 +525,7 @@ workflow {
 			}
 
 			mmseq2_evaluation = mmseq2_evaluation1.concat(mmseq2_evaluation2).unique()
+
 		} else {mmseq2_evaluation = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE7"]}}
 
 		if (params.ENABLE_KRONATOOLS == "enable") { 
@@ -616,10 +617,9 @@ workflow {
 			// bamdam_bam_lca.map{it[3]}.collect().view{log.info "Debug bamdam_bam_lca files for plots: ${it}"}
 			// mmseq2_evaluation.map{it[1]}.collect().view{log.info "Debug mmseq2_evaluation files for plots: ${it}"}
 
-			metrics
-			.combine(bamdam_bam_lca.map{it[3]}.collect())
-			.combine(mmseq2_evaluation.map{it[1]}.collect())
-			.map{it -> tuple(it[0], it[1], it[2],
+			PLOTS( metrics,  
+				bamdam_bam_lca.map{it -> it[3]}.collect(), 
+				mmseq2_evaluation.flatMap { pairs -> pairs.collect { it[1] } }.collect(),
 				params.metadata,
 				params.PLOTS_SAMPLES_FOR_PLOTS,
 				params.PLOTS_MIN_READS,
@@ -630,12 +630,8 @@ workflow {
 				params.PLOTS_TAXA_PER_PLOT,
 				params.PLOTS_LIST_TAXA_EVOLUTION_FILE,
 				params.MAP_LAST_DB_TAG
-			)}
-			.set{ input_plots }
+			)
 
-			//input_plots.view{"Debug input_plots: ${it}"}
-
-			PLOTS( input_plots )
 			//PLOTS_KRONA_BY_SITE seperated from PLOTS for a cleaner conda env
 			PLOTS_KRONA_BY_SITE(
 				bamdam_bam_lca.map{it -> it[3]}.collect(), 
