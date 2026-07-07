@@ -537,9 +537,6 @@ workflow {
 		metrics = Channel.empty()
 		if (params.ENABLE_METRICS == "enable") {
 
-			// added to avoid calling validations below if the workflow ran into error before or terminated
-			onError:
-				return
 			//check if any channel does not match the ch_sample_ids in metadata so it does not hang silently
 			paired_reads = paired_reads.combine( ch_sample_ids ,by:0 )
 			.ifEmpty {
