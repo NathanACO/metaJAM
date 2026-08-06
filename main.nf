@@ -480,7 +480,6 @@ workflow {
 		bamdam_bam_lca1.concat(bamdam_bam_lca2).unique().set{bamdam_bam_lca}
 
 		mmseq2_evaluation1 = Channel.empty()
-
 		if (params.ENABLE_MMSEQS2 == "enable" || workflow_entry_point == "MMSEQS2") {
 
 			if (params.ENABLE_MMSEQS2 == "enable") {
@@ -513,20 +512,23 @@ workflow {
 				MMSEQ2( input_mmseq2 )
 				MMSEQ2.out.evaluation.map{it -> [it]}.collect().set{mmseq2_evaluation1}
 			}
-			
-			mmseq2_evaluation2 = Channel.empty()
-			if ( params.OVERRIDE_LIST_MMSEQ2 ) {
-				Channel
-				.fromPath(params.OVERRIDE_LIST_MMSEQ2)
-				.splitCsv(header: false, sep: '\t', strip: true)
-				.map { row -> 
-					tuple( row[0], file(row[1]))}
-				.set{mmseq2_evaluation2}
-			}
 
-			mmseq2_evaluation = mmseq2_evaluation1.concat(mmseq2_evaluation2).unique()
+		}
 
-		} else {mmseq2_evaluation = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE7"]}}
+		mmseq2_evaluation2 = Channel.empty()
+		if ( params.OVERRIDE_LIST_MMSEQ2 ) {
+			Channel
+			.fromPath(params.OVERRIDE_LIST_MMSEQ2)
+			.splitCsv(header: false, sep: '\t', strip: true)
+			.map { row -> 
+				tuple(tuple( row[0], file(row[1])))}
+			.map{it -> [it]}
+			.collect()
+			.set{mmseq2_evaluation2}
+		}
+		
+		mmseq2_evaluation = mmseq2_evaluation1.concat(mmseq2_evaluation2).unique()
+		// mmseq2_evaluation.view{log.info "Debug mmseq2_evaluation: ${it}"}
 
 		if (params.ENABLE_KRONATOOLS == "enable") { 
 
@@ -610,12 +612,13 @@ workflow {
 		} else {metrics2 = Channel.empty()}
 
 		metrics = metrics1.concat(metrics2).unique() ? metrics1.concat(metrics2).unique() : ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE8"] }
+		// metrics.view{log.info "Debug metrics files: ${it}"}
 
 		if (params.ENABLE_PLOTS == "enable") {
 
 			// metrics.view{log.info "Debug metrics files for plots: ${it}"}
 			// bamdam_bam_lca.map{it[3]}.collect().view{log.info "Debug bamdam_bam_lca files for plots: ${it}"}
-			// mmseq2_evaluation.map{it[1]}.collect().view{log.info "Debug mmseq2_evaluation files for plots: ${it}"}
+			// mmseq2_evaluation.flatMap { pairs -> pairs.collect { it[1] } }.collect().view{log.info "Debug mmseq2_evaluation files for plots: ${it}"}
 
 			PLOTS( metrics,  
 				bamdam_bam_lca.map{it -> it[3]}.collect(), 
