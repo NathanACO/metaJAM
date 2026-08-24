@@ -396,7 +396,7 @@ workflow {
 		}
 		
 		if (params.ENABLE_FILTERBAM == "enable") { 
-		 	FILTERBAM( input )
+		 	FILTERBAM( bam )
 		 	FILTERBAM.out.set{ bam }
 		 } else { merged_bam.set{ bam } }
 
