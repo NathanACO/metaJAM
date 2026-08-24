@@ -34,6 +34,9 @@ def validate_pipeline() {
 		[name: 'MASKING',  toggle: params.ENABLE_MASK_REGIONS, req: {
 			if (params.ENABLE_GENERATE_BEDFILE_TO_MASK != "enable" && !params.REGIONS_TO_MASK) error "Masking enabled but required either enable running mcworkflow with ENABLE_GENERATE_BEDFILE_TO_MASK or supply REGIONS_TO_MASK file"
 		}],
+		[name: 'FILTERBAM',   toggle: params.ENABLE_FILTERBAM,   req: {
+		if (params.ENABLE_MAPPING != "enable" && !params.OVERRIDE_LIST_BAM) error "Mapping disabled and no override_list_bam is provided for the process filterbam"
+		}],
 		[name: 'NGSLCA',   toggle: params.ENABLE_NGSLCA,   req: {
 			if (!params.NAMES) error "Missing required file parameter: NAMES"
 			if (!params.NODES) error "Missing required file parameter: NODES"
@@ -86,6 +89,7 @@ def validate_pipeline() {
         case 'KRAKEN2': if(!params.OVERRIDE_PREPROCESSED) error "Starting at Kraken2: Provide 'OVERRIDE_PREPROCESSED'."; break
         case 'MAPPING': if(!params.OVERRIDE_LIST_KRAKEN)  error "Starting at Mapping: Provide 'OVERRIDE_LIST_KRAKEN'."; break
 		case 'MASKING': if(!params.OVERRIDE_LIST_BAM)  error "Starting at Masking: Provide 'OVERRIDE_LIST_BAM'."; break
+		case 'FILTERBAM':  if(!params.OVERRIDE_LIST_BAM)     error "Starting at FILTERBAM: Provide 'OVERRIDE_LIST_BAM'."; break
         case 'NGSLCA':  if(!params.OVERRIDE_LIST_BAM)     error "Starting at NGSLCA: Provide 'OVERRIDE_LIST_BAM'."; break
         case 'BAMDAM':  if(!params.OVERRIDE_LIST_NGSLCA)  error "Starting at BAMDAM: Provide 'OVERRIDE_LIST_NGSLCA'."; break
         case 'MMSEQS2': if(!params.OVERRIDE_LIST_BAMDAM)  error "Starting at MMSEQS2: Provide 'OVERRIDE_LIST_BAMDAM'."; break
