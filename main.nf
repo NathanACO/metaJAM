@@ -394,10 +394,11 @@ workflow {
 		} else {
 			merged_bam.set{ bam }
 		}
-		// if (params.ENABLE_FILTERBAM == "enable") { 
-		// 	FILTERBAM( input )
-		// 	FILTERBAM.out.set{ bam }
-		// 	} else { merged_bam.set{ bam } }
+		
+		if (params.ENABLE_FILTERBAM == "enable") { 
+		 	FILTERBAM( input )
+		 	FILTERBAM.out.set{ bam }
+		 } else { merged_bam.set{ bam } }
 
 		// bam.map { tuple(it[0], it[1], params.NAMES, params.NODES, params.ACC2TAXID )}.view()
 
