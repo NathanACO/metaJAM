@@ -138,13 +138,26 @@ MMSeqs2 database\
 `PRINSEQ_MIN_LEN`    -min_len                    (default=35)  \
 `PRINSEQ_DEREP`    -derep                      (default=1)    \
 4) *Bowtie2*
-`BOWTIE2_N_ALLOW_MULTIMAPPER`    -k                          (default=1000)    
-5) *bamdam*\
+`BOWTIE2_N_ALLOW_MULTIMAPPER`    -k                          (default=1000)
+5) *filterBAM* (recommended only for prokaryotes; enabled via `ENABLE_FILTERBAM="enable"`)\
+`FILTERBAM_MIN_READ_COUNT`    --min-read-count            (default=3)    \
+`FILTERBAM_MIN_READ_ANI`    --min-read-ani              (default=94)    \
+`FILTERBAM_MIN_READ_LENGTH`    --min-read-length           (default=30)    \
+`FILTERBAM_MAX_READ_LENGTH`    --max-read-length           (default=inf but set as 10000)    \
+`FILTERBAM_MIN_EXPECTED_BREADTH_RATIO`    --min-expected-breadth-ratio (default=0.5)    \
+`FILTERBAM_MIN_NORMALIZED_ENTROPY`    --min-normalized-entropy    (default=auto)    \
+`FILTERBAM_MIN_NORMALIZED_GINI`    --min-normalized-gini       (default=auto)    \
+`FILTERBAM_MIN_BREADTH`    --min-breadth               (default=0)    \
+`FILTERBAM_MIN_AVG_READ_ANI`    --min-avg-read-ani          (default=90)    \
+`FILTERBAM_MIN_COVERAGE_EVENNESS`    --min-coverage-evenness     (default=0.3)    \
+`FILTERBAM_MIN_COEFF_VAR`    --min-coeff-var             (default=inf)    \
+`FILTERBAM_MIN_COVERAGE_MEAN`    --min-coverage-mean         (default=0)    
+6) *bamdam*\
 `BAMDAM_STRANDED`    --stranded                  (default=ds)        
 `BAMDAM_MINREADS`    --minreads                  (default=5)        
 `BAMDAM_MAXDAMAGE`    --maxdamage                (default=0.5)    
 `BAMDAM_TOP_GENUS`    TOP_GENUS                   (default=10)         Number of the most abundant genus to plot for damage\
-5.1) *MMSeqs2*\
+7) *MMSeqs2*\
 `MMSEQS2_MAX_SEQS`            (default=300) #--max-seqs INT  Maximum results per query sequence allowed to pass the prefilter (affects sensitivity) [300]\
 `MMSEQS2_MIN_SEQID`                   (default=0.93) #--min-seq-id FLOAT List matches above this sequence identity (for clustering) (range 0.0-1.0) [0.000]\
 `MMSEQS2_MIN_BITS`                    (default=50)\
@@ -162,7 +175,7 @@ MMSeqs2 database\
 `MMSEQS2_SEED`                (default=42)            # Leave empty to have different reads each run, othewise set an integer (e.g. 42)\
 `MMSEQS2_AMBIG_FRAC`          (default=0.05)         # Percent of e-value difference for the second best hit for a different genera than the mmseqs2 best hit 
 
-7) *Plots*\
+8) *Plots*\
 `PLOTS_BAMDAM_MIN_READS` (default=50)    - Minimum reads per sample to include in bamdam plots\
 `PLOTS_BAMDAM_PLOT_MODE` (default=both)  - Chose which plots to produce: heatmap, bubble or both\
 `PLOTS_DAMAGE_THRESHOLD` (default=3.5)   - Minimum percentage of damage for plotting\
