@@ -136,6 +136,7 @@ workflow {
 	// run the main workflow only if at least one of the main steps is enabled
 	if (
 	params.ENABLE_PREPROCESS == "enable" || params.ENABLE_KRAKEN_GTDB == "enable" ||
+	params.ENABLE_MERGE_BAM == "enable" || params.ENABLE_FILTERBAM == "enable" ||
     params.ENABLE_MAPPING == "enable" || params.ENABLE_MASK_REGIONS == "enable" ||
     params.ENABLE_NGSLCA == "enable" || params.ENABLE_BAMDAM == "enable" ||
     params.ENABLE_KRONATOOLS == "enable" || params.ENABLE_MMSEQS2 == "enable" ||
@@ -399,10 +400,23 @@ workflow {
 			merged_bam.set{ bam }
 		}
 		
-		if (params.ENABLE_FILTERBAM == "enable") { 
-		 	FILTERBAM( bam )
+		if (params.ENABLE_FILTERBAM == "enable") {
+			bam
+			.map { id, b -> tuple(id, b,
+				params.FILTERBAM_MIN_READ_COUNT,
+				params.FILTERBAM_MIN_READ_ANI,
+				params.FILTERBAM_MIN_EXPECTED_BREADTH_RATIO,
+				params.FILTERBAM_MIN_NORMALIZED_ENTROPY,
+				params.FILTERBAM_MIN_NORMALIZED_GINI,
+				params.FILTERBAM_MIN_BREADTH,
+				params.FILTERBAM_MIN_AVG_READ_ANI,
+				params.FILTERBAM_MIN_COVERAGE_EVENNESS,
+				params.FILTERBAM_MIN_COVERAGE_MEAN) }
+			.set{ input_filterbam }
+
+		 	FILTERBAM( input_filterbam )
 		 	FILTERBAM.out.set{ bam }
-		 } else { merged_bam.set{ bam } }
+		}
 
 		// bam.map { tuple(it[0], it[1], params.NAMES, params.NODES, params.ACC2TAXID )}.view()
 

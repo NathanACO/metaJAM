@@ -325,31 +325,41 @@ process FILTERBAM {
 
     label 'little_memory'
     conda './envs/filterBAM.yml'
-    input:    
-        tuple val(ID), path(bam)
-            
+
+    input:
+        tuple val(ID), path(bam),
+            val(FILTERBAM_MIN_READ_COUNT),
+            val(FILTERBAM_MIN_READ_ANI),
+            val(FILTERBAM_MIN_EXPECTED_BREADTH_RATIO),
+            val(FILTERBAM_MIN_NORMALIZED_ENTROPY),
+            val(FILTERBAM_MIN_NORMALIZED_GINI),
+            val(FILTERBAM_MIN_BREADTH),
+            val(FILTERBAM_MIN_AVG_READ_ANI),
+            val(FILTERBAM_MIN_COVERAGE_EVENNESS),
+            val(FILTERBAM_MIN_COVERAGE_MEAN)
+
     output:
-        tuple val(ID), path("*.b2.k1000.all.filtered.bam")
+        tuple val(ID), path("*.filterbam.bam")
 
     publishDir "${params.OUTPUT_Dir}/filterbam/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy"
-        
+
     script:
     """
         filterBAM filter \
             --bam "${bam}" \
-            --bam-filtered "${ID}.b2.k1000.all.filtered.bam" \
-            --stats "${ID}.b2.k1000.all.stats.tsv.gz" \
-            --stats-filtered "${ID}.b2.k1000.all.stats-filtered.tsv.gz" \
+            --bam-filtered "${ID}.filterbam.bam" \
+            --stats "${ID}.filterbam.stats.tsv.gz" \
+            --stats-filtered "${ID}.filterbam.stats.filtered.tsv.gz" \
             --threads "${task.cpus}" \
-            --min-read-count 3 \
-            --min-read-ani 94 \
-            --min-expected-breadth-ratio 0.5 \
-            --min-normalized-entropy auto \
-            --min-normalized-gini auto \
-            --min-breadth 0 \
-            --min-avg-read-ani 90 \
-            --min-coverage-evenness 0.3 \
-            --min-coverage-mean 0 \
+            --min-read-count "${FILTERBAM_MIN_READ_COUNT}" \
+            --min-read-ani "${FILTERBAM_MIN_READ_ANI}" \
+            --min-expected-breadth-ratio "${FILTERBAM_MIN_EXPECTED_BREADTH_RATIO}" \
+            --min-normalized-entropy "${FILTERBAM_MIN_NORMALIZED_ENTROPY}" \
+            --min-normalized-gini "${FILTERBAM_MIN_NORMALIZED_GINI}" \
+            --min-breadth "${FILTERBAM_MIN_BREADTH}" \
+            --min-avg-read-ani "${FILTERBAM_MIN_AVG_READ_ANI}" \
+            --min-coverage-evenness "${FILTERBAM_MIN_COVERAGE_EVENNESS}" \
+            --min-coverage-mean "${FILTERBAM_MIN_COVERAGE_MEAN}" \
             --include-low-detection \
             --sort-by-name
     """
