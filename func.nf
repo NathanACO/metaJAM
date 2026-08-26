@@ -330,12 +330,15 @@ process FILTERBAM {
         tuple val(ID), path(bam),
             val(FILTERBAM_MIN_READ_COUNT),
             val(FILTERBAM_MIN_READ_ANI),
+            val(FILTERBAM_MIN_READ_LENGTH),
+            val(FILTERBAM_MAX_READ_LENGTH),
             val(FILTERBAM_MIN_EXPECTED_BREADTH_RATIO),
             val(FILTERBAM_MIN_NORMALIZED_ENTROPY),
             val(FILTERBAM_MIN_NORMALIZED_GINI),
             val(FILTERBAM_MIN_BREADTH),
             val(FILTERBAM_MIN_AVG_READ_ANI),
             val(FILTERBAM_MIN_COVERAGE_EVENNESS),
+            val(FILTERBAM_MIN_COEFF_VAR),
             val(FILTERBAM_MIN_COVERAGE_MEAN)
 
     output:
@@ -353,12 +356,15 @@ process FILTERBAM {
             --threads "${task.cpus}" \
             --min-read-count "${FILTERBAM_MIN_READ_COUNT}" \
             --min-read-ani "${FILTERBAM_MIN_READ_ANI}" \
+            --min-read-length "${FILTERBAM_MIN_READ_LENGTH}" \
+            --max-read-length "${FILTERBAM_MAX_READ_LENGTH}" \
             --min-expected-breadth-ratio "${FILTERBAM_MIN_EXPECTED_BREADTH_RATIO}" \
             --min-normalized-entropy "${FILTERBAM_MIN_NORMALIZED_ENTROPY}" \
             --min-normalized-gini "${FILTERBAM_MIN_NORMALIZED_GINI}" \
             --min-breadth "${FILTERBAM_MIN_BREADTH}" \
             --min-avg-read-ani "${FILTERBAM_MIN_AVG_READ_ANI}" \
             --min-coverage-evenness "${FILTERBAM_MIN_COVERAGE_EVENNESS}" \
+            --min-coeff-var "${FILTERBAM_MIN_COEFF_VAR}" \
             --min-coverage-mean "${FILTERBAM_MIN_COVERAGE_MEAN}" \
             --include-low-detection \
             --sort-by-name
