@@ -65,7 +65,8 @@ Provide `metadata` for plotting, you can see ./test/metadata.txt as an example:\
 `OVERRIDE_LIST_NGSLCA="/path/to/file"` # sample_ID[tab]sample_lca_file
 
 - specify a file if you are skipping bamdam, otherwise use ""\
-`OVERRIDE_LIST_BAMDAM="/path/to/file"` # sample_ID[tab]bam[tab]lca[tab]tsv[tab]xml_file
+`OVERRIDE_LIST_BAMDAM="/path/to/file"` # sample_ID[tab]bam[tab]lca[tab]tsv[tab]xml_file. For simplicity, you can collect the files with the command in the 08_bamdam dir in the output dir and use this samples.tsv file as OVERRIDE_LIST_BAMDAM:
+`for d in $(pwd)/*/*/; do  b=$(ls "$d"*.small.bam 2>/dev/null);  id=$(basename "$b" .small.bam);  printf '%s\t%s\t%s\t%s\t%s\n'   "$id"   "$d$id.small.bam"   "$d$id.small.lca"   "$d$id.tsv"   "$d$id.xml"; done > samples.tsv`
 
 - specify a file if you are skipping mmseq2, otherwise use ""\
 `OVERRIDE_LIST_MMSEQ2=""` # ID[tab]mmseq2_output_evaluation_file
