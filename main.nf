@@ -137,7 +137,7 @@ workflow {
 	if (
 	params.ENABLE_PREPROCESS == "enable" || params.ENABLE_KRAKEN_GTDB == "enable" ||
 	params.ENABLE_MERGE_BAM == "enable" || params.ENABLE_FILTERBAM == "enable" ||
-    params.ENABLE_MAPPING == "enable" || params.ENABLE_MASK_REGIONS == "enable" ||
+    params.ENABLE_MAPPING == "enable" || params.ENABLE_MASK_REGIONS == "enable" || params.ENABLE_GENERATE_BEDFILE_TO_MASK == "enable" || 
     params.ENABLE_NGSLCA == "enable" || params.ENABLE_BAMDAM == "enable" ||
     params.ENABLE_KRONATOOLS == "enable" || params.ENABLE_MMSEQS2 == "enable" ||
     params.ENABLE_METRICS == "enable" || params.ENABLE_PLOTS == "enable"
