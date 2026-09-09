@@ -53,7 +53,8 @@ cd ../
 
 
 ## How to launch it:
-After running the setup script and having your nextflow.config (or other name) ready, you could run\
+
+After running the setup script and having your nextflow.config (or other name) ready, you could load nextflow v25.10.4 (ml  nextflow/25.10.4) and avoid nextflow v26, and then run\
 `nextflow run main.nf -profile conda -c other_name_nextflow.config`\
 If you want to resume, add also `-resume`, and `--with-trace` for output a trace*.txt reporting memory and time for each process. You can omit the  `-c nextflow.config`, if you are running exactly nextflow.config. Else if your nextflow.config is named in another way, you need to specify with the config name `-c other_name_nextflow.config`.
 
