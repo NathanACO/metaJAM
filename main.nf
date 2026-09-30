@@ -15,8 +15,8 @@ def validate_pipeline() {
     // 1. Define the execution order and their specific tool requirements
     def process_order = [
 		[name: 'FASTP',    toggle: params.ENABLE_FASTP,    req: {
-			if ((params.FASTQ_direct_path == "" || params.FASTQ_direct_path == null) && !params.FASTQ_list_path) {
-				error "FASTP enabled but no input FASTQ provided. Set FASTQ_direct_path or FASTQ_list_path."
+			if ((params.FASTQ_list_path == "" || params.FASTQ_list_path == null) && !params.FASTQ_list_path) {
+				error "FASTP enabled but no input FASTQ provided. Set FASTQ_list_path."
 			}
 		}],
         [name: 'SGA',      toggle: params.ENABLE_SGA,      req: {if (params.ENABLE_SGA != "enable" && !params.OVERRIDE_PREPROCESSED) error "SGA enabled but params.OVERRIDE_PREPROCESSED is not provided."}],
@@ -155,30 +155,19 @@ workflow {
 		if (params.ENABLE_PREPROCESS == "enable" ) {
 			// if (params.ENABLE_FASTP == "enable") { FASTP( input ) }
 
-			if (params.FASTQ_list_path || params.FASTQ_direct_path) {
+			if (params.FASTQ_list_path) {
 				
 				// allows to read fastq from a list of path
 				if (params.FASTQ_list_path){
-					paired_reads1 = Channel
+					paired_reads = Channel
 					.fromPath(params.FASTQ_list_path)
 					.splitCsv(header: false, sep: '\t', strip: true)
 					.map { row -> tuple( row[0], file(row[1]), file(row[2]))}
 
 				} else {
-					paired_reads1 = Channel.empty()
-				}
-				// allows to read fastq from direct path
-				if (params.FASTQ_direct_path != ""){
-					paired_reads2 = Channel
-						.fromFilePairs(params.FASTQ_direct_path)
-						.map { id, reads -> tuple(id.replaceAll(params.suffix_OVERRIDE_LIST, ''), reads[0], reads[1]) }
-				} else {
-					paired_reads2 = Channel.empty()
+					paired_reads = Channel.empty()
 				}
 
-				// use both ways of specified fastq and remove duplicate
-				paired_reads1.concat(paired_reads2).unique()
-				.set{paired_reads}
 			} else {
 				paired_reads = ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE1", params.METAJAM_DIR+"/assets/NO_FILE2"] }
 			}
@@ -565,7 +554,7 @@ workflow {
 			//check if any channel does not match the ch_sample_ids in metadata so it does not hang silently
 			paired_reads = paired_reads.combine( ch_sample_ids ,by:0 )
 			.ifEmpty {
-				log.error "paired_reads (params.FASTQ_list_path or params.FASTQ_direct_path) does not match with the sample IDs in params.metadata, or row in inputs not spaced with tabs. Please check your input files and metadata."
+				log.error "paired_reads (params.FASTQ_list_path) does not match with the sample IDs in params.metadata, or row in inputs not spaced with tabs. Please check your input files and metadata."
 				paired_reads.view{log.error "Debug paired_reads: ${it}"}
 				ch_sample_ids.view{log.error "Debug ch_sample_ids: ${it}"}
 				System.exit(1)
