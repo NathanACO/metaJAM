@@ -226,9 +226,16 @@ workflow {
 			preprocessed_reads2 = Channel.empty()
 		}
 		
-		preprocessed_reads = preprocessed_reads1.concat(preprocessed_reads2).unique() ? preprocessed_reads1.concat(preprocessed_reads2).unique() :  ch_sample_ids.map { id -> [id, params.METAJAM_DIR + "/assets/NO_FILE4"] }
+		preprocessed_reads_concat = preprocessed_reads1.concat(preprocessed_reads2).unique()
+		preprocessed_reads_fallback = preprocessed_reads_concat
+        .count()
+        .filter { n -> n == 0 }
+        .combine(ch_sample_ids)
+        .map { _n, id -> [id, params.METAJAM_DIR + "/assets/NO_FILE4"] }
 
-		// preprocessed_reads.view()
+		preprocessed_reads = preprocessed_reads_concat.mix(preprocessed_reads_fallback)
+		//preprocessed_reads.view()
+
 		if (params.ENABLE_KRAKEN_GTDB == "enable" || workflow_entry_point == "MAPPING" || params.OVERRIDE_LIST_KRAKEN ) {
 			if (params.ENABLE_KRAKEN_GTDB == "enable") { 
 
@@ -347,16 +354,15 @@ workflow {
 				.map { row -> tuple( row[0], file(row[1]))}
 			} else {bowtie2_out2 = Channel.empty()}
 
-			// bowtie2_out1.concat(bowtie2_out2).unique().set{bowtie2_out}
+			bowtie2_out_concat = bowtie2_out1.concat(bowtie2_out2).unique()
+			bowtie2_out_fallback = bowtie2_out_concat
+			.count()
+			.filter { n -> n == 0 }
+			.combine(ch_sample_ids)
+			.map { _n, id -> [id, params.METAJAM_DIR + "/assets/NO_FILE6"] }
 
-			// bowtie2_out = bowtie2_out1.concat(bowtie2_out2).unique()
-			// .map{id, bams -> tuple(id, bams)}
-			// IfEmpty { 
-			// 	ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE6"] }
-			// }
+			bowtie2_out = bowtie2_out_concat.mix(bowtie2_out_fallback)
 			// bowtie2_out.view()
-
-			bowtie2_out = bowtie2_out1.concat(bowtie2_out2).unique() ? bowtie2_out1.concat(bowtie2_out2).unique() : ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE6"] }
 
 			bowtie2_out
 			.map { id, files -> tuple(id, files) }
@@ -622,8 +628,16 @@ workflow {
 			.set{ metrics2 }
 		} else {metrics2 = Channel.empty()}
 
-		metrics = metrics1.concat(metrics2).unique() ? metrics1.concat(metrics2).unique() : ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE8"] }
-		// metrics.view{log.info "Debug metrics files: ${it}"}
+		// metrics = metrics1.concat(metrics2).unique() ? metrics1.concat(metrics2).unique() : ch_sample_ids.map { id -> [id, params.METAJAM_DIR+"/assets/NO_FILE8"] }
+		metrics_concat = metrics1.concat(metrics2).unique()
+		metrics_fallback = metrics_concat
+        .count()
+        .filter { n -> n == 0 }
+        .combine(ch_sample_ids)
+        .map { _n, id -> [id, params.METAJAM_DIR + "/assets/NO_FILE8"] }
+
+		metrics = metrics_concat.mix(metrics_fallback)
+		// metrics.view()
 
 		if (params.ENABLE_PLOTS == "enable") {
 
