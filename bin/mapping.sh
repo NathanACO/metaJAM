@@ -28,10 +28,10 @@ else
     # ----------------------------
     # Generate headers
     # ----------------------------
-    bowtie2-inspect -s "$idx" \
-      | awk -F'\\t' '\$1 ~ /^Sequence-/ { split(\$2, n, " "); print "@SQ\\tSN:" n[1] "\\tLN:" \$3 }' \
+    bowtie2-inspect -s "${idx}" \\
+      | awk -F'\\t' '\$1 ~ /^Sequence-/ { split(\$2, n, " "); print "@SQ\\tSN:" n[1] "\\tLN:" \$3 }' \\
       > "${idx}.headers"
-
+      
     # ----------------------------
     # Generate SAM without SQ header
     # ----------------------------
