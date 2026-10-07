@@ -37,7 +37,7 @@ ENABLE_PLOTS="enable"
 `FASTQ_list_path="/path/to/List_fastq.txt" (Note that each row: ID[tab]fastq1[tab]fastq2)`.
 
 Provide `metadata` for plotting, you can see ./test/metadata.txt as an example:\
-`metadata="./test/metadata.txt"`\
+`metadata="./test/metadata.txt"`. Also, it's important to include the samples with sample IDs matching between metadata and input data, as extra sample IDs in metadata but not in input data might fail validations.\
     #the columns are spaced with tab:\
     sample	age_ka	depth_cm	sample_type	layer	notes	site	sample_plot_name\
     X	1	25	    sediment	NA	Good DNA	LakeA    X
