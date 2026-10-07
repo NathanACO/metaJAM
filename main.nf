@@ -560,7 +560,7 @@ workflow {
 			//check if any channel does not match the ch_sample_ids in metadata so it does not hang silently
 			paired_reads = paired_reads.combine( ch_sample_ids ,by:0 )
 			.ifEmpty {
-				log.error "paired_reads (params.FASTQ_list_path) does not match with the sample IDs in params.metadata, or row in inputs not spaced with tabs. Please check your input files and metadata."
+				log.error "paired_reads (params.FASTQ_list_path) does not match with the sample IDs in params.metadata, or row in inputs not spaced with tabs. Please check your input files and metadata. Another possible reason is the sample IDs in metadata does not match with these with your input/override data, please check if the two lists match exactly."
 				paired_reads.view{log.error "Debug paired_reads: ${it}"}
 				ch_sample_ids.view{log.error "Debug ch_sample_ids: ${it}"}
 				System.exit(1)
@@ -568,7 +568,7 @@ workflow {
 
 			fastp_ch = fastp_ch.combine(ch_sample_ids, by:0)
 			.ifEmpty {
-				log.error "fastp output (params.OVERRIDE_LIST_FASTP) does not match sample IDs in params.metadata, or row in inputs not spaced with tabs"
+				log.error "fastp output (params.OVERRIDE_LIST_FASTP) does not match sample IDs in params.metadata, or row in inputs not spaced with tabs. Please check your input files and metadata. Another possible reason is the sample IDs in metadata does not match those in your input/override data, please check if the two lists match exactly."
 				fastp_ch.view{log.error "Debug fastp_ch: ${it}"}
 				ch_sample_ids.view{log.error "Debug ch_sample_ids: ${it}"}
 				System.exit(1)
@@ -576,7 +576,7 @@ workflow {
 
 			preprocessed_reads = preprocessed_reads.combine(ch_sample_ids, by:0)
 				.ifEmpty {
-					log.error "preprocessed_reads (params.OVERRIDE_PREPROCESSED) does not match sample IDs in params.metadata, or row in inputs not spaced with tabs"
+					log.error "preprocessed_reads (params.OVERRIDE_PREPROCESSED) does not match sample IDs in params.metadata, or row in inputs not spaced with tabs. Please check your input files and metadata. Another possible reason is the sample IDs in metadata does not match those in your input/override data, please check if the two lists match exactly."
 					preprocessed_reads.view{log.error "Debug preprocessed_reads: ${it}"}
 					ch_sample_ids.view{log.error "Debug ch_sample_ids: ${it}"}
 					System.exit(1)
@@ -584,7 +584,7 @@ workflow {
 
 			kraken_out = kraken_out.combine(ch_sample_ids, by:0)
 				.ifEmpty {
-					log.error "kraken_out (params.OVERRIDE_LIST_KRAKEN) does not match sample IDs in params.metadata, or row in inputs not spaced with tabs"
+					log.error "kraken_out (params.OVERRIDE_LIST_KRAKEN) does not match sample IDs in params.metadata, or row in inputs not spaced with tabs. Please check your input files and metadata. Another possible reason is the sample IDs in metadata does not match those in your input/override data, please check if the two lists match exactly."
 					kraken_out.view{log.error "Debug kraken_out: ${it}"}
 					ch_sample_ids.view{log.error "Debug ch_sample_ids: ${it}"}
 					System.exit(1)
@@ -592,7 +592,7 @@ workflow {
 
 			mapped_bam = mapped_bam.combine(ch_sample_ids, by:0)
 				.ifEmpty {
-					log.error "mapped_bam (params.OVERRIDE_LIST_BAM) does not match sample IDs in params.metadata, or row in inputs not spaced with tabs"
+					log.error "mapped_bam (params.OVERRIDE_LIST_BAM) does not match sample IDs in params.metadata, or row in inputs not spaced with tabs. Please check your input files and metadata. Another possible reason is the sample IDs in metadata does not match those in your input/override data, please check if the two lists match exactly."
 					mapped_bam.view{log.error "Debug mapped_bam: ${it}"}
 					ch_sample_ids.view{log.error "Debug ch_sample_ids: ${it}"}
 					System.exit(1)
@@ -600,7 +600,7 @@ workflow {
 
 			bamdam_bam_lca = bamdam_bam_lca.combine( ch_sample_ids ,by:0 )
 			.ifEmpty {
-				log.error "bamdam_bam_lca (params.OVERRIDE_LIST_BAMDAM) does not match with the sample IDs in params.metadata, or row in inputs not spaced with tabs"
+				log.error "bamdam_bam_lca (params.OVERRIDE_LIST_BAMDAM) does not match the sample IDs in params.metadata, or row in inputs not spaced with tabs. Please check your input files and metadata. Another possible reason is the sample IDs in metadata does not match those in your input/override data, please check if the two lists match exactly."
 				bamdam_bam_lca.view{log.error "Debug bamdam_bam_lca: ${it}"}
 				ch_sample_ids.view{log.error "Debug ch_sample_ids: ${it}"}
 				System.exit(1)
