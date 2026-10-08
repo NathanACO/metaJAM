@@ -283,7 +283,7 @@ process detect_exogenous {
   echo "GENERATE COORDINATIONS OF MICROBIAL-LIKE REGIONS (BEDFILES)"
   for j in \$(cat refs_uniq_sorted.txt)
 	do
-	samtools index \${j}.bam
+	samtools index -c \${j}.bam
 	echo \${j} CONTIG OF ${input_ref}
 	extract_coords.R ${type_of_pseudo_reads} \${j}__${input_ref}.boc $fna2name
 	echo DELETING BAM AND COMPRESSING BOC FILES
