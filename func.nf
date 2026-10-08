@@ -374,7 +374,7 @@ process FILTERBAM {
 process NGSLCA {
 
     label 'little_memory'
-    conda './envs/ngsLCA2.yml'
+    conda './envs/ngsLCA.yml'
     
     input:    
         tuple val(ID), path(bam), path(NAMES), path(NODES), path(ACC2TAX)
