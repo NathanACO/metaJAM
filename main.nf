@@ -225,8 +225,13 @@ workflow {
 		} else {
 			preprocessed_reads2 = Channel.empty()
 		}
-		
-		preprocessed_reads_concat = preprocessed_reads1.concat(preprocessed_reads2).unique()
+	
+		preprocessed_reads_concat = preprocessed_reads1
+            .join(preprocessed_reads2, by: 0, remainder: true)
+            .map { id, file1, file2 ->
+                tuple(id, file2 != null ? file2 : file1)
+            }
+
 		preprocessed_reads_fallback = preprocessed_reads_concat
         .count()
         .filter { n -> n == 0 }
