@@ -747,6 +747,7 @@ process PLOTS {
         val(MIN_READS)
         val(PLOTS_MODE)
         val(PLOTS_DAMAGE_THRESHOLD)
+        val(PLOTS_REF_DAMAGE_MEAN)
         val(PLOTS_PLOT_LOW_DAMAGE_TAXA)
         val(PLOTS_EXCLUDE_TAXA)
         val(PLOTS_TAXA_PER_PLOT)
@@ -798,6 +799,7 @@ process PLOTS {
             --min_reads "$MIN_READS" \
             --bamdam_plot "$PLOTS_MODE" \
             --damage_threshold "$PLOTS_DAMAGE_THRESHOLD" \
+            --ref_damage_mean "$PLOTS_REF_DAMAGE_MEAN" \
             --plot_low_damage_taxa "$PLOTS_PLOT_LOW_DAMAGE_TAXA" \
             --exclude_taxa "$PLOTS_EXCLUDE_TAXA" \
             --taxa_per_plot "$PLOTS_TAXA_PER_PLOT" \

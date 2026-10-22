@@ -227,10 +227,10 @@ workflow {
 		}
 	
 		preprocessed_reads_concat = preprocessed_reads1
-            .join(preprocessed_reads2, by: 0, remainder: true)
-            .map { id, file1, file2 ->
-                tuple(id, file2 != null ? file2 : file1)
-            }
+            .join(preprocessed_reads2, by: 0, remainder: true)
+            .map { id, file1, file2 ->
+                tuple(id, file2 != null ? file2 : file1)
+            }
 
 		preprocessed_reads_fallback = preprocessed_reads_concat
         .count()
@@ -658,6 +658,7 @@ workflow {
 				params.PLOTS_MIN_READS,
 				params.PLOTS_MODE,
 				params.PLOTS_DAMAGE_THRESHOLD,
+				params.PLOTS_REF_DAMAGE_MEAN ?: "",
 				params.PLOTS_PLOT_LOW_DAMAGE_TAXA,
 				params.PLOTS_EXCLUDE_TAXA,
 				params.PLOTS_TAXA_PER_PLOT,

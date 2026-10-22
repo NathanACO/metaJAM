@@ -39,12 +39,19 @@ damage_thr_arg <- get_arg("--damage_threshold", Sys.getenv("PLOTS_DAMAGE_THRESHO
 damage_threshold <- suppressWarnings(as.numeric(damage_thr_arg))
 if (is.na(damage_threshold) || damage_threshold < 0) damage_threshold <- 5
 
+# reference mean damage in percent for damage_class; empty/NA = auto (top-3 abundant taxa per sample)
+ref_mean_arg <- get_arg("--ref_damage_mean", Sys.getenv("PLOTS_REF_DAMAGE_MEAN", ""))
+ref_damage_mean <- suppressWarnings(as.numeric(ref_mean_arg))
+if (!is.na(ref_damage_mean) && ref_damage_mean < 0) ref_damage_mean <- NA_real_
+
 # taxa per bamdam plot panel (0 = no splitting)
 taxa_per_plot_arg <- get_arg("--taxa_per_plot", Sys.getenv("BAMDAM_TAXA_PER_PLOT", "0"))
 taxa_per_plot <- suppressWarnings(as.integer(taxa_per_plot_arg))
 if (is.na(taxa_per_plot) || taxa_per_plot < 0) taxa_per_plot <- 0
 
 message("[100_Plots.R] damage_threshold(%): ", damage_threshold)
+message("[100_Plots.R] ref_damage_mean(%): ",
+        ifelse(is.na(ref_damage_mean), "auto (top-3 abundant taxa per sample)", ref_damage_mean))
 message("[100_Plots.R] taxa_per_plot: ", taxa_per_plot)
 # --- NEW: taxa exclusion list for HEATMAP only ---
 # Accepts comma / semicolon / whitespace separated names (exact matches).
@@ -511,7 +518,7 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
 
 
 # ---- damage class per cell (sample-dependent) ----
-# Use Damage+1 directly from TSV (fraction). Convert to percent for thresholding.
+# Mean of Damage+1 and Damage-1 from TSV (fraction). Convert to percent for thresholding.
 damage_cell <- dat_rank %>%
   filter(sample %in% sample_order) %>%
   group_by(taxon, sample) %>%
@@ -528,13 +535,19 @@ taxon_max_damage <- damage_cell %>%
   group_by(taxon) %>%
   summarise(max_dmg_pct = max(dmg_pct, na.rm = TRUE), .groups = "drop")
 
-# For each sample: mean damage (percent) of the 3 most abundant taxa with >5% damage
-ref_by_sample <- damage_cell %>%
-  filter(dmg_pct > damage_threshold) %>%
-  group_by(sample) %>%
-  arrange(desc(reads), .by_group = TRUE) %>%
-  slice_head(n = 3) %>%
-  summarise(ref_mean = mean(dmg_pct, na.rm = TRUE), .groups = "drop") %>%
+# Reference mean damage (percent) per sample: user-defined via --ref_damage_mean, otherwise
+# mean damage of the 3 most abundant taxa with damage > damage_threshold
+if (is.na(ref_damage_mean)) {
+  ref_by_sample <- damage_cell %>%
+    filter(dmg_pct > damage_threshold) %>%
+    group_by(sample) %>%
+    arrange(desc(reads), .by_group = TRUE) %>%
+    slice_head(n = 3) %>%
+    summarise(ref_mean = mean(dmg_pct, na.rm = TRUE), .groups = "drop")
+} else {
+  ref_by_sample <- tibble(sample = unique(damage_cell$sample), ref_mean = ref_damage_mean)
+}
+ref_by_sample <- ref_by_sample %>%
   mutate(ref_low = pmax(damage_threshold, ref_mean - 5), ref_high = ref_mean + 5)
 
 damage_cell <- damage_cell %>%
