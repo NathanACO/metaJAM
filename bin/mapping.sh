@@ -88,4 +88,5 @@ else
     echo "$(date -u) 3. BAM created and sorted" >&2
 fi
 
+find . -type f -name "*.sam" -delete
 pigz "${ID}_${idx}_unclass.fq"
