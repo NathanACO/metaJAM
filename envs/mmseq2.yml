@@ -1,13 +1,13 @@
 name: mmseqs2_py38
 channels:
-  - conda-forge
-  - bioconda
+  - conda-forge
+  - bioconda
 
 dependencies:
-  - python=3.9
-  - pandas=2.2
-  - numpy=1.26
-  - mmseqs2=17.b804f
-  - pip
-  - pip:
-      - taxadb==0.12.1
+  - python=3.9
+  - pip=24.3.1
+  - pandas=2.2
+  - numpy=1.26
+  - mmseqs2=17.b804f
+  - pip:
+      - taxadb==0.12.1
