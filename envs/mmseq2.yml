@@ -1,4 +1,4 @@
-name: mmseqs2_py38
+name: mmseqs2_py39
 channels:
   - conda-forge
   - bioconda
