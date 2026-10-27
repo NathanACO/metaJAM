@@ -179,6 +179,8 @@ MMSeqs2 database\
 `PLOTS_BAMDAM_MIN_READS` (default=50)    - Minimum reads per sample to include in bamdam plots\
 `PLOTS_BAMDAM_PLOT_MODE` (default=both)  - Chose which plots to produce: heatmap, bubble or both\
 `PLOTS_DAMAGE_THRESHOLD` (default=3.5)   - Minimum percentage of damage for plotting\
+`PLOTS_REF_DAMAGE_MEAN` (default="")   - Reference mean damage (%) used for the damage colour classes (confident = above threshold and within ± PLOTS_DAMAGE_THRESHOLD % of this mean). If empty, it is computed per sample as the mean damage of the 3 most abundant taxa above PLOTS_DAMAGE_THRESHOLD\
+`PLOTS_PROPORTION_MEAN_DAMAGE_RANGE` (default="")   - Proportion of the reference mean damage used as the half-width of the near-reference window, i.e. ref_mean ± PLOTS_PROPORTION_MEAN_DAMAGE_RANGE * ref_mean (lower bound never below PLOTS_DAMAGE_THRESHOLD). If empty, a fixed ± 5 % window is used\
 `PLOTS_PLOT_LOW_DAMAGE_TAXA` (default=0)    # 1 = keep low-damage taxa (default); 0 = drop taxa whose max damage across samples is < PLOTS_DAMAGE_THRESHOLD\
 `PLOTS_EXCLUDE_TAXA` # e.g., "Homo;Zea;Canis;Veronica" in the format of comma / semicolon / space separated (exact taxon name matches)\
 `PLOTS_KRONA`=1                   # Plots the bamdam results for all samples in metadata if enable. 1=enable, 0=disable\

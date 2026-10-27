@@ -44,6 +44,11 @@ ref_mean_arg <- get_arg("--ref_damage_mean", Sys.getenv("PLOTS_REF_DAMAGE_MEAN",
 ref_damage_mean <- suppressWarnings(as.numeric(ref_mean_arg))
 if (!is.na(ref_damage_mean) && ref_damage_mean < 0) ref_damage_mean <- NA_real_
 
+# half-width of the near-reference window as a proportion of ref_mean; empty/NA = fixed +/- 5 (%)
+prop_range_arg <- get_arg("--proportion_mean_damage_range", Sys.getenv("PLOTS_PROPORTION_MEAN_DAMAGE_RANGE", ""))
+proportion_mean_damage_range <- suppressWarnings(as.numeric(prop_range_arg))
+if (!is.na(proportion_mean_damage_range) && proportion_mean_damage_range < 0) proportion_mean_damage_range <- NA_real_
+
 # taxa per bamdam plot panel (0 = no splitting)
 taxa_per_plot_arg <- get_arg("--taxa_per_plot", Sys.getenv("BAMDAM_TAXA_PER_PLOT", "0"))
 taxa_per_plot <- suppressWarnings(as.integer(taxa_per_plot_arg))
@@ -52,6 +57,8 @@ if (is.na(taxa_per_plot) || taxa_per_plot < 0) taxa_per_plot <- 0
 message("[100_Plots.R] damage_threshold(%): ", damage_threshold)
 message("[100_Plots.R] ref_damage_mean(%): ",
         ifelse(is.na(ref_damage_mean), "auto (top-3 abundant taxa per sample)", ref_damage_mean))
+message("[100_Plots.R] proportion_mean_damage_range: ",
+        ifelse(is.na(proportion_mean_damage_range), "none (fixed +/- 5)", proportion_mean_damage_range))
 message("[100_Plots.R] taxa_per_plot: ", taxa_per_plot)
 # --- NEW: taxa exclusion list for HEATMAP only ---
 # Accepts comma / semicolon / whitespace separated names (exact matches).
@@ -548,7 +555,14 @@ if (is.na(ref_damage_mean)) {
   ref_by_sample <- tibble(sample = unique(damage_cell$sample), ref_mean = ref_damage_mean)
 }
 ref_by_sample <- ref_by_sample %>%
-  mutate(ref_low = pmax(damage_threshold, ref_mean - 5), ref_high = ref_mean + 5)
+  mutate(
+    ref_range = if (is.na(proportion_mean_damage_range)) 5 else proportion_mean_damage_range * ref_mean,
+    ref_low = pmax(damage_threshold, ref_mean - ref_range),
+    ref_high = ref_mean + ref_range
+  )
+message("[100_Plots.R] near-reference window per sample (sample ref_mean ref_low ref_high): ",
+        paste(sprintf("%s %.3f %.3f %.3f", ref_by_sample$sample, ref_by_sample$ref_mean,
+                      ref_by_sample$ref_low, ref_by_sample$ref_high), collapse = "; "))
 
 damage_cell <- damage_cell %>%
   left_join(ref_by_sample, by = "sample") %>%

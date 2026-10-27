@@ -675,6 +675,7 @@ workflow {
 				params.PLOTS_MODE,
 				params.PLOTS_DAMAGE_THRESHOLD,
 				params.PLOTS_REF_DAMAGE_MEAN ?: "",
+				params.PLOTS_PROPORTION_MEAN_DAMAGE_RANGE ?: "",
 				params.PLOTS_PLOT_LOW_DAMAGE_TAXA,
 				params.PLOTS_EXCLUDE_TAXA,
 				params.PLOTS_TAXA_PER_PLOT,
