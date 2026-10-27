@@ -298,7 +298,15 @@ workflow {
 				kraken_out2 = Channel.empty()
 			}
 			//kraken_out2.view()
-			kraken_out = kraken_out1.concat(kraken_out2).unique()
+			kraken_out_concat = kraken_out1.concat(kraken_out2).unique()
+
+			kraken_out_fallback = kraken_out_concat
+			.count()
+			.filter { n -> n == 0 }
+			.combine(ch_sample_ids)
+			.map { _n, id -> [id, params.METAJAM_DIR + "/assets/NO_FILE11"] }
+
+			kraken_out = kraken_out_concat.mix(kraken_out_fallback)
 
 			kraken_out_metrics = kraken_out
 
@@ -499,7 +507,15 @@ workflow {
 			// bamdam_bam_lca.view()
 		}
 
-		bamdam_bam_lca1.concat(bamdam_bam_lca2).unique().set{bamdam_bam_lca}
+		bamdam_bam_lca1.concat(bamdam_bam_lca2).unique().set{bamdam_bam_lca_concat}
+
+		bamdam_bam_lca_fallback = bamdam_bam_lca_concat
+		.count()
+		.filter { n -> n == 0 }
+		.combine(ch_sample_ids)
+		.map { _n, id -> [id, params.METAJAM_DIR + "/assets/NO_FILE10"] }
+
+		bamdam_bam_lca = bamdam_bam_lca_concat.mix(bamdam_bam_lca_fallback)
 
 		mmseq2_evaluation1 = Channel.empty()
 		if (params.ENABLE_MMSEQS2 == "enable" || workflow_entry_point == "MMSEQS2") {
