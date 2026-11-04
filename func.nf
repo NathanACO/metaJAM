@@ -260,7 +260,7 @@ process MERGE_BAM {
         tuple val(ID), path(bams)
 
     output:
-        tuple val(ID), path("*_merged.sorted.bam")
+        tuple val(ID), path("*.merged.bam")
     
     publishDir "${params.OUTPUT_Dir}/05_merged_bam/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy"
         
@@ -279,9 +279,6 @@ process MERGE_BAM {
             exit 1
         }
 
-        samtools sort -n -@ "${task.cpus}" -o ${ID}_merged.sorted.bam   ${ID}.merged.bam
-
-        samtools quickcheck "${ID}_merged.sorted.bam" || { echo "Failed at merging bams of $ID"; exit 1; }
     """
 }
 
@@ -378,24 +375,25 @@ process NGSLCA {
     
     input:    
         tuple val(ID), path(bam), path(NAMES), path(NODES), path(ACC2TAX)
+        val(NGSLCA_SIMSCORELOW)
+        val(NGSLCA_SIMSCOREHIGH)
             
     output:
         tuple val(ID), path("*.lca"), emit: lca
 	path("*.log")
 
     publishDir "${params.OUTPUT_Dir}/07_ngslca/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy"
-
-    errorStrategy 'ignore'
         
     script:
     """
+
         ngsLCA \
-            -simscorelow 0.95 \
-            -simscorehigh 1 \
+            -simscorelow "${NGSLCA_SIMSCORELOW}" \
+            -simscorehigh "${NGSLCA_SIMSCOREHIGH}" \
             -names "${NAMES}" \
             -nodes "${NODES}" \
             -acc2tax "${ACC2TAX}" \
-            -bam "${bam}" \
+            -bam "$bam" \
             -outnames "\$(basename $bam .bam)" \
             -fix_ncbi 0
     """
@@ -424,9 +422,15 @@ process BAMDAM {
 
     script:
     """
+
+        samtools sort -n -@ "${task.cpus}" -o ${ID}_merged.sorted.bam   $bam
+
+        samtools quickcheck "${ID}_merged.sorted.bam" || { echo "Failed at merging bams of $ID"; exit 1; }
+
+
         # shrink
         bamdam shrink \
-        --in_bam "${bam}" \
+        --in_bam "${ID}_merged.sorted.bam" \
         --in_lca "${lca}" \
         --out_bam "${ID}.small.bam" \
         --out_lca "${ID}.small.lca" \

@@ -151,7 +151,10 @@ MMSeqs2 database\
 `FILTERBAM_MIN_AVG_READ_ANI`    --min-avg-read-ani          (default=90)    \
 `FILTERBAM_MIN_COVERAGE_EVENNESS`    --min-coverage-evenness     (default=0.3)    \
 `FILTERBAM_MIN_COEFF_VAR`    --min-coeff-var             (default=inf)    \
-`FILTERBAM_MIN_COVERAGE_MEAN`    --min-coverage-mean         (default=0)    
+`FILTERBAM_MIN_COVERAGE_MEAN`    --min-coverage-mean         (default=0)    \
+*ngsLCA*\
+`NGSLCA_SIMSCORELOW`    -simscorelow                (default=0.95)    Minimum similarity score (0-1) of an alignment to be included in the LCA\
+`NGSLCA_SIMSCOREHIGH`    -simscorehigh               (default=1)    Maximum similarity score (0-1) of an alignment to be included in the LCA\
 6) *bamdam*\
 `BAMDAM_STRANDED`    --stranded                  (default=ds)        
 `BAMDAM_MINREADS`    --minreads                  (default=5)        

@@ -442,7 +442,9 @@ workflow {
 				mapping_indexes | GET_ACC2TAXID | collectFile // it requires species name just after contig name in ref, also could generate NA for some species
 			}
 
-			NGSLCA( bam.map { tuple(it[0], it[1], params.NAMES, params.NODES, acc2taxid )} )
+			NGSLCA( bam.map { tuple(it[0], it[1], params.NAMES, params.NODES, acc2taxid )},
+				params.NGSLCA_SIMSCORELOW,
+				params.NGSLCA_SIMSCOREHIGH )
 			NGSLCA.out.lca.set{lca1}
 		}
 		
