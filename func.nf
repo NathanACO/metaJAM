@@ -379,13 +379,16 @@ process NGSLCA {
         val(NGSLCA_SIMSCOREHIGH)
             
     output:
-        tuple val(ID), path("*.lca"), emit: lca
+        // the name-sorted bam is emitted with the lca: bamdam shrink needs the bam in the same read order as the lca
+        tuple val(ID), path("${ID}_merged.sorted.bam"), path("*.lca"), emit: bam_lca
 	path("*.log")
 
-    publishDir "${params.OUTPUT_Dir}/07_ngslca/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy"
+    publishDir "${params.OUTPUT_Dir}/07_ngslca/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy", pattern: "*.{lca,log}"
         
     script:
     """
+        samtools sort -n -@ "${task.cpus}" -o ${ID}_merged.sorted.bam  $bam
+        samtools quickcheck "${ID}_merged.sorted.bam" || { echo "Failed at sorting bam of $ID"; exit 1; }
 
         ngsLCA \
             -simscorelow "${NGSLCA_SIMSCORELOW}" \
@@ -393,7 +396,7 @@ process NGSLCA {
             -names "${NAMES}" \
             -nodes "${NODES}" \
             -acc2tax "${ACC2TAX}" \
-            -bam "$bam" \
+            -bam "${ID}_merged.sorted.bam" \
             -outnames "\$(basename $bam .bam)" \
             -fix_ncbi 0
     """
@@ -423,14 +426,11 @@ process BAMDAM {
     script:
     """
 
-        samtools sort -n -@ "${task.cpus}" -o ${ID}_merged.sorted.bam   $bam
-
-        samtools quickcheck "${ID}_merged.sorted.bam" || { echo "Failed at merging bams of $ID"; exit 1; }
 
 
         # shrink
         bamdam shrink \
-        --in_bam "${ID}_merged.sorted.bam" \
+        --in_bam "${bam}" \
         --in_lca "${lca}" \
         --out_bam "${ID}.small.bam" \
         --out_lca "${ID}.small.lca" \

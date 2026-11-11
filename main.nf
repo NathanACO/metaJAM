@@ -432,7 +432,7 @@ workflow {
 		// bam.map { tuple(it[0], it[1], params.NAMES, params.NODES, params.ACC2TAXID )}.view()
 
 		// lca = Channel.empty()
-		lca1 = Channel.empty()
+		bam_lca1 = Channel.empty()
 		if (params.ENABLE_NGSLCA == "enable") { 
 			
 			// acc2taxid is only needed by ngsLCA
@@ -445,7 +445,7 @@ workflow {
 			NGSLCA( bam.map { tuple(it[0], it[1], params.NAMES, params.NODES, acc2taxid )},
 				params.NGSLCA_SIMSCORELOW,
 				params.NGSLCA_SIMSCOREHIGH )
-			NGSLCA.out.lca.set{lca1}
+			NGSLCA.out.bam_lca.set{bam_lca1} // [ID, name-sorted bam, lca]
 		}
 		
 		lca2 = Channel.empty()
@@ -455,8 +455,13 @@ workflow {
 			.map { row -> tuple( row[0], file(row[1]))}
 			.set{lca2}
 		}
-		lca1.concat(lca2).unique().set{lca}
-		// lca.view()
+		// lca from NGSLCA comes with the name-sorted bam it was computed from;
+		// an overridden lca is paired with merged_bam, which must be the bam (same read order) the lca was computed from
+		bam_lca1
+		.concat( merged_bam.combine( lca2, by:0 ) )
+		.unique { it[0] }
+		.set{ bam_lca }
+		// bam_lca.view()
 
 		bamdam_bam_lca2 = Channel.empty()
 		bamdam_xml2 = Channel.empty()
@@ -464,8 +469,7 @@ workflow {
 		bamdam_xml1 = Channel.empty()
 		if (params.ENABLE_BAMDAM == "enable" ) {
 
-			merged_bam
-			.combine( lca ,by:0 )
+			bam_lca
 			.map{it -> tuple(it[0], it[1], it[2],
 			params.BAMDAM_STRANDED,
 			params.BAMDAM_MINREADS,
