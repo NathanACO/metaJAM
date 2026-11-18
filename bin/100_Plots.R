@@ -39,26 +39,12 @@ damage_thr_arg <- get_arg("--damage_threshold", Sys.getenv("PLOTS_DAMAGE_THRESHO
 damage_threshold <- suppressWarnings(as.numeric(damage_thr_arg))
 if (is.na(damage_threshold) || damage_threshold < 0) damage_threshold <- 5
 
-# reference mean damage in percent for damage_class; empty/NA = auto (top-3 abundant taxa per sample)
-ref_mean_arg <- get_arg("--ref_damage_mean", Sys.getenv("PLOTS_REF_DAMAGE_MEAN", ""))
-ref_damage_mean <- suppressWarnings(as.numeric(ref_mean_arg))
-if (!is.na(ref_damage_mean) && ref_damage_mean < 0) ref_damage_mean <- NA_real_
-
-# half-width of the near-reference window as a proportion of ref_mean; empty/NA = fixed +/- 5 (%)
-prop_range_arg <- get_arg("--proportion_mean_damage_range", Sys.getenv("PLOTS_PROPORTION_MEAN_DAMAGE_RANGE", ""))
-proportion_mean_damage_range <- suppressWarnings(as.numeric(prop_range_arg))
-if (!is.na(proportion_mean_damage_range) && proportion_mean_damage_range < 0) proportion_mean_damage_range <- NA_real_
-
 # taxa per bamdam plot panel (0 = no splitting)
 taxa_per_plot_arg <- get_arg("--taxa_per_plot", Sys.getenv("BAMDAM_TAXA_PER_PLOT", "0"))
 taxa_per_plot <- suppressWarnings(as.integer(taxa_per_plot_arg))
 if (is.na(taxa_per_plot) || taxa_per_plot < 0) taxa_per_plot <- 0
 
 message("[100_Plots.R] damage_threshold(%): ", damage_threshold)
-message("[100_Plots.R] ref_damage_mean(%): ",
-        ifelse(is.na(ref_damage_mean), "auto (top-3 abundant taxa per sample)", ref_damage_mean))
-message("[100_Plots.R] proportion_mean_damage_range: ",
-        ifelse(is.na(proportion_mean_damage_range), "none (fixed +/- 5)", proportion_mean_damage_range))
 message("[100_Plots.R] taxa_per_plot: ", taxa_per_plot)
 # --- NEW: taxa exclusion list for HEATMAP only ---
 # Accepts comma / semicolon / whitespace separated names (exact matches).
@@ -494,8 +480,8 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
       column_to_rownames("taxon") %>%
       as.matrix()
 
-    tax_totals <- rowSums(mat)
-    keep_taxa  <- tax_totals >= min_reads
+    tax_max_reads <- apply(mat, 1, max, na.rm = TRUE)
+    keep_taxa     <- tax_max_reads >= min_reads
     mat <- mat[keep_taxa, , drop = FALSE]
     if (nrow(mat) == 0L) return(NULL)
 
@@ -525,7 +511,7 @@ make_bamdam_abundance_plots <- function(bamdam_dir, samples_path, metadata_path,
 
 
 # ---- damage class per cell (sample-dependent) ----
-# Mean of Damage+1 and Damage-1 from TSV (fraction). Convert to percent for thresholding.
+# Use Damage+1 directly from TSV (fraction). Convert to percent for thresholding.
 damage_cell <- dat_rank %>%
   filter(sample %in% sample_order) %>%
   group_by(taxon, sample) %>%
@@ -542,27 +528,14 @@ taxon_max_damage <- damage_cell %>%
   group_by(taxon) %>%
   summarise(max_dmg_pct = max(dmg_pct, na.rm = TRUE), .groups = "drop")
 
-# Reference mean damage (percent) per sample: user-defined via --ref_damage_mean, otherwise
-# mean damage of the 3 most abundant taxa with damage > damage_threshold
-if (is.na(ref_damage_mean)) {
-  ref_by_sample <- damage_cell %>%
-    filter(dmg_pct > damage_threshold) %>%
-    group_by(sample) %>%
-    arrange(desc(reads), .by_group = TRUE) %>%
-    slice_head(n = 3) %>%
-    summarise(ref_mean = mean(dmg_pct, na.rm = TRUE), .groups = "drop")
-} else {
-  ref_by_sample <- tibble(sample = unique(damage_cell$sample), ref_mean = ref_damage_mean)
-}
-ref_by_sample <- ref_by_sample %>%
-  mutate(
-    ref_range = if (is.na(proportion_mean_damage_range)) 5 else proportion_mean_damage_range * ref_mean,
-    ref_low = pmax(damage_threshold, ref_mean - ref_range),
-    ref_high = ref_mean + ref_range
-  )
-message("[100_Plots.R] near-reference window per sample (sample ref_mean ref_low ref_high): ",
-        paste(sprintf("%s %.3f %.3f %.3f", ref_by_sample$sample, ref_by_sample$ref_mean,
-                      ref_by_sample$ref_low, ref_by_sample$ref_high), collapse = "; "))
+# For each sample: mean damage (percent) of the 3 most abundant taxa with >5% damage
+ref_by_sample <- damage_cell %>%
+  filter(dmg_pct > damage_threshold) %>%
+  group_by(sample) %>%
+  arrange(desc(reads), .by_group = TRUE) %>%
+  slice_head(n = 3) %>%
+  summarise(ref_mean = mean(dmg_pct, na.rm = TRUE), .groups = "drop") %>%
+  mutate(ref_low = pmax(damage_threshold, ref_mean - 5), ref_high = ref_mean + 5)
 
 damage_cell <- damage_cell %>%
   left_join(ref_by_sample, by = "sample") %>%
@@ -1329,12 +1302,12 @@ make_mmseqs_evaluation_bubbleplot <- function(mmseqs_dir, samples_path, metadata
     return(invisible(NULL))
   }
 
-  # Optional: apply min_reads filter as bamdam (across all samples)
+  # Keep taxa that reach min_reads in at least one sample.
   if (exists("min_reads", inherits = TRUE) && is.numeric(min_reads) && min_reads > 1) {
     keep_taxa <- bam_reads %>%
       group_by(exp_genus_name) %>%
-      summarise(total = sum(bamdam_reads, na.rm = TRUE), .groups = "drop") %>%
-      filter(total >= min_reads) %>%
+      summarise(max_reads = max(bamdam_reads, na.rm = TRUE), .groups = "drop") %>%
+      filter(max_reads >= min_reads) %>%
       pull(exp_genus_name) %>%
       as.character()
     bam_reads <- bam_reads %>% filter(exp_genus_name %in% keep_taxa)

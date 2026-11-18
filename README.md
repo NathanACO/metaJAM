@@ -18,14 +18,14 @@ This pipeline performs processing and analysis of metagenomic data, starting fro
 
 ## Required program
 nextflow (developed in v25.10.4 (e.g., `ml nextflow/25.10.4` in cluster dardel), Please DO NOT USE v26 (config file syntax conflict))\
-conda\
+singularity\
 python3\
 pip3\
 git #optional, as for downloading the repository from github with git. No need for git if you download zip of this repository directly \
 taxadb #this can be downloaded with pip3 with the tutorial script below
 
 ## Download this pipeline
-run in your Linux terminal
+Run in your Linux terminal
 ```
 git clone https://github.com/NathanACO/metaJAM.git
 cd metaJAM
@@ -48,7 +48,7 @@ taxadb create -i taxadb --dbname taxadb.sqlite -d nucl --fast
 cd ../ 
 ```
 
-## A thorough explanation of the rationale of each process of the workflow is in [wiki](https://github.com/NathanACO/metaJAM/wiki)
+## A thorough explanation of the rationale of each process of the workflow is found in [wiki](https://github.com/NathanACO/metaJAM/wiki)
 ## To specify input and parameter setting in `nextflow.config`, please refer to [input readme](https://github.com/NathanACO/metaJAM/blob/ae8b5cfbb4d81ccd059c7ae82d2ea0aeb371e042/README.input_nextflow.config.md)
 
 

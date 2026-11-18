@@ -159,7 +159,9 @@ workflow MASK_MICROBIAL_LIKE_REGION {
 
 // Process 1: Indexing
 process index_reference {
-    conda './envs/bowtie2.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+      'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/26/26f0b749201d21505a4f4ae90bd3b46efc080c145876a272aaeb9681a1cfdb9f/data' :
+      'community.wave.seqera.io/library/bowtie2_coreutils_samtools_findutils_pruned:b3e802d80375ae5a' }"
 
     input:
     tuple val(ID), path(input_ref)
@@ -175,7 +177,9 @@ process index_reference {
 
 // Process 2: Alignment
 process align_pseudo_reads {
-    conda './envs/bowtie2.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+      'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/26/26f0b749201d21505a4f4ae90bd3b46efc080c145876a272aaeb9681a1cfdb9f/data' :
+      'community.wave.seqera.io/library/bowtie2_coreutils_samtools_findutils_pruned:b3e802d80375ae5a' }"
 
     input:
     tuple val(ID), path(index), path(input_pseudo_reads), val(type_of_pseudo_reads), val(n_allowed_multimappers)
@@ -214,7 +218,9 @@ process align_pseudo_reads {
 // merge bam of same sample mapped to different databases
 process merge_bam {
     
-    conda './envs/bowtie2.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+      'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/26/26f0b749201d21505a4f4ae90bd3b46efc080c145876a272aaeb9681a1cfdb9f/data' :
+      'community.wave.seqera.io/library/bowtie2_coreutils_samtools_findutils_pruned:b3e802d80375ae5a' }"
     input:
         tuple val(ID), path(bams)
 
@@ -256,7 +262,9 @@ process detect_exogenous {
   publishDir "${params.OUTPUT_Dir}/06_masked_bam", 
         mode: "copy"
 
-  conda './envs/samtools_R.yml'
+  container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+      'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/5e/5e4a7ff7eebf10c35122477a4d3c5aee43af4ec3d3cad3124475c564683fa067/data' :
+      'community.wave.seqera.io/library/samtools_r:d66e63ecde09ff93' }"
 
   input:
     tuple val(input_ref), path(bam), path(bai), val(type_of_pseudo_reads), val(work_dir), path(fna2name)
@@ -326,7 +334,9 @@ process make_bedfile {
 // mask the fasta with bedfile
 process mask_fasta {
 
-  conda 'bioconda::bedtools'
+  container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+    'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/2c/2cb27be9b55640ce5717c51a6a6bf79b7945d06eab425f0616d46251b4236e9e/data' :
+    'community.wave.seqera.io/library/bedtools:2.31.1--db419eb70de48d65' }"
 
   publishDir "${params.OUTPUT_Dir}/06_masked_bam", mode: "copy"
   

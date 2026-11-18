@@ -179,8 +179,8 @@ MMSeqs2 database\
 `MMSEQS2_AMBIG_FRAC`          (default=0.05)         # Percent of e-value difference for the second best hit for a different genera than the mmseqs2 best hit 
 
 8) *Plots*\
-`PLOTS_BAMDAM_MIN_READS` (default=50)    - Minimum reads per sample to include in bamdam plots\
-`PLOTS_BAMDAM_PLOT_MODE` (default=both)  - Chose which plots to produce: heatmap, bubble or both\
+`PLOTS_MIN_READS` (default=50)    - Minimum reads per sample to include a taxon in bamdam plots\
+`PLOTS_MODE` (default=both)  - Chose which plots to produce: heatmap, bubble or both\
 `PLOTS_DAMAGE_THRESHOLD` (default=3.5)   - Minimum percentage of damage for plotting\
 `PLOTS_REF_DAMAGE_MEAN` (default="")   - Reference mean damage (%) used for the damage colour classes (confident = above threshold and within ± PLOTS_DAMAGE_THRESHOLD % of this mean). If empty, it is computed per sample as the mean damage of the 3 most abundant taxa above PLOTS_DAMAGE_THRESHOLD\
 `PLOTS_PROPORTION_MEAN_DAMAGE_RANGE` (default="")   - Proportion of the reference mean damage used as the half-width of the near-reference window, i.e. ref_mean ± PLOTS_PROPORTION_MEAN_DAMAGE_RANGE * ref_mean (lower bound never below PLOTS_DAMAGE_THRESHOLD). If empty, a fixed ± 5 % window is used\

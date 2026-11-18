@@ -161,7 +161,9 @@ workflow SEQUENTIAL_MAP {
 
 process BOWTIE2_DB1 {
     label 'BOWTIE2'
-    conda './envs/bowtie2.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/26/26f0b749201d21505a4f4ae90bd3b46efc080c145876a272aaeb9681a1cfdb9f/data' :
+        'community.wave.seqera.io/library/bowtie2_coreutils_samtools_findutils_pruned:b3e802d80375ae5a' }"
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
               val(idx), path(idxs)
@@ -180,7 +182,9 @@ process BOWTIE2_DB1 {
 
 process BOWTIE2_DB2 {
     label 'BOWTIE2'
-    conda './envs/bowtie2.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/26/26f0b749201d21505a4f4ae90bd3b46efc080c145876a272aaeb9681a1cfdb9f/data' :
+        'community.wave.seqera.io/library/bowtie2_coreutils_samtools_findutils_pruned:b3e802d80375ae5a' }"
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
               val(idx), path(idxs)
@@ -200,7 +204,9 @@ process BOWTIE2_DB2 {
 
 process BOWTIE2_DB3 {
     label 'BOWTIE2'
-    conda './envs/bowtie2.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/26/26f0b749201d21505a4f4ae90bd3b46efc080c145876a272aaeb9681a1cfdb9f/data' :
+        'community.wave.seqera.io/library/bowtie2_coreutils_samtools_findutils_pruned:b3e802d80375ae5a' }"
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
               val(idx), path(idxs)
@@ -220,7 +226,9 @@ process BOWTIE2_DB3 {
 
 process BOWTIE2_DB4 {
     label 'BOWTIE2'
-    conda './envs/bowtie2.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/26/26f0b749201d21505a4f4ae90bd3b46efc080c145876a272aaeb9681a1cfdb9f/data' :
+        'community.wave.seqera.io/library/bowtie2_coreutils_samtools_findutils_pruned:b3e802d80375ae5a' }"
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
               val(idx), path(idxs)
@@ -240,7 +248,9 @@ process BOWTIE2_DB4 {
 
 process BOWTIE2_DB5 {
     label 'BOWTIE2'
-    conda './envs/bowtie2.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/26/26f0b749201d21505a4f4ae90bd3b46efc080c145876a272aaeb9681a1cfdb9f/data' :
+        'community.wave.seqera.io/library/bowtie2_coreutils_samtools_findutils_pruned:b3e802d80375ae5a' }"
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
               val(idx), path(idxs)
@@ -260,7 +270,9 @@ process BOWTIE2_DB5 {
 
 process BOWTIE2_DB6 {
     label 'BOWTIE2'
-    conda './envs/bowtie2.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/26/26f0b749201d21505a4f4ae90bd3b46efc080c145876a272aaeb9681a1cfdb9f/data' :
+        'community.wave.seqera.io/library/bowtie2_coreutils_samtools_findutils_pruned:b3e802d80375ae5a' }"
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
               val(idx), path(idxs)
@@ -280,7 +292,9 @@ process BOWTIE2_DB6 {
 
 process BOWTIE2_DB7 {
     label 'BOWTIE2'
-    conda './envs/bowtie2.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/26/26f0b749201d21505a4f4ae90bd3b46efc080c145876a272aaeb9681a1cfdb9f/data' :
+        'community.wave.seqera.io/library/bowtie2_coreutils_samtools_findutils_pruned:b3e802d80375ae5a' }"
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
               val(idx), path(idxs)
@@ -300,7 +314,9 @@ process BOWTIE2_DB7 {
 
 process BOWTIE2_DB8 {
     label 'BOWTIE2'
-    conda './envs/bowtie2.yml'
+        container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/26/26f0b749201d21505a4f4ae90bd3b46efc080c145876a272aaeb9681a1cfdb9f/data' :
+    'community.wave.seqera.io/library/bowtie2_coreutils_samtools_findutils_pruned:b3e802d80375ae5a' }"
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
               val(idx), path(idxs)
@@ -320,7 +336,9 @@ process BOWTIE2_DB8 {
 
 process BOWTIE2_DB9 {
     label 'BOWTIE2'
-    conda './envs/bowtie2.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/26/26f0b749201d21505a4f4ae90bd3b46efc080c145876a272aaeb9681a1cfdb9f/data' :
+        'community.wave.seqera.io/library/bowtie2_coreutils_samtools_findutils_pruned:b3e802d80375ae5a' }"
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
               val(idx), path(idxs)
@@ -340,7 +358,9 @@ process BOWTIE2_DB9 {
 
 process BOWTIE2_DB10 {
     label 'BOWTIE2'
-    conda './envs/bowtie2.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/26/26f0b749201d21505a4f4ae90bd3b46efc080c145876a272aaeb9681a1cfdb9f/data' :
+        'community.wave.seqera.io/library/bowtie2_coreutils_samtools_findutils_pruned:b3e802d80375ae5a' }"
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
               val(idx), path(idxs)

@@ -5,7 +5,9 @@ process leeHom {
 
     label 'small_memory'
 
-    conda " bioconda::leehom"
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+    'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/c5/c516f047a2c988518dd5469c4c7d0fd44d84da18d3be62e58d881f56ac9291fb/data' :
+    'community.wave.seqera.io/library/fastp_krona_leehom_prinseq_isa-l:fb88e4377f4f3859' }"
 
     input:
     tuple val(ID), path(r1), path(r2)
@@ -33,7 +35,9 @@ process FASTP {
 
     label 'small_memory'
 
-    conda "bioconda::fastp=0.24.0 conda-forge::isa-l"
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+    'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/c5/c516f047a2c988518dd5469c4c7d0fd44d84da18d3be62e58d881f56ac9291fb/data' :
+    'community.wave.seqera.io/library/fastp_krona_leehom_prinseq_isa-l:fb88e4377f4f3859' }"
 
     input:
     tuple val(ID), path(r1), path(r2), val(FASTP_OVERLAP_LEN_REQUIRE), val(FASTP_MIN_LENGTH)
@@ -63,7 +67,9 @@ process FASTP {
 
 process SGA {
     label 'small_memory'
-	conda 'bioconda::sga=0.10.15'
+	container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+    'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/33/33349c467d524f5fc45a5be3445fa8a611def9916aab0a27fa3489d9e4b9f00a/data' :
+    'community.wave.seqera.io/library/sga:6896637f6777a615' }"
 	input:
     	tuple val(ID), path(merged_reads), val(SGA_DUST_THRESHOLD)
 
@@ -104,7 +110,9 @@ process PRINSEQ {
 
     errorStrategy 'retry' // duplicate removal could oom without nextflow registering it as oom
 
-    conda 'bioconda::prinseq=0.20.4'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+    'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/28/2835042ee3c2735ff00ad1d8f4aa4b5257599834180cef73deab00eec6e3dcc0/data' :
+    'community.wave.seqera.io/library/fastp_krona_leehom_prinseq_gzip:cd1132f667c37f35' }"
     input:
     tuple val(ID), path(merged_reads), val(PRINSEQ_COMPLEXITY_METHOD), val(PRINSEQ_COMPLEXITY_THRESHOLD), val(PRINSEQ_MIN_LEN), val(PRINSEQ_DEREP)
 
@@ -159,7 +167,9 @@ process PRINSEQ {
 }
 
 process KRAKEN2 {
-    conda './envs/kraken2.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+    'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/8d/8de7ab90e1002c5b19d4a8d4e17326e6aae536942efe6552f2d5e08970bffe1b/data' :
+    'community.wave.seqera.io/library/kraken2_findutils_gzip_pigz:e92f5623225d3eae' }"
 
     publishDir "${params.OUTPUT_Dir}/03_kraken2_filter/${params.MAP_LAST_DB_TAG}", mode: "copy" 
 
@@ -207,7 +217,9 @@ process KRAKEN2 {
 
 process BOWTIE2 {
     label 'BOWTIE2'
-    conda './envs/bowtie2.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+    'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/26/26f0b749201d21505a4f4ae90bd3b46efc080c145876a272aaeb9681a1cfdb9f/data' :
+    'community.wave.seqera.io/library/bowtie2_coreutils_samtools_findutils_pruned:b3e802d80375ae5a' }"
     input:    
         tuple val(ID), path(reads), val(n_allow_multimapper), 
               val(idx), path(idxs)
@@ -227,7 +239,9 @@ output:
 process GET_ACC2TAXID {
     label 'small_memory'
 
-    conda './envs/acc2taxid.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+    'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/ca/ca0a42ded76137997744823d56465198d83917c99e433f10d7914b037262ffaf/data' :
+    'community.wave.seqera.io/library/acc2taxid:604baa849baf1c97' }"
 
     input:
     tuple val(idx_ID), path(idxs)
@@ -255,12 +269,14 @@ process GET_ACC2TAXID {
 // merge bam of same sample mapped to different databases
 process MERGE_BAM {
     label 'little_memory'
-    conda './envs/bowtie2.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+    'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/09/09ea27c7afa4d58f0df6ba32624bc0b19c61094464cf14e8ac86ecbe85552586/data' :
+    'community.wave.seqera.io/library/com_map:116f2655f1cab2bc' }"
     input:    
         tuple val(ID), path(bams)
 
     output:
-        tuple val(ID), path("*.merged.bam")
+        tuple val(ID), path("*_merged.sorted.bam")
     
     publishDir "${params.OUTPUT_Dir}/05_merged_bam/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy"
         
@@ -279,6 +295,9 @@ process MERGE_BAM {
             exit 1
         }
 
+        samtools sort -n -@ "${task.cpus}" -o ${ID}_merged.sorted.bam   ${ID}.merged.bam
+
+        samtools quickcheck "${ID}_merged.sorted.bam" || { echo "Failed at merging bams of $ID"; exit 1; }
     """
 }
 
@@ -302,7 +321,9 @@ process CONCATENATE_BEDFILES {
 // merge bam of same sample mapped to different databases
 process MASK_REGIONS {
     label 'little_memory'
-    conda './envs/bowtie2.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+    'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/09/09ea27c7afa4d58f0df6ba32624bc0b19c61094464cf14e8ac86ecbe85552586/data' :
+    'community.wave.seqera.io/library/com_map:116f2655f1cab2bc' }"
     input:    
         tuple val(ID), path(bam), path(bed)
 
@@ -371,39 +392,39 @@ process FILTERBAM {
 process NGSLCA {
 
     label 'little_memory'
-    conda './envs/ngsLCA.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+    'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/7e/7e7a19219e2f9801bbdc221130b6378e3c5fcf731dbcc8006c168c6673163148/data' :
+    'community.wave.seqera.io/library/ngslca:0e0bfaa04c7091ce' }"
     
     input:    
         tuple val(ID), path(bam), path(NAMES), path(NODES), path(ACC2TAX)
-        val(NGSLCA_SIMSCORELOW)
-        val(NGSLCA_SIMSCOREHIGH)
             
     output:
-        // the name-sorted bam is emitted with the lca: bamdam shrink needs the bam in the same read order as the lca
-        tuple val(ID), path("${ID}_merged.sorted.bam"), path("*.lca"), emit: bam_lca
+        tuple val(ID), path("*.lca"), emit: lca
 	path("*.log")
 
-    publishDir "${params.OUTPUT_Dir}/07_ngslca/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy", pattern: "*.{lca,log}"
+    publishDir "${params.OUTPUT_Dir}/07_ngslca/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy"
+
+    errorStrategy 'ignore'
         
     script:
     """
-        samtools sort -n -@ "${task.cpus}" -o ${ID}_merged.sorted.bam  $bam
-        samtools quickcheck "${ID}_merged.sorted.bam" || { echo "Failed at sorting bam of $ID"; exit 1; }
-
         ngsLCA \
-            -simscorelow "${NGSLCA_SIMSCORELOW}" \
-            -simscorehigh "${NGSLCA_SIMSCOREHIGH}" \
+            -simscorelow 0.95 \
+            -simscorehigh 1 \
             -names "${NAMES}" \
             -nodes "${NODES}" \
             -acc2tax "${ACC2TAX}" \
-            -bam "${ID}_merged.sorted.bam" \
+            -bam "${bam}" \
             -outnames "\$(basename $bam .bam)" \
             -fix_ncbi 0
     """
 }
 
 process BAMDAM {
-    conda './envs/bamdam.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+    'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/34/3482692919171839fd56ef9b0fbb5a3c63e7455e40aca90220d49277225bd74f/data' :
+    'community.wave.seqera.io/library/samtools__libgcc_mutex__openmp_mutex_bzip2_pruned:9d707f2aec25f34e' }"
 
     errorStrategy = { task.exitStatus in [143,137,104,134,139,140] ? 'retry' : 'ignore' } 
 
@@ -425,9 +446,6 @@ process BAMDAM {
 
     script:
     """
-
-
-
         # shrink
         bamdam shrink \
         --in_bam "${bam}" \
@@ -498,7 +516,9 @@ process BAMDAM {
 }
 
 process MMSEQ2 {
-    conda 'envs/mmseq2.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+    'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/51/5131dbe66bc74eb64a3f7920e21057d81fc1fe79b1ea036e190fb5f61c92ba7b/data' :
+    'community.wave.seqera.io/library/mmseqs2_py38:2feab9c24b0c6d7d' }"
 
     input:    
         tuple val(ID), path(bam), path(lca), path(lca_tsv),
@@ -629,7 +649,9 @@ process MMSEQ2 {
 
 process METRICS {
     label 'little_memory'
-    conda './envs/bowtie2.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+    'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/09/09ea27c7afa4d58f0df6ba32624bc0b19c61094464cf14e8ac86ecbe85552586/data' :
+    'community.wave.seqera.io/library/com_map:116f2655f1cab2bc' }"
     input:    
         tuple val(ID), 
             path(raw_fq1), 
@@ -736,7 +758,9 @@ process CONCAT_METRICS {
 
 
 process PLOTS {
-    conda './envs/plots.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+    'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/6d/6dcf37bdacddef888e3add8114be9371b1849c0b86f4017b18ed803bc9bc3261/data' :
+    'community.wave.seqera.io/library/plots:c0e5ab0006d1d1d4' }"
 
     label 'little_memory'
 
@@ -751,8 +775,6 @@ process PLOTS {
         val(MIN_READS)
         val(PLOTS_MODE)
         val(PLOTS_DAMAGE_THRESHOLD)
-        val(PLOTS_REF_DAMAGE_MEAN)
-        val(PLOTS_PROPORTION_MEAN_DAMAGE_RANGE)
         val(PLOTS_PLOT_LOW_DAMAGE_TAXA)
         val(PLOTS_EXCLUDE_TAXA)
         val(PLOTS_TAXA_PER_PLOT)
@@ -804,8 +826,6 @@ process PLOTS {
             --min_reads "$MIN_READS" \
             --bamdam_plot "$PLOTS_MODE" \
             --damage_threshold "$PLOTS_DAMAGE_THRESHOLD" \
-            --ref_damage_mean "$PLOTS_REF_DAMAGE_MEAN" \
-            --proportion_mean_damage_range "$PLOTS_PROPORTION_MEAN_DAMAGE_RANGE" \
             --plot_low_damage_taxa "$PLOTS_PLOT_LOW_DAMAGE_TAXA" \
             --exclude_taxa "$PLOTS_EXCLUDE_TAXA" \
             --taxa_per_plot "$PLOTS_TAXA_PER_PLOT" \
@@ -817,7 +837,9 @@ process PLOTS {
 }
 
 process PLOTS_KRONA_BY_SITE {
-    conda './envs/bamdam_kronatools.yml'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+    'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/4b/4b6cbcfa2d1efb177081283485989b891441ea6054e0fcb90c63c9b074fd5d87/data' :
+    'community.wave.seqera.io/library/bamdam:6e95b4485d155b81' }"
 
     label 'little_memory'
 
@@ -870,7 +892,9 @@ process PLOTS_KRONA_BY_SITE {
 
 process PLOTS_KRONA_BY_SAMPLE {
     label 'small_memory'
-    conda 'bioconda::krona'
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+    'https://community-cr-prod.seqera.io/docker/registry/v2/blobs/sha256/c5/c516f047a2c988518dd5469c4c7d0fd44d84da18d3be62e58d881f56ac9291fb/data' :
+    'community.wave.seqera.io/library/fastp_krona_leehom_prinseq_isa-l:fb88e4377f4f3859' }"
     publishDir "${params.OUTPUT_Dir}/08_bamdam/$ID/${ID}_${params.MAP_LAST_DB_TAG}", mode: "copy"
     input:
         tuple val(ID), path(xml), path(tsv)
